@@ -9,13 +9,28 @@ import platform
 import pid
 import time
 
-
 #print(os.path.abspath(sys.argv[0]))
 #txt = "Nobody inspects the spammish repetition"
 #print(hashlib.md5(txt.encode('utf-8')).hexdigest())
 #print(base64.standard_b64encode(hashlib.md5(txt.encode('utf-8')).digest()).decode("utf-8") )
 
-def main(): 
+def main():
+    parser = arg_parser() 
+    args = parser.parse_args()
+    if args.backup_full:
+        main_backup_full()
+    elif args.backup_transactions:
+        try:
+            with pid.PidFile(pidname='txbackup', piddir='.') as p:
+                main_backup_transactions()
+        except pid.PidFileAlreadyLockedError:
+            print("Skip full backup, already running")
+    elif args.restore:
+        main_restore(args.restore)
+    else:
+        parser.print_help()
+
+def arg_parser():
     # https://docs.python.org/2/howto/argparse.html
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--backup-full", 
@@ -26,20 +41,7 @@ def main():
                         action="store_true")
     parser.add_argument("-r", "--restore", 
                         help="Perform restore for date")
-    args = parser.parse_args()
-
-    if args.backup_full:
-        try:
-            with pid.PidFile(pidname='foo', piddir='.') as p:
-                main_backup_full()
-        except pid.PidFileAlreadyLockedError:
-            print("Skip full backup, already running")
-    elif args.backup_transactions:
-        main_backup_transactions()
-    elif args.restore:
-        main_restore(args.restore)
-    else:
-        print("Must provide an option to call")
+    return parser
 
 def main_backup_full():
     print(os.listdir("."))
@@ -52,5 +54,3 @@ def main_restore(restore_point):
     print "Perform restore for restore point \"{}\"".format(restore_point)
 
 main()
-
-# print platform.platform()
