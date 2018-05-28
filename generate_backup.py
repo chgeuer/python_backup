@@ -53,6 +53,15 @@ def arg_parser():
                         help="Perform restore for date")
     return parser
 
+def name():
+    dbname = "test1db"
+    type = "full"
+    timestamp = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
+    stripe_index = 1
+    stripe_count = 15
+    filename = "{}_{}_{}_S{}-{}.cdmp".format(dbname, type, timestamp, str(stripe_index), str(stripe_count))
+    return filename
+
 def az_exec(args):
     try:
         content = subprocess.check_output(args)
