@@ -105,6 +105,7 @@ def main_backup_full(filename):
                 '--account-name', account_name, 
                 '--account-key', account_key, 
                 '--max-connections', '2', 
+                '--validate-content', 
                 '--type', 'block', 
                 '--file', file,
                 '--container-name', container_name, 
