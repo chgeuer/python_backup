@@ -24,7 +24,7 @@ def main():
         main_backup_full(args.config_file)
     elif args.backup_transactions:
         try:
-            with pid.PidFile(pidname='txbackup', piddir='.') as p:
+            with pid.PidFile(pidname='txbackup', piddir='.') as _p:
                 main_backup_transactions()
         except pid.PidFileAlreadyLockedError:
             print("Skip full backup, already running")
@@ -53,22 +53,38 @@ def arg_parser():
                         help="Perform restore for date")
     return parser
 
-def main_backup_full(filename="config.json"):
+def az_exec(args):
+    try:
+        content = subprocess.check_output(args)
+        return (json.JSONDecoder()).decode(content)
+    except subprocess.CalledProcessError as e:
+        print "Execution resulted in {}".format(e.returncode)
+        return None 
+
+def list_container(container_name, filename):
     account_name, account_key = account_credentials_from_file(filename)
-    print "Use " + account_name + " " + account_key
+    return az_exec(['az', 'storage', 'blob', 'list', 
+        '--account-name', account_name, 
+        '--account-key', account_key, 
+        '--container-name', container_name, 
+        '--output', 'json'])
+
+def main_backup_full(filename):
+    account_name, account_key = account_credentials_from_file(filename)
 
     container_name = "foo"
     # source = "/mnt/c/Users/chgeuer/Videos"
     source = "/mnt/c/Users/chgeuer/Desktop/Python Quick Start for Linux System Administrators/3"
     pattern = "*.py"
-    print(os.listdir(source))
 
-    content = subprocess.check_output(['az', 'storage', 'container', 'create', 
-                                       '--account-name', account_name, 
-                                       '--account-key', account_key, 
-                                       '--name', container_name, 
-                                       '--output', 'json'])
-    created = (json.JSONDecoder()).decode(content)['created']
+    for blob in list_container(container_name, filename):
+        print("{} Size {}".format(blob['name'], blob['properties']['contentLength']))
+
+    created = az_exec(['az', 'storage', 'container', 'create', 
+        '--account-name', account_name, 
+        '--account-key', account_key, 
+        '--name', container_name, 
+        '--output', 'json'])['created']
     if (created):
         print("Created container {}".format(container_name))
     else:
@@ -76,19 +92,25 @@ def main_backup_full(filename="config.json"):
 
     for filename in glob.glob1(dirname=source, pattern=pattern):
         file = os.path.join(source, filename)
-        print("Upload {}".format(filename))
-        content = subprocess.check_output(['az', 'storage', 'blob', 'upload', 
-                                        '--account-name', account_name, 
-                                        '--account-key', account_key, 
-                                        '--max-connections', '2', 
-                                        '--type', 'block', 
-                                        '--file', file,
-                                        '--container-name', container_name, 
-                                        '--name', filename,
-                                        '--no-progress', 
-                                        '--output', 'json'])
-        j = (json.JSONDecoder()).decode(content)
-        print(j)
+        exists = az_exec(['az', 'storage', 'blob', 'exists', 
+            '--account-name', account_name, 
+            '--account-key', account_key, 
+            '--container-name', container_name, 
+            '--name', filename,
+            '--output', 'json'])['exists']
+        if not exists:
+            print("Upload {}".format(filename))
+            j = az_exec(['az', 'storage', 'blob', 'upload', 
+                '--account-name', account_name, 
+                '--account-key', account_key, 
+                '--max-connections', '2', 
+                '--type', 'block', 
+                '--file', file,
+                '--container-name', container_name, 
+                '--name', filename,
+                '--no-progress', 
+                '--output', 'json'])
+            print(j)
 
 def main_backup_transactions():
     print "Perform transactional backup"
