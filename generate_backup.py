@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 import sys
 import os
@@ -70,12 +70,13 @@ def list_container(container_name, filename):
         '--output', 'json'])
 
 def main_backup_full(filename):
+    print "Using config {}".format(filename)
     account_name, account_key = account_credentials_from_file(filename)
 
     container_name = "foo"
     # source = "/mnt/c/Users/chgeuer/Videos"
-    source = "/mnt/c/Users/chgeuer/Desktop/Python Quick Start for Linux System Administrators/3"
-    pattern = "*.py"
+    source = "."
+    pattern = "*.bin"
 
     for blob in list_container(container_name, filename):
         print("{} Size {}".format(blob['name'], blob['properties']['contentLength']))
