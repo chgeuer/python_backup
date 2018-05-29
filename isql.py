@@ -9,8 +9,8 @@ def create(name, mb):
     return subprocess.check_output(["/usr/bin/openssl", "rand", "-out", name, str(int(mb * math.pow(2, 20)))])
 
 def main():
-    print create("1.bin", 128)
-    print create("2.bin", 128)
+    print create("1.bin", 1)
+    print create("2.bin", 1)
     print create("3.bin", 128)
     print create("4.bin", 128)
 

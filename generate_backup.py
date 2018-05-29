@@ -3,7 +3,6 @@
 import sys
 import os
 import glob
-import subprocess
 import hashlib
 import base64
 import argparse
@@ -11,6 +10,7 @@ import platform
 import pid
 import time
 import json
+from azure.storage.blob import BlockBlobService, PublicAccess
 
 #print(os.path.abspath(sys.argv[0]))
 #txt = "Nobody inspects the spammish repetition"
@@ -62,78 +62,29 @@ def name():
     filename = "{}_{}_{}_S{}-{}.cdmp".format(dbname, type, timestamp, str(stripe_index), str(stripe_count))
     return filename
 
-def az_exec(args):
-    try:
-        content = subprocess.check_output(args)
-        return (json.JSONDecoder()).decode(content)
-    except subprocess.CalledProcessError as e:
-        print "Execution resulted in {}".format(e.returncode)
-        return None 
-
-def list_container(container_name, filename):
-    account_name, account_key = account_credentials_from_file(filename)
-    return az_exec(['az', 'storage', 'blob', 'list', 
-        '--account-name', account_name, 
-        '--account-key', account_key, 
-        '--container-name', container_name, 
-        '--output', 'json'])
-
 def main_backup_full(filename):
-    print "Using config {}".format(filename)
     account_name, account_key = account_credentials_from_file(filename)
+    block_blob_service = BlockBlobService(account_name=account_name, account_key=account_key)
 
     container_name = "foo"
-    # source = "/mnt/c/Users/chgeuer/Videos"
     source = "."
     pattern = "*.bin"
 
-    for blob in list_container(container_name, filename):
-        print("{} Size {}".format(blob['name'], blob['properties']['contentLength']))
-
-    created = az_exec(['az', 'storage', 'container', 'create', 
-        '--account-name', account_name, 
-        '--account-key', account_key, 
-        '--name', container_name, 
-        '--output', 'json'])['created']
-    if (created):
-        print("Created container {}".format(container_name))
-    else:
-        print("container {} existed".format(container_name))
-
+    _created_container = block_blob_service.create_container(container_name=container_name)
     for filename in glob.glob1(dirname=source, pattern=pattern):
         file = os.path.join(source, filename)
-        exists = az_exec(['az', 'storage', 'blob', 'exists', 
-            '--account-name', account_name, 
-            '--account-key', account_key, 
-            '--container-name', container_name, 
-            '--name', filename,
-            '--output', 'json'])['exists']
+        exists = block_blob_service.exists(container_name=container_name, blob_name=filename)
         if not exists:
             print("Upload {}".format(filename))
-            j = az_exec(['az', 'storage', 'blob', 'upload', 
-                '--account-name', account_name, 
-                '--account-key', account_key, 
-                '--max-connections', '2', 
-                '--validate-content', 
-                '--type', 'block', 
-                '--file', file,
-                '--container-name', container_name, 
-                '--name', filename,
-                '--no-progress', 
-                '--output', 'json'])
-            print(j)
+            block_blob_service.create_blob_from_path(
+                container_name=container_name, blob_name=filename, file_path=file,
+                validate_content=True, max_connections=4)
 
 def main_backup_transactions():
     print "Perform transactional backup"
-    print(os.listdir("."))
-    time.sleep(20)
 
 def main_restore(restore_point):
     print "Perform restore for restore point \"{}\"".format(restore_point)
-    with open('storage.json', mode='rt') as file:
-        content = file.read()
-    j = (json.JSONDecoder()).decode(content)
-    print(j)
 
 if __name__ == '__main__':
     main()
