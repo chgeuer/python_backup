@@ -32,6 +32,7 @@ import requests
 import pid
 from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.blob.models import ContentSettings
+from azure.common import AzureMissingResourceHttpError
 
 def main():
     parser = arg_parser() 
@@ -122,13 +123,16 @@ def store_backup_timestamp(block_blob_service, container_name, is_full):
     )
 
 def get_backup_timestamp(block_blob_service, container_name, is_full):
-    blob=block_blob_service.get_blob_to_text(
-        container_name=container_name, 
-        blob_name=timestamp_blob_name(is_full=is_full), 
-        encoding="utf-8"
-    )
-    time_str = (json.JSONDecoder()).decode(blob.content)["utc_time"]
-    return time.strptime(time_format(), time_str)
+    try:
+        blob=block_blob_service.get_blob_to_text(
+            container_name=container_name, 
+            blob_name=timestamp_blob_name(is_full=is_full), 
+            encoding="utf-8"
+        )
+        time_str = (json.JSONDecoder()).decode(blob.content)["utc_time"]
+        return time.strptime(time_format(), time_str)
+    except AzureMissingResourceHttpError:
+        return "19000101_000000"
 
 def main_backup_full(filename):
     block_blob_service, container_name = account_credentials_from_file(filename)
