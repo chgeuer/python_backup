@@ -98,20 +98,24 @@ def name():
 
 def store_backup_timestamp(block_blob_service, container_name, is_full):
     meta = instance_metadata()
+    subscription_id=meta["compute"]["subscriptionId"]
+    resource_group_name=meta["compute"]["resourceGroupName"]
+    vm_name=meta["compute"]["name"]
+
     blob_name="{subscription}-{resource_group_name}-{vm_name}-{type}.json".format(
-        subscription=meta["subscriptionId"],
-        resource_group_name=meta["resourceGroupName"],
-        vm_name=meta["name"],
+        subscription_id=subscription_id,
+        resource_group_name=resource_group_name,
+        vm_name=vm_name,
         type=({True:"full", False:"tran"})[is_full])
 
     block_blob_service.create_blob_from_text(
         container_name=container_name, blob_name=blob_name, encoding="utf8",
         text=(json.JSONEncoder()).encode({ 
             "full_backup": is_full, 
-            "time": time.strftime("%Y%m%d_%H%M%S", time.gmtime()),
-            "vm_name": meta["name"],
-            "resource_group_name": meta["resourceGroupName"],
-            "subscription_id": meta["subscriptionId"],
+            "vm_name": vm_name,
+            "resource_group_name": resource_group_name,
+            "subscription_id": subscription_id,
+            "time": time.strftime("%Y%m%d_%H%M%S", time.gmtime())
         }))
 
 def main_backup_full(filename):
