@@ -50,8 +50,13 @@ def main():
         dbname = "test1db"
         stripe_count = 101
         for stripe_index in range(0, stripe_count): 
-            filename = construct_filename(dbname=dbname, is_full=True, timestamp=time.gmtime(), stripe_index=stripe_index, stripe_count=stripe_count)
-            create(filename, 128)
+            filename = construct_filename(
+                dbname=dbname, 
+                is_full=True, 
+                timestamp=time.gmtime(), 
+                stripe_index=stripe_index, 
+                stripe_count=stripe_count)
+            create(filename, 2)
     elif args.backup_transactions:
         dbname = "test1db"
         stripe_count = 1

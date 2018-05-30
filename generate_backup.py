@@ -172,7 +172,7 @@ def main_backup_full(filename):
         container_name=container_name, is_full=True)
     print("Last backup : {age_in_seconds} secs ago".format(age_in_seconds=age_in_seconds))
 
-    subprocess.check_output(["./isql.py", "-t"])
+    subprocess.check_output(["./isql.py", "-f"])
     source = "."
     pattern = "*.cdmp"
     for filename in glob.glob1(dirname=source, pattern=pattern):
