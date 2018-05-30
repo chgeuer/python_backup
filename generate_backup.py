@@ -102,7 +102,7 @@ def store_backup_timestamp(block_blob_service, container_name, is_full):
     resource_group_name=meta["compute"]["resourceGroupName"]
     vm_name=meta["compute"]["name"]
 
-    blob_name="{subscription}-{resource_group_name}-{vm_name}-{type}.json".format(
+    blob_name="{subscription_id}-{resource_group_name}-{vm_name}-{type}.json".format(
         subscription_id=subscription_id,
         resource_group_name=resource_group_name,
         vm_name=vm_name,
