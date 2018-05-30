@@ -25,26 +25,38 @@ def create(name, mb):
 def get_all_databases():
     return [ "" ]
 
+def construct_filename(dbname, is_full, timestamp, stripe_index, stripe_count):
+    format_str = (
+        {
+            True:  "{name}_{type}_{ts}_S{idx:02d}-{cnt:02d}.cdmp", 
+            False: "{name}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp"
+        }
+    )[stripe_count < 100]
+    return format_str.format(name=dbname, 
+        type={True:"full", False:"tran"}[is_full], 
+        ts=datetime_to_timestr(timestamp),
+        idx=int(stripe_index), cnt=int(stripe_count))
+
+def time_format():
+    return "%Y%m%d_%H%M%S"
+
+def datetime_to_timestr(t):
+    return time.strftime(time_format(), t)
+
 def main():
     parser = arg_parser() 
     args = parser.parse_args()
     if args.backup_full:
-        bak_type = "full"
         dbname = "test1db"
-        timestamp = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
         stripe_count = 3
         for stripe_index in range(0, stripe_count): 
-            filename = "{name}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp".format(
-                name=dbname, type=bak_type, ts=timestamp, idx=int(stripe_index), cnt=int(stripe_count))
+            filename = construct_filename(dbname=dbname, is_full=True, timestamp=time.gmtime(), stripe_index=stripe_index, stripe_count=stripe_count)
             create(filename, 128)
     elif args.backup_transactions:
-        bak_type = "tx"
         dbname = "test1db"
-        timestamp = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
         stripe_count = 1
         for stripe_index in range(0, stripe_count): 
-            filename = "{name}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp".format(
-                name=dbname, type=bak_type, ts=timestamp, idx=int(stripe_index), cnt=int(stripe_count))
+            filename = construct_filename(dbname=dbname, is_full=False, timestamp=time.gmtime(), stripe_index=stripe_index, stripe_count=stripe_count)
             create(filename, 2)
     else:
         parser.print_help()
