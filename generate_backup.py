@@ -111,11 +111,11 @@ def store_backup_timestamp(block_blob_service, container_name, is_full):
     block_blob_service.create_blob_from_text(
         container_name=container_name, blob_name=blob_name, encoding="utf8",
         text=(json.JSONEncoder()).encode({ 
-            "full_backup": is_full, 
+            "backup_type": ({True:"full", False:"tran"})[is_full], 
             "vm_name": vm_name,
             "resource_group_name": resource_group_name,
             "subscription_id": subscription_id,
-            "time": time.strftime("%Y%m%d_%H%M%S", time.gmtime())
+            "utc_time": time.strftime("%Y%m%d_%H%M%S", time.gmtime())
         }))
 
 def main_backup_full(filename):
