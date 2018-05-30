@@ -53,7 +53,7 @@ def vm_tags():
         tags = requests.get(url="http://www.microsoft.com/metadata/instance?api-version=2017-12-01", headers={"Metadata": "true"}).json()['compute']['tags']
         return dict(kvp.split(":", 1) for kvp in (tags.split(";")))
     except (requests.exceptions.ConnectionError, ValueError, KeyError):
-        return {"backupschedule": "20", "backuptime": "01:10:00"}
+        return {"backupschedule": "15", "backuptime": "01:10:00"}
 
 def backupschedule():
     return int(vm_tags()["backupschedule"])
