@@ -31,6 +31,7 @@ import requests
 
 import pid
 from azure.storage.blob import BlockBlobService, PublicAccess
+from azure.storage.blob.models import ContentSettings
 
 def main():
     parser = arg_parser() 
@@ -110,6 +111,7 @@ def store_backup_timestamp(block_blob_service, container_name, is_full):
 
     block_blob_service.create_blob_from_text(
         container_name=container_name, blob_name=blob_name, encoding="utf8",
+        content_settings=ContentSettings(content_type="application/json"),
         text=(json.JSONEncoder()).encode({ 
             "backup_type": ({True:"full", False:"tran"})[is_full], 
             "vm_name": vm_name,
