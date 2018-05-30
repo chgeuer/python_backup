@@ -91,9 +91,16 @@ def arg_parser():
     return parser
 
 def construct_filename(dbname, is_full, timestamp, stripe_index, stripe_count):
-    return "{name}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp".format(name=dbname, 
+    format_str = (
+        {
+            True:  "{name}_{type}_{ts}_S{idx:02d}-{cnt:02d}.cdmp", 
+            False: "{name}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp"
+        }
+    )[stripe_count < 100]
+
+    return format_str.format(name=dbname, 
         type={True:"full", False:"tran"}[is_full], 
-        ts=time.strftime("%Y%m%d_%H%M%S", timestamp),
+        ts=datetime_to_timestr(timestamp),
         idx=int(stripe_index), cnt=int(stripe_count))
 
 def timestamp_blob_name(is_full):
@@ -105,20 +112,27 @@ def timestamp_blob_name(is_full):
         subscription_id=subscription_id,
         resource_group_name=resource_group_name,
         vm_name=vm_name,
-        type=({True:"full", False:"tran"})[is_full])
+        type=backup_type_str(is_full)
+    )
     return blob_name
+
+def backup_type_str(is_full):
+    return ({True:"full", False:"tran"})[is_full]
 
 def time_format():
     return "%Y%m%d_%H%M%S"
+
+def now():
+    return datetime_to_timestr(time.gmtime())
+
+def datetime_to_timestr(t):
+    return time.strftime(time_format(), t)
 
 def timestr_to_datetime(time_str):
     t = time.strptime(time_str, time_format())
     return datetime.datetime(
         year=t.tm_year, month=t.tm_mon, day=t.tm_mday, 
         hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
-
-def now():
-    return time.strftime(time_format(), time.gmtime())
 
 def time_diff_in_seconds(timestr_1, timestr_2):
     return int((timestr_to_datetime(timestr_2) - timestr_to_datetime(timestr_1)).total_seconds())
@@ -130,8 +144,8 @@ def store_backup_timestamp(block_blob_service, container_name, is_full):
         encoding="utf-8",
         content_settings=ContentSettings(content_type="application/json"),
         text=(json.JSONEncoder()).encode({ 
-            "backup_type": ({True:"full", False:"tran"})[is_full], 
-            "utc_time": time.strftime(time_format(), time.gmtime())
+            "backup_type": backup_type_str(is_full), 
+            "utc_time": now()
         })
     )
 
