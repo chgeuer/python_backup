@@ -94,34 +94,46 @@ def construct_filename(dbname, is_full, timestamp, stripe_index, stripe_count):
         ts=time.strftime("%Y%m%d_%H%M%S", timestamp),
         idx=int(stripe_index), cnt=int(stripe_count))
 
-def name():
-    return construct_filename(dbname="test1db", is_full=True, timestamp=time.gmtime(), stripe_index=1, stripe_count=10)
-
-def store_backup_timestamp(block_blob_service, container_name, is_full):
+def timestamp_blob_name(is_full):
     meta = instance_metadata()
     subscription_id=meta["compute"]["subscriptionId"]
     resource_group_name=meta["compute"]["resourceGroupName"]
     vm_name=meta["compute"]["name"]
-
     blob_name="{subscription_id}-{resource_group_name}-{vm_name}-{type}.json".format(
         subscription_id=subscription_id,
         resource_group_name=resource_group_name,
         vm_name=vm_name,
         type=({True:"full", False:"tran"})[is_full])
+    return blob_name
 
+def store_backup_timestamp(block_blob_service, container_name, is_full):
     block_blob_service.create_blob_from_text(
-        container_name=container_name, blob_name=blob_name, encoding="utf8",
+        container_name=container_name, 
+        blob_name=timestamp_blob_name(is_full=is_full), 
+        encoding="utf8",
         content_settings=ContentSettings(content_type="application/json"),
         text=(json.JSONEncoder()).encode({ 
             "backup_type": ({True:"full", False:"tran"})[is_full], 
-            "vm_name": vm_name,
-            "resource_group_name": resource_group_name,
-            "subscription_id": subscription_id,
             "utc_time": time.strftime("%Y%m%d_%H%M%S", time.gmtime())
-        }))
+        })
+    )
+
+def get_backup_timestamp(block_blob_service, container_name, is_full):
+    return block_blob_service.get_blob_to_text(
+        container_name=container_name, 
+        blob_name=timestamp_blob_name(is_full=is_full), 
+        encoding="utf8"
+    )
 
 def main_backup_full(filename):
     block_blob_service, container_name = account_credentials_from_file(filename)
+
+    last_full_backup=get_backup_timestamp(
+        block_blob_service=block_blob_service, 
+        container_name=container_name, is_full=True)
+
+    print("Last backup : {last_full_backup}".format(last_full_backup=last_full_backup))
+
     subprocess.check_output(["./isql.py", "-t"])
     source = "."
     pattern = "*.cdmp"
@@ -141,7 +153,7 @@ def main_backup_full(filename):
         is_full=True)
 
 def main_backup_transactions():
-    print("Perform transactional backup {fn}".format(fn=name()))
+    print("Perform transactional backup {fn}".format(fn="..."))
 
 def main_restore(restore_point):
     print "Perform restore for restore point \"{}\"".format(restore_point)
