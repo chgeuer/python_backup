@@ -49,7 +49,7 @@ def main():
         parser.print_help()
 
 def instance_metadata(api_version="2017-12-01"):
-    url="http://www.microsoft.com/metadata/instance?api-version={api_version}".format(api_version=api_version)
+    url="http://169.254.169.254/metadata/instance?api-version={api_version}".format(api_version=api_version)
     return requests.get(url=url, headers={"Metadata": "true"}).json()
 
 def vm_tags():
