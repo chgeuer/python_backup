@@ -48,9 +48,13 @@ def main():
     else:
         parser.print_help()
 
+def instance_metadata(api_version="2017-12-01"):
+    url="http://www.microsoft.com/metadata/instance?api-version={api_version}".format(api_version=api_version)
+    return requests.get(url=url, headers={"Metadata": "true"}).json()
+
 def vm_tags():
     try:
-        tags = requests.get(url="http://www.microsoft.com/metadata/instance?api-version=2017-12-01", headers={"Metadata": "true"}).json()['compute']['tags']
+        tags = instance_metadata()['compute']['tags']
         return dict(kvp.split(":", 1) for kvp in (tags.split(";")))
     except (requests.exceptions.ConnectionError, ValueError, KeyError):
         return {"backupschedule": "15", "backuptime": "01:10:00"}
@@ -92,6 +96,24 @@ def construct_filename(dbname, is_full, timestamp, stripe_index, stripe_count):
 def name():
     return construct_filename(dbname="test1db", is_full=True, timestamp=time.gmtime(), stripe_index=1, stripe_count=10)
 
+def store_backup_timestamp(block_blob_service, container_name, is_full):
+    meta = instance_metadata()
+    blob_name="{subscription}-{resource_group_name}-{vm_name}-{type}.json".format(
+        subscription=meta["subscriptionId"],
+        resource_group_name=meta["resourceGroupName"],
+        vm_name=meta["name"],
+        type=({True:"full", False:"tran"})[is_full])
+
+    block_blob_service.create_blob_from_text(
+        container_name=container_name, blob_name=blob_name, encoding="utf8",
+        text=(json.JSONEncoder()).encode({ 
+            "full_backup": is_full, 
+            "time": time.strftime("%Y%m%d_%H%M%S", time.gmtime()),
+            "vm_name": meta["name"],
+            "resource_group_name": meta["resourceGroupName"],
+            "subscription_id": meta["subscriptionId"],
+        }))
+
 def main_backup_full(filename):
     block_blob_service, container_name = account_credentials_from_file(filename)
     subprocess.check_output(["./isql.py", "-t"])
@@ -106,6 +128,11 @@ def main_backup_full(filename):
                 container_name=container_name, blob_name=filename, file_path=file_path,
                 validate_content=True, max_connections=4)
         os.remove(file_path)
+    # Store backup timestamp in storage
+    store_backup_timestamp(
+        block_blob_service=block_blob_service, 
+        container_name=container_name, 
+        is_full=True)
 
 def main_backup_transactions():
     print("Perform transactional backup {fn}".format(fn=name()))
