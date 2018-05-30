@@ -46,6 +46,7 @@ def datetime_to_timestr(t):
 def main():
     parser = arg_parser() 
     args = parser.parse_args()
+    timestamp=time.gmtime()
     if args.backup_full:
         dbname = "test1db"
         stripe_count = 101
@@ -53,7 +54,7 @@ def main():
             filename = construct_filename(
                 dbname=dbname, 
                 is_full=True, 
-                timestamp=time.gmtime(), 
+                timestamp=timestamp, 
                 stripe_index=stripe_index, 
                 stripe_count=stripe_count)
             create(filename, 2)
@@ -61,7 +62,12 @@ def main():
         dbname = "test1db"
         stripe_count = 1
         for stripe_index in range(0, stripe_count): 
-            filename = construct_filename(dbname=dbname, is_full=False, timestamp=time.gmtime(), stripe_index=stripe_index, stripe_count=stripe_count)
+            filename = construct_filename(
+                dbname=dbname, 
+                is_full=False, 
+                timestamp=timestamp, 
+                stripe_index=stripe_index, 
+                stripe_count=stripe_count)
             create(filename, 2)
     else:
         parser.print_help()
