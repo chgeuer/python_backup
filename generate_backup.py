@@ -142,8 +142,7 @@ def get_backup_timestamp(block_blob_service, container_name, is_full):
             blob_name=timestamp_blob_name(is_full=is_full), 
             encoding="utf-8"
         )
-        time_str = (json.JSONDecoder()).decode(blob.content)["utc_time"]
-        return time.strptime(time_format(), time_str)
+        return (json.JSONDecoder()).decode(blob.content)["utc_time"]
     except AzureMissingResourceHttpError:
         return "19000101_000000"
 
