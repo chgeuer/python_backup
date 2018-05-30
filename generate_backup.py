@@ -24,6 +24,7 @@ import re
 import glob
 import argparse
 import time
+import datetime
 import json
 import hashlib
 import base64
@@ -110,6 +111,18 @@ def timestamp_blob_name(is_full):
 def time_format():
     return "%Y%m%d_%H%M%S"
 
+def timestr_to_datetime(time_str):
+    t = time.strptime(time_str, time_format())
+    return datetime.datetime(
+        year=t.tm_year, month=t.tm_mon, day=t.tm_mday, 
+        hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
+
+def now():
+    return time.strftime(time_format(), time.gmtime())
+
+def time_diff_in_seconds(timestr_1, timestr_2):
+    return int((timestr_to_datetime(timestr_2) - timestr_to_datetime(timestr_1)).total_seconds())
+
 def store_backup_timestamp(block_blob_service, container_name, is_full):
     block_blob_service.create_blob_from_text(
         container_name=container_name, 
@@ -134,14 +147,17 @@ def get_backup_timestamp(block_blob_service, container_name, is_full):
     except AzureMissingResourceHttpError:
         return "19000101_000000"
 
+def age_of_last_backup_in_seconds(block_blob_service, container_name, is_full):
+    last_backup = get_backup_timestamp(block_blob_service, container_name, is_full)
+    return time_diff_in_seconds(last_backup, now())
+
 def main_backup_full(filename):
     block_blob_service, container_name = account_credentials_from_file(filename)
 
-    last_full_backup=get_backup_timestamp(
+    age_in_seconds = age_of_last_backup_in_seconds(
         block_blob_service=block_blob_service, 
         container_name=container_name, is_full=True)
-
-    print("Last backup : {last_full_backup}".format(last_full_backup=last_full_backup))
+    print("Last backup : {age_in_seconds} secs ago".format(age_in_seconds=age_in_seconds))
 
     subprocess.check_output(["./isql.py", "-t"])
     source = "."
