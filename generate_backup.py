@@ -110,7 +110,7 @@ def store_backup_timestamp(block_blob_service, container_name, is_full):
     block_blob_service.create_blob_from_text(
         container_name=container_name, 
         blob_name=timestamp_blob_name(is_full=is_full), 
-        encoding="utf8",
+        encoding="utf-8",
         content_settings=ContentSettings(content_type="application/json"),
         text=(json.JSONEncoder()).encode({ 
             "backup_type": ({True:"full", False:"tran"})[is_full], 
@@ -119,11 +119,12 @@ def store_backup_timestamp(block_blob_service, container_name, is_full):
     )
 
 def get_backup_timestamp(block_blob_service, container_name, is_full):
-    return block_blob_service.get_blob_to_text(
+    blob=block_blob_service.get_blob_to_text(
         container_name=container_name, 
         blob_name=timestamp_blob_name(is_full=is_full), 
-        encoding="utf8"
+        encoding="utf-8"
     )
+    return (json.JSONDecoder()).decode(blob.content)["utc_time"]
 
 def main_backup_full(filename):
     block_blob_service, container_name = account_credentials_from_file(filename)
