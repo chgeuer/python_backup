@@ -31,6 +31,7 @@ import base64
 import requests
 import logging
 import unittest
+import socket
 
 import pid
 from azure.storage.blob import BlockBlobService, PublicAccess
@@ -39,18 +40,18 @@ from azure.common import AzureMissingResourceHttpError
 
 class TestMethods(unittest.TestCase):
     def test_time_diff_in_seconds(self):
-        self.assertEqual(Naming.time_diff_in_seconds("20180106_120000", "20180106_120010"), 10)
-        self.assertEqual(Naming.time_diff_in_seconds("20180106_110000", "20180106_120010"), 3610)
+        self.assertEqual(Timing.time_diff_in_seconds("20180106_120000", "20180106_120010"), 10)
+        self.assertEqual(Timing.time_diff_in_seconds("20180106_110000", "20180106_120010"), 3610)
         self.assertEqual(
             Naming.construct_filename(
                 dbname="test1db", is_full=True, 
-                timestamp=time.strptime("20180601_112429", Naming.time_format()), 
+                timestamp=time.strptime("20180601_112429", Timing.time_format()), 
                 stripe_index=2, stripe_count=101), 
             "test1db_full_20180601_112429_S002-101.cdmp")
         self.assertEqual(
             Naming.construct_filename(
                 dbname="test1db", is_full=True, 
-                timestamp=time.strptime("20180601_112429", Naming.time_format()), 
+                timestamp=time.strptime("20180601_112429", Timing.time_format()), 
                 stripe_index=2, stripe_count=3), 
             "test1db_full_20180601_112429_S02-03.cdmp")
 
@@ -78,8 +79,16 @@ class AzureVMInstanceMetadata:
         response = requests.get(url=url, headers={"Metadata": "true"})
         return response.json()
 
-    def __init__(self, api_version="2017-12-01"):
-        self.config = AzureVMInstanceMetadata.request_metadata(api_version=api_version)
+    @staticmethod
+    def create_instance():
+        if socket.gethostname() == "erlang":
+            with open("meta.json", mode='rt') as file:
+                return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(file.read()))
+        else:
+            return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata)
+
+    def __init__(self, req):
+        self.config = req()
         self.subscription_id = self.config["compute"]["subscriptionId"]
         logging.info("Running in subscription {}".format(self.subscription_id))
         self.resource_group_name = self.config["compute"]["resourceGroupName"]
@@ -93,55 +102,7 @@ class AzureVMInstanceMetadata:
         self.backuptime = self.tags["backuptime"]
         logging.info("Backup time {}".format(self.backuptime))
 
-class BackupTimestampBlob:
-    storage_cfg = None
-    instance_metadata = None
-    is_full = None
-    
-    def __init__(self, storage_cfg, instance_metadata, is_full):
-        self.storage_cfg = storage_cfg
-        self.instance_metadata = instance_metadata
-        self.is_full = is_full
-
-    def age_of_last_backup_in_seconds(self):
-        return Naming.time_diff_in_seconds(self.read(), Naming.now())
-
-    def blob_name(self):
-        return "{subscription_id}-{resource_group_name}-{vm_name}-{type}.json".format(
-            subscription_id=self.instance_metadata.subscription_id,
-            resource_group_name=self.instance_metadata.resource_group_name,
-            vm_name=self.instance_metadata.vm_name,
-            type=Naming.backup_type_str(self.is_full)
-        )
-
-    def write(self):
-        self.storage_cfg.block_blob_service.create_blob_from_text(
-            container_name=self.storage_cfg.container_name, 
-            blob_name=self.blob_name(),
-            encoding="utf-8",
-            content_settings=ContentSettings(content_type="application/json"),
-            text=(json.JSONEncoder()).encode({ 
-                "backup_type": Naming.backup_type_str(self.is_full), 
-                "utc_time": Naming.now()
-            })
-        )
-
-    def read(self):
-        try:
-            blob=self.storage_cfg.block_blob_service.get_blob_to_text(
-                container_name=self.storage_cfg.container_name, 
-                blob_name=self.blob_name(),
-                encoding="utf-8"
-            )
-            return (json.JSONDecoder()).decode(blob.content)["utc_time"]
-        except AzureMissingResourceHttpError:
-            return "19000101_000000"
-
 class Naming:
-    @staticmethod
-    def time_format():
-        return "%Y%m%d_%H%M%S"
-
     @staticmethod
     def backup_type_str(is_full):
         return ({True:"full", False:"tran"})[is_full]
@@ -158,33 +119,81 @@ class Naming:
         return format_str.format(
             name=dbname, 
             type=Naming.backup_type_str(is_full), 
-            ts=Naming.datetime_to_timestr(timestamp),
+            ts=Timing.datetime_to_timestr(timestamp),
             idx=int(stripe_index), 
             cnt=int(stripe_count))
 
+class Timing:
+    @staticmethod
+    def time_format():
+        return "%Y%m%d_%H%M%S"
+
     @staticmethod
     def now():
-        return Naming.datetime_to_timestr(time.gmtime())
+        return Timing.datetime_to_timestr(time.gmtime())
 
     @staticmethod
     def datetime_to_timestr(t):
-        return time.strftime(Naming.time_format(), t)
+        return time.strftime(Timing.time_format(), t)
 
     @staticmethod
     def timestr_to_datetime(time_str):
-        t = time.strptime(time_str, Naming.time_format())
+        t = time.strptime(time_str, Timing.time_format())
         return datetime.datetime(
             year=t.tm_year, month=t.tm_mon, day=t.tm_mday, 
             hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
 
     @staticmethod
     def time_diff_in_seconds(timestr_1, timestr_2):
-        return int((Naming.timestr_to_datetime(timestr_2) - Naming.timestr_to_datetime(timestr_1)).total_seconds())
+        return int((Timing.timestr_to_datetime(timestr_2) - Timing.timestr_to_datetime(timestr_1)).total_seconds())
+
+class BackupTimestampBlob:
+    storage_cfg = None
+    instance_metadata = None
+    is_full = None
+    blob_name = None
+    
+    def __init__(self, storage_cfg, instance_metadata, is_full):
+        self.storage_cfg = storage_cfg
+        self.instance_metadata = instance_metadata
+        self.is_full = is_full
+        self.blob_name="{subscription_id}-{resource_group_name}-{vm_name}-{type}.json".format(
+            subscription_id=self.instance_metadata.subscription_id,
+            resource_group_name=self.instance_metadata.resource_group_name,
+            vm_name=self.instance_metadata.vm_name,
+            type=Naming.backup_type_str(self.is_full)
+        )
+
+    def age_of_last_backup_in_seconds(self):
+        return Timing.time_diff_in_seconds(self.read(), Timing.now())
+
+    def write(self):
+        self.storage_cfg.block_blob_service.create_blob_from_text(
+            container_name=self.storage_cfg.container_name, 
+            blob_name=self.blob_name,
+            encoding="utf-8",
+            content_settings=ContentSettings(content_type="application/json"),
+            text=(json.JSONEncoder()).encode({ 
+                "backup_type": Naming.backup_type_str(self.is_full), 
+                "utc_time": Timing.now()
+            })
+        )
+
+    def read(self):
+        try:
+            blob=self.storage_cfg.block_blob_service.get_blob_to_text(
+                container_name=self.storage_cfg.container_name, 
+                blob_name=self.blob_name,
+                encoding="utf-8"
+            )
+            return (json.JSONDecoder()).decode(blob.content)["utc_time"]
+        except AzureMissingResourceHttpError:
+            return "19000101_000000"
 
 class BackupAgent:
     def __init__(self, filename):
         self.storage_cfg = StorageConfiguration(filename)
-        self.instance_metadata = AzureVMInstanceMetadata()
+        self.instance_metadata = AzureVMInstanceMetadata.create_instance()
 
     def main_backup_full(self):
         timestamp_file_full = BackupTimestampBlob(
