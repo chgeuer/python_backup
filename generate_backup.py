@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python2.7 
 
 # S01-10 or S001-115
 
@@ -81,14 +81,17 @@ class AzureVMInstanceMetadata:
     def __init__(self, api_version="2017-12-01"):
         self.config = AzureVMInstanceMetadata.request_metadata(api_version=api_version)
         self.subscription_id = self.config["compute"]["subscriptionId"]
-        logging.warning("Running in subscription {}".format(self.subscription_id))
+        logging.info("Running in subscription {}".format(self.subscription_id))
         self.resource_group_name = self.config["compute"]["resourceGroupName"]
+        logging.info("Running in resource group {}".format(self.resource_group_name))
         self.vm_name = self.config["compute"]["name"]
+        logging.info("Running in VM {}".format(self.vm_name))
         self.tags_value = self.config['compute']['tags']
         self.tags = dict(kvp.split(":", 1) for kvp in (self.tags_value.split(";")))
         self.backupschedule = int(self.tags["backupschedule"])
-        logging.warning("Backup schedule {}".format(self.backupschedule))
+        logging.info("Backup schedule {}".format(self.backupschedule))
         self.backuptime = self.tags["backuptime"]
+        logging.info("Backup time {}".format(self.backuptime))
 
 class BackupTimestampBlob:
     storage_cfg = None
@@ -260,4 +263,5 @@ def main():
         parser.print_help()
 
 if __name__ == '__main__':
+    Logger.setLevel(logging.INFO)
     main()
