@@ -263,5 +263,5 @@ def main():
         parser.print_help()
 
 if __name__ == '__main__':
-    Logger.setLevel(logging.INFO)
+    logging.basicConfig(filename='backup.log',level=logging.INFO)
     main()
