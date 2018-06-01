@@ -91,17 +91,20 @@ class AzureVMInstanceMetadata:
     def __init__(self, req):
         self.config = req()
         self.subscription_id = self.config["compute"]["subscriptionId"]
-        logging.info("Running in subscription {}".format(self.subscription_id))
         self.resource_group_name = self.config["compute"]["resourceGroupName"]
-        logging.info("Running in resource group {}".format(self.resource_group_name))
         self.vm_name = self.config["compute"]["name"]
-        logging.info("Running in VM {}".format(self.vm_name))
+        logging.info("subscription_id={}".format(self.subscription_id))
+        logging.info("resource_group_name={}".format(self.resource_group_name))
+        logging.info("vm_name={}".format(self.vm_name))
+
         self.tags_value = self.config['compute']['tags']
         self.tags = dict(kvp.split(":", 1) for kvp in (self.tags_value.split(";")))
         self.backupschedule = int(self.tags["backupschedule"])
-        logging.info("Backup schedule {}".format(self.backupschedule))
         self.backuptime = self.tags["backuptime"]
-        logging.info("Backup time {}".format(self.backuptime))
+        self.maximum_age_still_respect_business_hours = int(self.tags["maximum_age_still_respect_business_hours"])
+        logging.info("backupschedule={}".format(self.backupschedule))
+        logging.info("backuptime={}".format(self.backuptime))
+        logging.info("maximum_age_still_respect_business_hours={}".format(self.maximum_age_still_respect_business_hours))
 
 class Naming:
     @staticmethod
@@ -125,9 +128,7 @@ class Naming:
             cnt=int(stripe_count))
 
 class Timing:
-    @staticmethod
-    def time_format():
-        return "%Y%m%d_%H%M%S"
+    time_format="%Y%m%d_%H%M%S"
 
     @staticmethod
     def now():
@@ -135,29 +136,25 @@ class Timing:
 
     @staticmethod
     def datetime_to_timestr(t):
-        return time.strftime(Timing.time_format(), t)
+        return time.strftime(Timing.time_format, t)
 
     @staticmethod
     def timestr_to_datetime(time_str):
-        t = time.strptime(time_str, Timing.time_format())
+        t = time.strptime(time_str, Timing.time_format)
         return datetime.datetime(
-            year=t.tm_year, month=t.tm_mon, day=t.tm_mday, 
+            year=t.tm_year, month=t.tm_mon, day=t.tm_mday,
             hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
 
     @staticmethod
     def time_diff_in_seconds(timestr_1, timestr_2):
-        return int((Timing.timestr_to_datetime(timestr_2) - Timing.timestr_to_datetime(timestr_1)).total_seconds())
+        diff=Timing.timestr_to_datetime(timestr_2) - Timing.timestr_to_datetime(timestr_1)
+        return int(diff.total_seconds())
 
 class BackupTimestampBlob:
-    storage_cfg = None
-    instance_metadata = None
-    is_full = None
-    blob_name = None
-    
     def __init__(self, storage_cfg, instance_metadata, is_full):
-        self.storage_cfg = storage_cfg
-        self.instance_metadata = instance_metadata
-        self.is_full = is_full
+        self.storage_cfg=storage_cfg
+        self.instance_metadata=instance_metadata
+        self.is_full=is_full
         self.blob_name="{subscription_id}-{resource_group_name}-{vm_name}-{type}.json".format(
             subscription_id=self.instance_metadata.subscription_id,
             resource_group_name=self.instance_metadata.resource_group_name,
@@ -167,6 +164,13 @@ class BackupTimestampBlob:
 
     def age_of_last_backup_in_seconds(self):
         return Timing.time_diff_in_seconds(self.read(), Timing.now())
+
+    def full_backup_required(self):
+        last = self.age_of_last_backup_in_seconds()
+        max = self.instance_metadata.maximum_age_still_respect_business_hours
+        needed = last > max
+        logging.info("Checking need for full backup: Last backup {last}s ago. Forceful threshold {max}: Needed {needed}".format(last=last, max=max, needed=needed))
+        return needed
 
     def write(self):
         self.storage_cfg.block_blob_service.create_blob_from_text(
@@ -201,6 +205,12 @@ class BackupAgent:
             storage_cfg=self.storage_cfg, 
             instance_metadata=self.instance_metadata, 
             is_full=True)
+        
+        if not timestamp_file_full.full_backup_required():
+            print("No full backup needed")
+            return
+        else:
+            print("Full backup needed")
 
         timestamp_file_tran = BackupTimestampBlob(
             storage_cfg=self.storage_cfg, 
