@@ -81,11 +81,12 @@ class AzureVMInstanceMetadata:
 
     @staticmethod
     def create_instance():
+        # TODO remove the local machine check here... 
         if socket.gethostname() == "erlang":
             with open("meta.json", mode='rt') as file:
                 return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(file.read()))
         else:
-            return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata)
+            return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata())
 
     def __init__(self, req):
         self.config = req()
