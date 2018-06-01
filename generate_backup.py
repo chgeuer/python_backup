@@ -65,12 +65,11 @@ class AzureVMInstanceMetadata:
         self.backupschedule = int(self.tags["backupschedule"])
         logging.warning("Backup schedule {}".format(self.backupschedule))
         self.backuptime = self.tags["backuptime"]
-
+    
     @staticmethod
     def request_metadata(api_version="2017-12-01"):
         url="http://169.254.169.254/metadata/instance?api-version={api_version}".format(api_version=api_version)
         return requests.get(url=url, headers={"Metadata": "true"}).json()
-    
 
 class BackupTimestamp:
     configuration = None
@@ -216,5 +215,4 @@ def main_restore(restore_point):
     print "Perform restore for restore point \"{}\"".format(restore_point)
 
 if __name__ == '__main__':
-    print "Schedule {}".format(TagBasedConfiguration.backupschedule())
     main()
