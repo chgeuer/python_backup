@@ -36,7 +36,7 @@ from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.blob.models import ContentSettings
 from azure.common import AzureMissingResourceHttpError
 
-class FileConfiguration:
+class StorageConfiguration:
     account_name = None
     account_key = None
     block_blob_service = None
@@ -54,6 +54,12 @@ class FileConfiguration:
         _created = self.block_blob_service.create_container(container_name=self.container_name)
 
 class AzureVMInstanceMetadata:
+    @staticmethod
+    def request_metadata(api_version="2017-12-01"):
+        url="http://169.254.169.254/metadata/instance?api-version={v}".format(v=api_version)
+        response = requests.get(url=url, headers={"Metadata": "true"})
+        return response.json()
+
     def __init__(self, api_version="2017-12-01"):
         self.config = AzureVMInstanceMetadata.request_metadata(api_version=api_version)
         self.subscription_id = self.config["compute"]["subscriptionId"]
@@ -65,24 +71,32 @@ class AzureVMInstanceMetadata:
         self.backupschedule = int(self.tags["backupschedule"])
         logging.warning("Backup schedule {}".format(self.backupschedule))
         self.backuptime = self.tags["backuptime"]
-    
-    @staticmethod
-    def request_metadata(api_version="2017-12-01"):
-        url="http://169.254.169.254/metadata/instance?api-version={api_version}".format(api_version=api_version)
-        return requests.get(url=url, headers={"Metadata": "true"}).json()
 
 class BackupTimestamp:
-    configuration = None
+    storage_cfg = None
+    instance_metadata = None
     is_full = None
     
-    def __init__(self, configuration, is_full):
-        self.configuration = configuration
+    def __init__(self, storage_cfg, instance_metadata, is_full):
+        self.storage_cfg = storage_cfg
+        self.instance_metadata = instance_metadata
         self.is_full = is_full
-    
+
+    def age_of_last_backup_in_seconds(self):
+        return Naming.time_diff_in_seconds(self.read(), Naming.now())
+
+    def blob_name(self):
+        return "{subscription_id}-{resource_group_name}-{vm_name}-{type}.json".format(
+            subscription_id=self.instance_metadata.subscription_id,
+            resource_group_name=self.instance_metadata.resource_group_name,
+            vm_name=self.instance_metadata.vm_name,
+            type=Naming.backup_type_str(self.is_full)
+        )
+
     def write(self):
-        self.configuration.block_blob_service.create_blob_from_text(
-            container_name=self.configuration.container_name, 
-            blob_name=timestamp_blob_name(is_full=self.is_full), 
+        self.storage_cfg.block_blob_service.create_blob_from_text(
+            container_name=self.storage_cfg.container_name, 
+            blob_name=self.blob_name()
             encoding="utf-8",
             content_settings=ContentSettings(content_type="application/json"),
             text=(json.JSONEncoder()).encode({ 
@@ -93,17 +107,14 @@ class BackupTimestamp:
 
     def read(self):
         try:
-            blob=self.configuration.block_blob_service.get_blob_to_text(
-                container_name=self.configuration.container_name, 
-                blob_name=timestamp_blob_name(is_full=self.is_full), 
+            blob=self.storage_cfg.block_blob_service.get_blob_to_text(
+                container_name=self.storage_cfg.container_name, 
+                blob_name=self.blob_name()
                 encoding="utf-8"
             )
             return (json.JSONDecoder()).decode(blob.content)["utc_time"]
         except AzureMissingResourceHttpError:
             return "19000101_000000"
-
-    def age_of_last_backup_in_seconds(self):
-        return Naming.time_diff_in_seconds(self.read(), Naming.now())
 
 class Naming:
     @staticmethod
@@ -177,32 +188,29 @@ def main():
     else:
         parser.print_help()
 
-def timestamp_blob_name(is_full):
-    instance_metadata = AzureVMInstanceMetadata()
-    blob_name="{subscription_id}-{resource_group_name}-{vm_name}-{type}.json".format(
-        subscription_id=instance_metadata.subscription_id,
-        resource_group_name=instance_metadata.resource_group_name,
-        vm_name=instance_metadata.vm_name,
-        type=Naming.backup_type_str(is_full)
-    )
-    return blob_name
-
 def main_backup_full(filename):
-    file_cfg = FileConfiguration(filename)
-    timestamp_file = BackupTimestamp(file_cfg, is_full=True)
-    age_in_seconds = timestamp_file.age_of_last_backup_in_seconds()
-    print("Last backup : {age_in_seconds} secs ago".format(age_in_seconds=age_in_seconds))
+    storage_cfg = StorageConfiguration(filename)
+    instance_metadata = AzureVMInstanceMetadata()
+    timestamp_file = BackupTimestamp(
+        storage_cfg=storage_cfg, 
+        instance_metadata=instance_metadata, 
+        is_full=True)
+
+    print("Last backup : {age_in_seconds} secs ago".format(
+        age_in_seconds=timestamp_file.age_of_last_backup_in_seconds()))
 
     subprocess.check_output(["./isql.py", "-f"])
     source = "."
     pattern = "*.cdmp"
     for filename in glob.glob1(dirname=source, pattern=pattern):
         file_path = os.path.join(source, filename)
-        exists = file_cfg.block_blob_service.exists(container_name=file_cfg.container_name, blob_name=filename)
+        exists = storage_cfg.block_blob_service.exists(
+            container_name=storage_cfg.container_name, 
+            blob_name=filename)
         if not exists:
             print("Upload {}".format(filename))
-            file_cfg.block_blob_service.create_blob_from_path(
-                container_name=file_cfg.container_name, 
+            storage_cfg.block_blob_service.create_blob_from_path(
+                container_name=storage_cfg.container_name, 
                 blob_name=filename, file_path=file_path,
                 validate_content=True, max_connections=4)
         os.remove(file_path)
