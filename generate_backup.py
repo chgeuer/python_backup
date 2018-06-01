@@ -29,6 +29,7 @@ import json
 import hashlib
 import base64
 import requests
+import logging
 
 import pid
 from azure.storage.blob import BlockBlobService, PublicAccess
@@ -52,23 +53,24 @@ class FileConfiguration:
             account_key=self.account_key)
         _created = self.block_blob_service.create_container(container_name=self.container_name)
 
-class TagBasedConfiguration:
+class AzureVMInstanceMetadata:
+    def __init__(self, api_version="2017-12-01"):
+        self.config = AzureVMInstanceMetadata.request_metadata(api_version=api_version)
+        self.subscription_id = self.config["compute"]["subscriptionId"]
+        logging.warning("Running in subscription {}".format(self.subscription_id))
+        self.resource_group_name = self.config["compute"]["resourceGroupName"]
+        self.vm_name = self.config["compute"]["name"]
+        self.tags_value = self.config['compute']['tags']
+        self.tags = dict(kvp.split(":", 1) for kvp in (self.tags_value.split(";")))
+        self.backupschedule = int(self.tags["backupschedule"])
+        logging.warning("Backup schedule {}".format(self.backupschedule))
+        self.backuptime = self.tags["backuptime"]
+
     @staticmethod
-    def instance_metadata(api_version="2017-12-01"):
+    def request_metadata(api_version="2017-12-01"):
         url="http://169.254.169.254/metadata/instance?api-version={api_version}".format(api_version=api_version)
         return requests.get(url=url, headers={"Metadata": "true"}).json()
-
-    @staticmethod
-    def vm_tags():
-        try:
-            tags = TagBasedConfiguration.instance_metadata()['compute']['tags']
-            return dict(kvp.split(":", 1) for kvp in (tags.split(";")))
-        except (requests.exceptions.ConnectionError, ValueError, KeyError):
-            return {"backupschedule": "15", "backuptime": "01:10:00"}
-
-    @staticmethod
-    def backupschedule():
-        return int(TagBasedConfiguration.vm_tags()["backupschedule"])
+    
 
 class BackupTimestamp:
     configuration = None
@@ -177,14 +179,11 @@ def main():
         parser.print_help()
 
 def timestamp_blob_name(is_full):
-    meta = TagBasedConfiguration.instance_metadata()
-    subscription_id=meta["compute"]["subscriptionId"]
-    resource_group_name=meta["compute"]["resourceGroupName"]
-    vm_name=meta["compute"]["name"]
+    instance_metadata = AzureVMInstanceMetadata()
     blob_name="{subscription_id}-{resource_group_name}-{vm_name}-{type}.json".format(
-        subscription_id=subscription_id,
-        resource_group_name=resource_group_name,
-        vm_name=vm_name,
+        subscription_id=instance_metadata.subscription_id,
+        resource_group_name=instance_metadata.resource_group_name,
+        vm_name=instance_metadata.vm_name,
         type=Naming.backup_type_str(is_full)
     )
     return blob_name
