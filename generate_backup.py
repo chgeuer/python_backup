@@ -72,7 +72,7 @@ class AzureVMInstanceMetadata:
         logging.warning("Backup schedule {}".format(self.backupschedule))
         self.backuptime = self.tags["backuptime"]
 
-class BackupTimestamp:
+class BackupTimestampBlob:
     storage_cfg = None
     instance_metadata = None
     is_full = None
@@ -158,6 +158,43 @@ class Naming:
     def time_diff_in_seconds(timestr_1, timestr_2):
         return int((Naming.timestr_to_datetime(timestr_2) - Naming.timestr_to_datetime(timestr_1)).total_seconds())
 
+class BackupAgent:
+    def __init__(self, filename):
+        self.storage_cfg = StorageConfiguration(filename)
+        self.instance_metadata = AzureVMInstanceMetadata()
+
+    def main_backup_full(self):
+        timestamp_file = BackupTimestampBlob(
+            storage_cfg=self.storage_cfg, 
+            instance_metadata=self.instance_metadata, 
+            is_full=True)
+
+        print("Last backup : {age_in_seconds} secs ago".format(
+            age_in_seconds=timestamp_file.age_of_last_backup_in_seconds()))
+
+        subprocess.check_output(["./isql.py", "-f"])
+        source = "."
+        pattern = "*.cdmp"
+        for filename in glob.glob1(dirname=source, pattern=pattern):
+            file_path = os.path.join(source, filename)
+            exists = self.storage_cfg.block_blob_service.exists(
+                container_name=self.storage_cfg.container_name, 
+                blob_name=filename)
+            if not exists:
+                print("Upload {}".format(filename))
+                self.storage_cfg.block_blob_service.create_blob_from_path(
+                    container_name=self.storage_cfg.container_name, 
+                    blob_name=filename, file_path=file_path,
+                    validate_content=True, max_connections=4)
+            os.remove(file_path)
+        timestamp_file.write()
+
+    def main_backup_transactions(self):
+        print("Perform transactional backup {fn}".format(fn="..."))
+
+    def main_restore(self, restore_point):
+        print "Perform restore for restore point \"{}\"".format(restore_point)
+
 def arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config-file", 
@@ -175,52 +212,19 @@ def arg_parser():
 def main():
     parser = arg_parser() 
     args = parser.parse_args()
+    backup_agent = BackupAgent(args.config_file)
     if args.backup_full:
-        main_backup_full(args.config_file)
+        backup_agent.main_backup_full()
     elif args.backup_transactions:
         try:
             with pid.PidFile(pidname='txbackup') as _p:
-                main_backup_transactions()
+                backup_agent.main_backup_transactions()
         except pid.PidFileAlreadyLockedError:
             print("Skip full backup, already running")
     elif args.restore:
-        main_restore(args.restore)
+        backup_agent.main_restore(args.restore)
     else:
         parser.print_help()
-
-def main_backup_full(filename):
-    storage_cfg = StorageConfiguration(filename)
-    instance_metadata = AzureVMInstanceMetadata()
-    timestamp_file = BackupTimestamp(
-        storage_cfg=storage_cfg, 
-        instance_metadata=instance_metadata, 
-        is_full=True)
-
-    print("Last backup : {age_in_seconds} secs ago".format(
-        age_in_seconds=timestamp_file.age_of_last_backup_in_seconds()))
-
-    subprocess.check_output(["./isql.py", "-f"])
-    source = "."
-    pattern = "*.cdmp"
-    for filename in glob.glob1(dirname=source, pattern=pattern):
-        file_path = os.path.join(source, filename)
-        exists = storage_cfg.block_blob_service.exists(
-            container_name=storage_cfg.container_name, 
-            blob_name=filename)
-        if not exists:
-            print("Upload {}".format(filename))
-            storage_cfg.block_blob_service.create_blob_from_path(
-                container_name=storage_cfg.container_name, 
-                blob_name=filename, file_path=file_path,
-                validate_content=True, max_connections=4)
-        os.remove(file_path)
-    timestamp_file.write()
-
-def main_backup_transactions():
-    print("Perform transactional backup {fn}".format(fn="..."))
-
-def main_restore(restore_point):
-    print "Perform restore for restore point \"{}\"".format(restore_point)
 
 if __name__ == '__main__':
     main()
