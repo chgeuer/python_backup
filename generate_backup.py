@@ -35,7 +35,7 @@ from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.blob.models import ContentSettings
 from azure.common import AzureMissingResourceHttpError
 
-class Configuration:
+class FileConfiguration:
     account_name = None
     account_key = None
     block_blob_service = None
@@ -51,6 +51,114 @@ class Configuration:
             account_name=self.account_name, 
             account_key=self.account_key)
         _created = self.block_blob_service.create_container(container_name=self.container_name)
+
+class TagBasedConfiguration:
+    @staticmethod
+    def instance_metadata(api_version="2017-12-01"):
+        url="http://169.254.169.254/metadata/instance?api-version={api_version}".format(api_version=api_version)
+        return requests.get(url=url, headers={"Metadata": "true"}).json()
+
+    @staticmethod
+    def vm_tags():
+        try:
+            tags = TagBasedConfiguration.instance_metadata()['compute']['tags']
+            return dict(kvp.split(":", 1) for kvp in (tags.split(";")))
+        except (requests.exceptions.ConnectionError, ValueError, KeyError):
+            return {"backupschedule": "15", "backuptime": "01:10:00"}
+
+    @staticmethod
+    def backupschedule():
+        return int(TagBasedConfiguration.vm_tags()["backupschedule"])
+
+class BackupTimestamp:
+    configuration = None
+    is_full = None
+    
+    def __init__(self, configuration, is_full):
+        self.configuration = configuration
+        self.is_full = is_full
+    
+    def write(self):
+        self.configuration.block_blob_service.create_blob_from_text(
+            container_name=self.configuration.container_name, 
+            blob_name=timestamp_blob_name(is_full=self.is_full), 
+            encoding="utf-8",
+            content_settings=ContentSettings(content_type="application/json"),
+            text=(json.JSONEncoder()).encode({ 
+                "backup_type": Naming.backup_type_str(self.is_full), 
+                "utc_time": Naming.now()
+            })
+        )
+
+    def read(self):
+        try:
+            blob=self.configuration.block_blob_service.get_blob_to_text(
+                container_name=self.configuration.container_name, 
+                blob_name=timestamp_blob_name(is_full=self.is_full), 
+                encoding="utf-8"
+            )
+            return (json.JSONDecoder()).decode(blob.content)["utc_time"]
+        except AzureMissingResourceHttpError:
+            return "19000101_000000"
+
+    def age_of_last_backup_in_seconds(self):
+        return Naming.time_diff_in_seconds(self.read(), Naming.now())
+
+class Naming:
+    @staticmethod
+    def time_format():
+        return "%Y%m%d_%H%M%S"
+
+    @staticmethod
+    def backup_type_str(is_full):
+        return ({True:"full", False:"tran"})[is_full]
+
+    @staticmethod
+    def construct_filename(dbname, is_full, timestamp, stripe_index, stripe_count):
+        format_str = (
+            {
+                True:  "{name}_{type}_{ts}_S{idx:02d}-{cnt:02d}.cdmp", 
+                False: "{name}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp"
+            }
+        )[stripe_count < 100]
+
+        return format_str.format(name=dbname, 
+            type={True:"full", False:"tran"}[is_full], 
+            ts=Naming.datetime_to_timestr(timestamp),
+            idx=int(stripe_index), cnt=int(stripe_count))
+
+    @staticmethod
+    def now():
+        return Naming.datetime_to_timestr(time.gmtime())
+
+    @staticmethod
+    def datetime_to_timestr(t):
+        return time.strftime(Naming.time_format(), t)
+
+    @staticmethod
+    def timestr_to_datetime(time_str):
+        t = time.strptime(time_str, Naming.time_format())
+        return datetime.datetime(
+            year=t.tm_year, month=t.tm_mon, day=t.tm_mday, 
+            hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
+
+    @staticmethod
+    def time_diff_in_seconds(timestr_1, timestr_2):
+        return int((Naming.timestr_to_datetime(timestr_2) - Naming.timestr_to_datetime(timestr_1)).total_seconds())
+
+def arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config-file", 
+                        help="the JSON config file")
+    parser.add_argument("-f", "--backup-full", 
+                        help="Perform full backup",
+                        action="store_true")
+    parser.add_argument("-t", "--backup-transactions", 
+                        help="Perform transaction backup",
+                        action="store_true")
+    parser.add_argument("-r", "--restore", 
+                        help="Perform restore for date")
+    return parser
 
 def main():
     parser = arg_parser() 
@@ -68,49 +176,8 @@ def main():
     else:
         parser.print_help()
 
-def instance_metadata(api_version="2017-12-01"):
-    url="http://169.254.169.254/metadata/instance?api-version={api_version}".format(api_version=api_version)
-    return requests.get(url=url, headers={"Metadata": "true"}).json()
-
-def vm_tags():
-    try:
-        tags = instance_metadata()['compute']['tags']
-        return dict(kvp.split(":", 1) for kvp in (tags.split(";")))
-    except (requests.exceptions.ConnectionError, ValueError, KeyError):
-        return {"backupschedule": "15", "backuptime": "01:10:00"}
-
-def backupschedule():
-    return int(vm_tags()["backupschedule"])
-
-def arg_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config-file", 
-                        help="the JSON config file")
-    parser.add_argument("-f", "--backup-full", 
-                        help="Perform full backup",
-                        action="store_true")
-    parser.add_argument("-t", "--backup-transactions", 
-                        help="Perform transaction backup",
-                        action="store_true")
-    parser.add_argument("-r", "--restore", 
-                        help="Perform restore for date")
-    return parser
-
-def construct_filename(dbname, is_full, timestamp, stripe_index, stripe_count):
-    format_str = (
-        {
-            True:  "{name}_{type}_{ts}_S{idx:02d}-{cnt:02d}.cdmp", 
-            False: "{name}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp"
-        }
-    )[stripe_count < 100]
-
-    return format_str.format(name=dbname, 
-        type={True:"full", False:"tran"}[is_full], 
-        ts=datetime_to_timestr(timestamp),
-        idx=int(stripe_index), cnt=int(stripe_count))
-
 def timestamp_blob_name(is_full):
-    meta = instance_metadata()
+    meta = TagBasedConfiguration.instance_metadata()
     subscription_id=meta["compute"]["subscriptionId"]
     resource_group_name=meta["compute"]["resourceGroupName"]
     vm_name=meta["compute"]["name"]
@@ -118,61 +185,14 @@ def timestamp_blob_name(is_full):
         subscription_id=subscription_id,
         resource_group_name=resource_group_name,
         vm_name=vm_name,
-        type=backup_type_str(is_full)
+        type=Naming.backup_type_str(is_full)
     )
     return blob_name
 
-def backup_type_str(is_full):
-    return ({True:"full", False:"tran"})[is_full]
-
-def time_format():
-    return "%Y%m%d_%H%M%S"
-
-def now():
-    return datetime_to_timestr(time.gmtime())
-
-def datetime_to_timestr(t):
-    return time.strftime(time_format(), t)
-
-def timestr_to_datetime(time_str):
-    t = time.strptime(time_str, time_format())
-    return datetime.datetime(
-        year=t.tm_year, month=t.tm_mon, day=t.tm_mday, 
-        hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
-
-def time_diff_in_seconds(timestr_1, timestr_2):
-    return int((timestr_to_datetime(timestr_2) - timestr_to_datetime(timestr_1)).total_seconds())
-
-def store_backup_timestamp(configuration, is_full):
-    configuration.block_blob_service.create_blob_from_text(
-        container_name=configuration.container_name, 
-        blob_name=timestamp_blob_name(is_full=is_full), 
-        encoding="utf-8",
-        content_settings=ContentSettings(content_type="application/json"),
-        text=(json.JSONEncoder()).encode({ 
-            "backup_type": backup_type_str(is_full), 
-            "utc_time": now()
-        })
-    )
-
-def get_backup_timestamp(configuration, is_full):
-    try:
-        blob=configuration.block_blob_service.get_blob_to_text(
-            container_name=configuration.container_name, 
-            blob_name=timestamp_blob_name(is_full=is_full), 
-            encoding="utf-8"
-        )
-        return (json.JSONDecoder()).decode(blob.content)["utc_time"]
-    except AzureMissingResourceHttpError:
-        return "19000101_000000"
-
-def age_of_last_backup_in_seconds(configuration, is_full):
-    last_backup = get_backup_timestamp(configuration, is_full)
-    return time_diff_in_seconds(last_backup, now())
-
 def main_backup_full(filename):
-    configuration = Configuration(filename)
-    age_in_seconds = age_of_last_backup_in_seconds(configuration=configuration, is_full=True)
+    file_cfg = FileConfiguration(filename)
+    timestamp_file = BackupTimestamp(file_cfg, is_full=True)
+    age_in_seconds = timestamp_file.age_of_last_backup_in_seconds()
     print("Last backup : {age_in_seconds} secs ago".format(age_in_seconds=age_in_seconds))
 
     subprocess.check_output(["./isql.py", "-f"])
@@ -180,16 +200,15 @@ def main_backup_full(filename):
     pattern = "*.cdmp"
     for filename in glob.glob1(dirname=source, pattern=pattern):
         file_path = os.path.join(source, filename)
-        exists = configuration.block_blob_service.exists(container_name=configuration.container_name, blob_name=filename)
+        exists = file_cfg.block_blob_service.exists(container_name=file_cfg.container_name, blob_name=filename)
         if not exists:
             print("Upload {}".format(filename))
-            configuration.block_blob_service.create_blob_from_path(
-                container_name=configuration.container_name, 
+            file_cfg.block_blob_service.create_blob_from_path(
+                container_name=file_cfg.container_name, 
                 blob_name=filename, file_path=file_path,
                 validate_content=True, max_connections=4)
         os.remove(file_path)
-    # Store backup timestamp in storage
-    store_backup_timestamp(configuration, is_full=True)
+    timestamp_file.write()
 
 def main_backup_transactions():
     print("Perform transactional backup {fn}".format(fn="..."))
@@ -198,5 +217,5 @@ def main_restore(restore_point):
     print "Perform restore for restore point \"{}\"".format(restore_point)
 
 if __name__ == '__main__':
-    print "Schedule {}".format(backupschedule())
+    print "Schedule {}".format(TagBasedConfiguration.backupschedule())
     main()
