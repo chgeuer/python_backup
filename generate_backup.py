@@ -30,6 +30,7 @@ import hashlib
 import base64
 import requests
 import logging
+import unittest
 
 import pid
 from azure.storage.blob import BlockBlobService, PublicAccess
@@ -195,6 +196,23 @@ class BackupAgent:
     def main_restore(self, restore_point):
         print "Perform restore for restore point \"{}\"".format(restore_point)
 
+class TestMethods(unittest.TestCase):
+    def test_time_diff_in_seconds(self):
+        self.assertEqual(Naming.time_diff_in_seconds("20180106_120000", "20180106_120010"), 10)
+        self.assertEqual(Naming.time_diff_in_seconds("20180106_110000", "20180106_120010"), 3610)
+        self.assertEqual(
+            Naming.construct_filename(
+                dbname="test1db", is_full=True, 
+                timestamp=time.strptime("20180601_112429", Naming.time_format()), 
+                stripe_index=2, stripe_count=101), 
+            "test1db_full_20180601_112429_S002-101.cdmp")
+        self.assertEqual(
+            Naming.construct_filename(
+                dbname="test1db", is_full=True, 
+                timestamp=time.strptime("20180601_112429", Naming.time_format()), 
+                stripe_index=2, stripe_count=3), 
+            "test1db_full_20180601_112429_S02-03.cdmp")
+
 def arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config-file", 
@@ -205,6 +223,9 @@ def arg_parser():
     parser.add_argument("-t", "--backup-transactions", 
                         help="Perform transaction backup",
                         action="store_true")
+    parser.add_argument("--tests", 
+                        help="Perform unit tests",
+                        action="store_true")
     parser.add_argument("-r", "--restore", 
                         help="Perform restore for date")
     return parser
@@ -212,17 +233,22 @@ def arg_parser():
 def main():
     parser = arg_parser() 
     args = parser.parse_args()
-    backup_agent = BackupAgent(args.config_file)
     if args.backup_full:
+        backup_agent = BackupAgent(args.config_file)
         backup_agent.main_backup_full()
     elif args.backup_transactions:
+        backup_agent = BackupAgent(args.config_file)
         try:
             with pid.PidFile(pidname='txbackup') as _p:
                 backup_agent.main_backup_transactions()
         except pid.PidFileAlreadyLockedError:
             print("Skip full backup, already running")
     elif args.restore:
+        backup_agent = BackupAgent(args.config_file)
         backup_agent.main_restore(args.restore)
+    elif args.tests:
+        suite = unittest.TestLoader().loadTestsFromTestCase(TestMethods)
+        unittest.TextTestRunner(verbosity=2).run(suite)
     else:
         parser.print_help()
 
