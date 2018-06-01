@@ -166,11 +166,14 @@ class BackupTimestampBlob:
         return Timing.time_diff_in_seconds(self.read(), Timing.now())
 
     def full_backup_required(self):
-        last = self.age_of_last_backup_in_seconds()
-        max = self.instance_metadata.maximum_age_still_respect_business_hours
-        needed = last > max
-        logging.info("Checking need for full backup: Last backup {last}s ago. Forceful threshold {max}: Needed {needed}".format(last=last, max=max, needed=needed))
-        return needed
+        last_run = self.age_of_last_backup_in_seconds()
+        max_age_allowed = self.instance_metadata.maximum_age_still_respect_business_hours
+        full_backup_needed = last_run > max_age_allowed
+        if full_backup_needed:
+            logging.warn("Checking need for full backup: Last backup {last_run}s ago. Forceful threshold {max_age_allowed}: Must run".format(last_run=last_run, max_age_allowed=max_age_allowed))
+        else:
+            logging.warn("Checking need for full backup: Last backup {last_run}s ago. Forceful threshold {max_age_allowed}: Can skip full backup".format(last_run=last_run, max_age_allowed=max_age_allowed))
+        return full_backup_needed
 
     def write(self):
         self.storage_cfg.block_blob_service.create_blob_from_text(
