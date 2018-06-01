@@ -96,7 +96,7 @@ class BackupTimestamp:
     def write(self):
         self.storage_cfg.block_blob_service.create_blob_from_text(
             container_name=self.storage_cfg.container_name, 
-            blob_name=self.blob_name()
+            blob_name=self.blob_name(),
             encoding="utf-8",
             content_settings=ContentSettings(content_type="application/json"),
             text=(json.JSONEncoder()).encode({ 
@@ -109,7 +109,7 @@ class BackupTimestamp:
         try:
             blob=self.storage_cfg.block_blob_service.get_blob_to_text(
                 container_name=self.storage_cfg.container_name, 
-                blob_name=self.blob_name()
+                blob_name=self.blob_name(),
                 encoding="utf-8"
             )
             return (json.JSONDecoder()).decode(blob.content)["utc_time"]
