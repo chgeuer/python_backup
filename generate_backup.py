@@ -35,6 +35,23 @@ from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.blob.models import ContentSettings
 from azure.common import AzureMissingResourceHttpError
 
+class Configuration:
+    account_name = None
+    account_key = None
+    block_blob_service = None
+    container_name = None
+    def __init__(self, filename):
+        with open(filename, mode='rt') as file:
+            content = file.read()
+        j = (json.JSONDecoder()).decode(content)
+        self.account_name=j['account_name']
+        self.account_key=j['account_key']
+        self.container_name=j['container_name']
+        self.block_blob_service = BlockBlobService(
+            account_name=self.account_name, 
+            account_key=self.account_key)
+        _created = self.block_blob_service.create_container(container_name=self.container_name)
+
 def main():
     parser = arg_parser() 
     args = parser.parse_args()
@@ -64,17 +81,6 @@ def vm_tags():
 
 def backupschedule():
     return int(vm_tags()["backupschedule"])
-
-def account_credentials_from_file(filename):
-    with open(filename, mode='rt') as file:
-        content = file.read()
-    j = (json.JSONDecoder()).decode(content)
-    account_name=j['account_name']
-    account_key=j['account_key']
-    container_name=j['container_name']
-    block_blob_service = BlockBlobService(account_name=account_name, account_key=account_key)
-    _created = block_blob_service.create_container(container_name=container_name)
-    return (block_blob_service, container_name)
 
 def arg_parser():
     parser = argparse.ArgumentParser()
@@ -137,9 +143,9 @@ def timestr_to_datetime(time_str):
 def time_diff_in_seconds(timestr_1, timestr_2):
     return int((timestr_to_datetime(timestr_2) - timestr_to_datetime(timestr_1)).total_seconds())
 
-def store_backup_timestamp(block_blob_service, container_name, is_full):
-    block_blob_service.create_blob_from_text(
-        container_name=container_name, 
+def store_backup_timestamp(configuration, is_full):
+    configuration.block_blob_service.create_blob_from_text(
+        container_name=configuration.container_name, 
         blob_name=timestamp_blob_name(is_full=is_full), 
         encoding="utf-8",
         content_settings=ContentSettings(content_type="application/json"),
@@ -149,10 +155,10 @@ def store_backup_timestamp(block_blob_service, container_name, is_full):
         })
     )
 
-def get_backup_timestamp(block_blob_service, container_name, is_full):
+def get_backup_timestamp(configuration, is_full):
     try:
-        blob=block_blob_service.get_blob_to_text(
-            container_name=container_name, 
+        blob=configuration.block_blob_service.get_blob_to_text(
+            container_name=configuration.container_name, 
             blob_name=timestamp_blob_name(is_full=is_full), 
             encoding="utf-8"
         )
@@ -160,16 +166,13 @@ def get_backup_timestamp(block_blob_service, container_name, is_full):
     except AzureMissingResourceHttpError:
         return "19000101_000000"
 
-def age_of_last_backup_in_seconds(block_blob_service, container_name, is_full):
-    last_backup = get_backup_timestamp(block_blob_service, container_name, is_full)
+def age_of_last_backup_in_seconds(configuration, is_full):
+    last_backup = get_backup_timestamp(configuration, is_full)
     return time_diff_in_seconds(last_backup, now())
 
 def main_backup_full(filename):
-    block_blob_service, container_name = account_credentials_from_file(filename)
-
-    age_in_seconds = age_of_last_backup_in_seconds(
-        block_blob_service=block_blob_service, 
-        container_name=container_name, is_full=True)
+    configuration = Configuration(filename)
+    age_in_seconds = age_of_last_backup_in_seconds(configuration=configuration, is_full=True)
     print("Last backup : {age_in_seconds} secs ago".format(age_in_seconds=age_in_seconds))
 
     subprocess.check_output(["./isql.py", "-f"])
@@ -177,18 +180,16 @@ def main_backup_full(filename):
     pattern = "*.cdmp"
     for filename in glob.glob1(dirname=source, pattern=pattern):
         file_path = os.path.join(source, filename)
-        exists = block_blob_service.exists(container_name=container_name, blob_name=filename)
+        exists = configuration.block_blob_service.exists(container_name=configuration.container_name, blob_name=filename)
         if not exists:
             print("Upload {}".format(filename))
-            block_blob_service.create_blob_from_path(
-                container_name=container_name, blob_name=filename, file_path=file_path,
+            configuration.block_blob_service.create_blob_from_path(
+                container_name=configuration.container_name, 
+                blob_name=filename, file_path=file_path,
                 validate_content=True, max_connections=4)
         os.remove(file_path)
     # Store backup timestamp in storage
-    store_backup_timestamp(
-        block_blob_service=block_blob_service, 
-        container_name=container_name, 
-        is_full=True)
+    store_backup_timestamp(configuration, is_full=True)
 
 def main_backup_transactions():
     print("Perform transactional backup {fn}".format(fn="..."))
