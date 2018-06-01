@@ -37,6 +37,23 @@ from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.blob.models import ContentSettings
 from azure.common import AzureMissingResourceHttpError
 
+class TestMethods(unittest.TestCase):
+    def test_time_diff_in_seconds(self):
+        self.assertEqual(Naming.time_diff_in_seconds("20180106_120000", "20180106_120010"), 10)
+        self.assertEqual(Naming.time_diff_in_seconds("20180106_110000", "20180106_120010"), 3610)
+        self.assertEqual(
+            Naming.construct_filename(
+                dbname="test1db", is_full=True, 
+                timestamp=time.strptime("20180601_112429", Naming.time_format()), 
+                stripe_index=2, stripe_count=101), 
+            "test1db_full_20180601_112429_S002-101.cdmp")
+        self.assertEqual(
+            Naming.construct_filename(
+                dbname="test1db", is_full=True, 
+                timestamp=time.strptime("20180601_112429", Naming.time_format()), 
+                stripe_index=2, stripe_count=3), 
+            "test1db_full_20180601_112429_S02-03.cdmp")
+
 class StorageConfiguration:
     account_name = None
     account_key = None
@@ -135,10 +152,12 @@ class Naming:
             }
         )[stripe_count < 100]
 
-        return format_str.format(name=dbname, 
-            type={True:"full", False:"tran"}[is_full], 
+        return format_str.format(
+            name=dbname, 
+            type=Naming.backup_type_str(is_full), 
             ts=Naming.datetime_to_timestr(timestamp),
-            idx=int(stripe_index), cnt=int(stripe_count))
+            idx=int(stripe_index), 
+            cnt=int(stripe_count))
 
     @staticmethod
     def now():
@@ -165,13 +184,18 @@ class BackupAgent:
         self.instance_metadata = AzureVMInstanceMetadata()
 
     def main_backup_full(self):
-        timestamp_file = BackupTimestampBlob(
+        timestamp_file_full = BackupTimestampBlob(
             storage_cfg=self.storage_cfg, 
             instance_metadata=self.instance_metadata, 
             is_full=True)
 
-        print("Last backup : {age_in_seconds} secs ago".format(
-            age_in_seconds=timestamp_file.age_of_last_backup_in_seconds()))
+        timestamp_file_tran = BackupTimestampBlob(
+            storage_cfg=self.storage_cfg, 
+            instance_metadata=self.instance_metadata, 
+            is_full=False)
+
+        logging.info("Last full backup : {age_in_seconds} secs ago".format(age_in_seconds=timestamp_file_full.age_of_last_backup_in_seconds()))
+        logging.info("Last transaction backup : {age_in_seconds} secs ago".format(age_in_seconds=timestamp_file_tran.age_of_last_backup_in_seconds()))
 
         subprocess.check_output(["./isql.py", "-f"])
         source = "."
@@ -188,30 +212,13 @@ class BackupAgent:
                     blob_name=filename, file_path=file_path,
                     validate_content=True, max_connections=4)
             os.remove(file_path)
-        timestamp_file.write()
+        timestamp_file_full.write()
 
     def main_backup_transactions(self):
         print("Perform transactional backup {fn}".format(fn="..."))
 
     def main_restore(self, restore_point):
         print "Perform restore for restore point \"{}\"".format(restore_point)
-
-class TestMethods(unittest.TestCase):
-    def test_time_diff_in_seconds(self):
-        self.assertEqual(Naming.time_diff_in_seconds("20180106_120000", "20180106_120010"), 10)
-        self.assertEqual(Naming.time_diff_in_seconds("20180106_110000", "20180106_120010"), 3610)
-        self.assertEqual(
-            Naming.construct_filename(
-                dbname="test1db", is_full=True, 
-                timestamp=time.strptime("20180601_112429", Naming.time_format()), 
-                stripe_index=2, stripe_count=101), 
-            "test1db_full_20180601_112429_S002-101.cdmp")
-        self.assertEqual(
-            Naming.construct_filename(
-                dbname="test1db", is_full=True, 
-                timestamp=time.strptime("20180601_112429", Naming.time_format()), 
-                stripe_index=2, stripe_count=3), 
-            "test1db_full_20180601_112429_S02-03.cdmp")
 
 def arg_parser():
     parser = argparse.ArgumentParser()
