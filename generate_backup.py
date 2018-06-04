@@ -178,21 +178,24 @@ class BackupTimestampBlob:
         return Timing.time_diff_in_seconds(self.read(), Timing.now())
 
     def full_backup_required(self):
-        return self.age_of_last_backup_in_seconds() > self.instance_metadata.maximum_age_still_respect_business_hours
+        age_of_last_backup_in_seconds = self.age_of_last_backup_in_seconds()
 
-    def should_run_regular_backup_now(self):
         now=time.gmtime()
         now_epoch=calendar.timegm(now)
 
-        fullbackupat_str=self.instance_metadata.fullbackupat
-        t = time.strptime(fullbackupat_str, "%H:%M:%S")
-        sched=datetime.datetime(now.tm_year, now.tm_mon, now.tm_mday, t.tm_hour, t.tm_min, t.tm_sec).utctimetuple()
-        sched_epoch=calendar.timegm(sched)
+        sched = time.strptime(self.instance_metadata.fullbackupat, "%H:%M:%S")
+        planned_today=datetime.datetime(
+            now.tm_year, now.tm_mon, now.tm_mday, 
+            sched.tm_hour, sched.tm_min, sched.tm_sec).utctimetuple()
+        planned_today_epoch=calendar.timegm(planned_today)
 
-        if (now_epoch < sched_epoch):
+        if age_of_last_backup_in_seconds > self.instance_metadata.maximum_age_still_respect_business_hours:
+            return True
+
+        if (now_epoch < planned_today_epoch):
             return False
-        else:
-            return self.age_of_last_backup_in_seconds() > now_epoch - sched_epoch
+
+        return age_of_last_backup_in_seconds > now_epoch - planned_today_epoch
 
     def write(self):
         self.storage_cfg.block_blob_service.create_blob_from_text(
@@ -228,17 +231,13 @@ class BackupAgent:
             instance_metadata=self.instance_metadata, 
             is_full=True)
 
-        is_full_backup_regular=timestamp_file_full.should_run_regular_backup_now()
-        is_full_backup_emergency=timestamp_file_full.full_backup_required()
-
-        is_full_backup = is_full_backup_regular or is_full_backup_emergency
-
+        is_full_backup = timestamp_file_full.full_backup_required()
         full_backup_was_already_running=False
 
         if is_full_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
-                    logging.info("Run full backup: regular={regular} emergency={emergency}".format(regular=is_full_backup_regular, emergency=is_full_backup_emergency))
+                    logging.info("Run full backup")
                     self.do_full_backup(timestamp_file_full)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
@@ -249,7 +248,7 @@ class BackupAgent:
                 already=full_backup_was_already_running, full=is_full_backup))
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
-                    logging.info("Run transaction backup")
+                    logging.info("Run tran backup")
                     self.do_transaction_backup()
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip tran backup, already running")
