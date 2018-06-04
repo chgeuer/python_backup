@@ -57,7 +57,7 @@ def main():
                 timestamp=timestamp, 
                 stripe_index=stripe_index, 
                 stripe_count=stripe_count)
-            create(filename, 2)
+            create(filename, 200)
     elif args.backup_transactions:
         dbname = "test1db"
         stripe_count = 1
@@ -68,7 +68,7 @@ def main():
                 timestamp=timestamp, 
                 stripe_index=stripe_index, 
                 stripe_count=stripe_count)
-            create(filename, 2)
+            create(filename, 200)
     else:
         parser.print_help()
         exit()
