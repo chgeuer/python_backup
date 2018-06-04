@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7 
+#!/usr/bin/env python2.7
 
 # S01-10 or S001-115
 
@@ -45,15 +45,22 @@ class TestMethods(unittest.TestCase):
         self.assertEqual(
             Naming.construct_filename(
                 dbname="test1db", is_full=True, 
-                timestamp=time.strptime("20180601_112429", Timing.time_format()), 
+                timestamp=Timing.parse("20180601_112429"), 
                 stripe_index=2, stripe_count=101), 
             "test1db_full_20180601_112429_S002-101.cdmp")
         self.assertEqual(
             Naming.construct_filename(
                 dbname="test1db", is_full=True, 
-                timestamp=time.strptime("20180601_112429", Timing.time_format()), 
+                timestamp=Timing.parse("20180601_112429"), 
                 stripe_index=2, stripe_count=3), 
             "test1db_full_20180601_112429_S02-03.cdmp")
+
+    def test_when_to_run_a_backup(self):
+        self.assertEqual(True, Timing.should_run_regular_backup_now(
+            now=Timing.parse("20180604_113000"),
+            fullbackupat_str="01:00:00",
+            age_of_last_backup_in_seconds=39
+        ))
 
 class StorageConfiguration:
     account_name = None
@@ -99,11 +106,9 @@ class AzureVMInstanceMetadata:
 
         self.tags_value = self.config['compute']['tags']
         self.tags = dict(kvp.split(":", 1) for kvp in (self.tags_value.split(";")))
-        self.backupschedule = int(self.tags["backupschedule"])
-        self.backuptime = self.tags["backuptime"]
+        self.fullbackupat = self.tags["fullbackupat"]
+        logging.info("fullbackupat={}".format(self.fullbackupat))
         self.maximum_age_still_respect_business_hours = int(self.tags["maximum_age_still_respect_business_hours"])
-        logging.info("backupschedule={}".format(self.backupschedule))
-        logging.info("backuptime={}".format(self.backuptime))
         logging.info("maximum_age_still_respect_business_hours={}".format(self.maximum_age_still_respect_business_hours))
 
 class Naming:
@@ -115,13 +120,13 @@ class Naming:
     def construct_filename(dbname, is_full, timestamp, stripe_index, stripe_count):
         format_str = (
             {
-                True:  "{name}_{type}_{ts}_S{idx:02d}-{cnt:02d}.cdmp", 
-                False: "{name}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp"
+                True:  "{dbname}_{type}_{ts}_S{idx:02d}-{cnt:02d}.cdmp", 
+                False: "{dbname}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp"
             }
         )[stripe_count < 100]
 
         return format_str.format(
-            name=dbname, 
+            dbname=dbname, 
             type=Naming.backup_type_str(is_full), 
             ts=Timing.datetime_to_timestr(timestamp),
             idx=int(stripe_index), 
@@ -129,6 +134,19 @@ class Naming:
 
 class Timing:
     time_format="%Y%m%d_%H%M%S"
+    time_window_minutes=60
+
+    @staticmethod
+    def should_run_regular_backup_now(now, fullbackupat_str, age_of_last_backup_in_seconds):
+        print("now={now}   backup_at={backup_at} age={age}".format(now=now, backup_at=fullbackupat_str, age=age_of_last_backup_in_seconds))
+
+        t = time.strptime(fullbackupat_str, "%H:%M:%S")
+        scheduled=3600*t.tm_hour+60*t.tm_min+t.tm_sec
+
+        now_secs=3600*now.tm_hour+60*now.tm_min+now.tm_sec
+
+        return now_secs-scheduled > 0
+        # time passed and last backup is older
 
     @staticmethod
     def now():
@@ -138,9 +156,13 @@ class Timing:
     def datetime_to_timestr(t):
         return time.strftime(Timing.time_format, t)
 
+    @staticmethod 
+    def parse(time_str):
+        return time.strptime(time_str, Timing.time_format)
+
     @staticmethod
     def timestr_to_datetime(time_str):
-        t = time.strptime(time_str, Timing.time_format)
+        t = Timing.parse(time_str)
         return datetime.datetime(
             year=t.tm_year, month=t.tm_mon, day=t.tm_mday,
             hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
@@ -172,7 +194,7 @@ class BackupTimestampBlob:
         if full_backup_needed:
             logging.warn("Checking need for full backup: Last backup {last_run}s ago. Forceful threshold {max_age_allowed}: Must run".format(last_run=last_run, max_age_allowed=max_age_allowed))
         else:
-            logging.warn("Checking need for full backup: Last backup {last_run}s ago. Forceful threshold {max_age_allowed}: Can skip full backup".format(last_run=last_run, max_age_allowed=max_age_allowed))
+            logging.info("Checking need for full backup: Last backup {last_run}s ago. Forceful threshold {max_age_allowed}: Can skip full backup".format(last_run=last_run, max_age_allowed=max_age_allowed))
         return full_backup_needed
 
     def write(self):
@@ -203,12 +225,27 @@ class BackupAgent:
         self.storage_cfg = StorageConfiguration(filename)
         self.instance_metadata = AzureVMInstanceMetadata.create_instance()
 
-    def main_backup_full(self):
+    def backup(self):
+        # try:
+        #     with pid.PidFile(pidname='txbackup') as _p:
+        #         backup_agent.main_backup_transactions()
+        # except pid.PidFileAlreadyLockedError:
+        #     print("Skip full backup, already running")
+
         timestamp_file_full = BackupTimestampBlob(
             storage_cfg=self.storage_cfg, 
             instance_metadata=self.instance_metadata, 
             is_full=True)
+
         
+        difference=Timing.should_run_regular_backup_now(
+            now=time.gmtime(), 
+            fullbackupat_str=self.instance_metadata.fullbackupat, 
+            age_of_last_backup_in_seconds=timestamp_file_full.age_of_last_backup_in_seconds())
+        print("Usually, full backups run {difference} seconds past midnight").format(difference=difference)
+
+        return
+
         if not timestamp_file_full.full_backup_required():
             print("No full backup needed")
             return
@@ -232,7 +269,7 @@ class BackupAgent:
                 container_name=self.storage_cfg.container_name, 
                 blob_name=filename)
             if not exists:
-                print("Upload {}".format(filename))
+                logging.info("Upload {}".format(filename))
                 self.storage_cfg.block_blob_service.create_blob_from_path(
                     container_name=self.storage_cfg.container_name, 
                     blob_name=filename, file_path=file_path,
@@ -240,45 +277,30 @@ class BackupAgent:
             os.remove(file_path)
         timestamp_file_full.write()
 
-    def main_backup_transactions(self):
-        print("Perform transactional backup {fn}".format(fn="..."))
-
-    def main_restore(self, restore_point):
+    def restore(self, restore_point):
         print "Perform restore for restore point \"{}\"".format(restore_point)
+
+def configure_logging():
+    logfile_name='backup.log'
+    logging.basicConfig(filename=logfile_name,level=logging.INFO)
+    logging.getLogger('azure.storage').setLevel(logging.FATAL)
 
 def arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config-file", 
-                        help="the JSON config file")
-    parser.add_argument("-f", "--backup-full", 
-                        help="Perform full backup",
-                        action="store_true")
-    parser.add_argument("-t", "--backup-transactions", 
-                        help="Perform transaction backup",
-                        action="store_true")
-    parser.add_argument("--tests", 
-                        help="Perform unit tests",
-                        action="store_true")
-    parser.add_argument("-r", "--restore", 
-                        help="Perform restore for date")
+    parser.add_argument("-c", "--config", help="the JSON config file")
+    parser.add_argument("-b", "--backup", help="Perform backup", action="store_true")
+    parser.add_argument("-r", "--restore", help="Perform restore for date")
+    parser.add_argument("-t", "--tests", help="Run tests", action="store_true")
     return parser
 
 def main():
+    configure_logging()
     parser = arg_parser() 
     args = parser.parse_args()
-    if args.backup_full:
-        backup_agent = BackupAgent(args.config_file)
-        backup_agent.main_backup_full()
-    elif args.backup_transactions:
-        backup_agent = BackupAgent(args.config_file)
-        try:
-            with pid.PidFile(pidname='txbackup') as _p:
-                backup_agent.main_backup_transactions()
-        except pid.PidFileAlreadyLockedError:
-            print("Skip full backup, already running")
+    if args.backup:
+        BackupAgent(args.config).backup()
     elif args.restore:
-        backup_agent = BackupAgent(args.config_file)
-        backup_agent.main_restore(args.restore)
+        BackupAgent(args.config).restore(args.restore)
     elif args.tests:
         suite = unittest.TestLoader().loadTestsFromTestCase(TestMethods)
         unittest.TextTestRunner(verbosity=2).run(suite)
@@ -286,5 +308,4 @@ def main():
         parser.print_help()
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='backup.log',level=logging.INFO)
     main()

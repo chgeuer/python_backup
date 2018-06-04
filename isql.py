@@ -49,7 +49,7 @@ def main():
     timestamp=time.gmtime()
     if args.backup_full:
         dbname = "test1db"
-        stripe_count = 2
+        stripe_count = 1
         for stripe_index in range(0, stripe_count): 
             filename = construct_filename(
                 dbname=dbname, 
