@@ -58,21 +58,21 @@ class TestMethods(unittest.TestCase):
     def test_when_to_run_a_backup(self):
         # One minute before official schedule do not run a full backup
         self.assertEqual(False, Timing.should_run_regular_backup_now(
-            now=Timing.parse("20180604_005900"),
             fullbackupat_str="01:00:00",
-            age_of_last_backup_in_seconds=23*3600
+            age_of_last_backup_in_seconds=23*3600,
+            now=Timing.parse("20180604_005900")
         ))
         # Two minutes after full backup schedule, skip, because the successful backup is 39 seconds old
         self.assertEqual(False, Timing.should_run_regular_backup_now(
-            now=Timing.parse("20180604_010200"),
             fullbackupat_str="01:00:00",
-            age_of_last_backup_in_seconds=39
+            age_of_last_backup_in_seconds=39,
+            now=Timing.parse("20180604_010200")
         ))
         # Two minutes after full backup schedule, run, because the successful backup is 23 hours old
         self.assertEqual(True, Timing.should_run_regular_backup_now(
-            now=Timing.parse("20180604_010200"),
             fullbackupat_str="01:00:00",
-            age_of_last_backup_in_seconds=23*3600
+            age_of_last_backup_in_seconds=23*3600,
+            now=Timing.parse("20180604_010200")
         ))
 
 class StorageConfiguration:
@@ -150,7 +150,7 @@ class Timing:
     time_window_minutes=60
 
     @staticmethod
-    def should_run_regular_backup_now(now, fullbackupat_str, age_of_last_backup_in_seconds):
+    def should_run_regular_backup_now(fullbackupat_str, age_of_last_backup_in_seconds, now=time.gmtime()):
         logging.debug("now={now} backup_at={backup_at} age={age}".format(now=now, backup_at=fullbackupat_str, age=age_of_last_backup_in_seconds))
         now_secs=3600*now.tm_hour + 60*now.tm_min + now.tm_sec
 
@@ -247,39 +247,36 @@ class BackupAgent:
         self.instance_metadata = AzureVMInstanceMetadata.create_instance()
 
     def backup(self):
+        timestamp_file_full = BackupTimestampBlob(
+            storage_cfg=self.storage_cfg, 
+            instance_metadata=self.instance_metadata, 
+            is_full=True)
+
+        run_regular_full_backup=Timing.should_run_regular_backup_now(
+            fullbackupat_str=self.instance_metadata.fullbackupat, 
+            age_of_last_backup_in_seconds=timestamp_file_full.age_of_last_backup_in_seconds())
+
+        run_emergency_full_backup=timestamp_file_full.full_backup_required()
+
+        if run_regular_full_backup:
+            logging.info("Run regular full backup")
+            self.do_full_backup(timestamp_file_full)
+        elif run_emergency_full_backup:
+            logging.info("Run emergency full backup")
+            self.do_full_backup(timestamp_file_full)
+        else:
+            logging.info("Run transaction full backup")
+            self.do_transaction_backup()
+
+    def do_full_backup(self, timestamp_file_full):
         # try:
         #     with pid.PidFile(pidname='txbackup') as _p:
         #         backup_agent.main_backup_transactions()
         # except pid.PidFileAlreadyLockedError:
         #     print("Skip full backup, already running")
 
-        timestamp_file_full = BackupTimestampBlob(
-            storage_cfg=self.storage_cfg, 
-            instance_metadata=self.instance_metadata, 
-            is_full=True)
-
-        
-        difference=Timing.should_run_regular_backup_now(
-            now=time.gmtime(), 
-            fullbackupat_str=self.instance_metadata.fullbackupat, 
-            age_of_last_backup_in_seconds=timestamp_file_full.age_of_last_backup_in_seconds())
-        print("Usually, full backups run {difference} seconds past midnight").format(difference=difference)
-
-        return
-
-        if not timestamp_file_full.full_backup_required():
-            print("No full backup needed")
-            return
-        else:
-            print("Full backup needed")
-
-        timestamp_file_tran = BackupTimestampBlob(
-            storage_cfg=self.storage_cfg, 
-            instance_metadata=self.instance_metadata, 
-            is_full=False)
-
-        logging.info("Last full backup : {age_in_seconds} secs ago".format(age_in_seconds=timestamp_file_full.age_of_last_backup_in_seconds()))
-        logging.info("Last transaction backup : {age_in_seconds} secs ago".format(age_in_seconds=timestamp_file_tran.age_of_last_backup_in_seconds()))
+        logging.info("Last full backup : {age_in_seconds} secs ago".format(
+            age_in_seconds=timestamp_file_full.age_of_last_backup_in_seconds()))
 
         subprocess.check_output(["./isql.py", "-f"])
         source = "."
@@ -297,6 +294,14 @@ class BackupAgent:
                     validate_content=True, max_connections=4)
             os.remove(file_path)
         timestamp_file_full.write()
+
+    def do_transaction_backup(self):
+        timestamp_file_tran = BackupTimestampBlob(
+            storage_cfg=self.storage_cfg, 
+            instance_metadata=self.instance_metadata, 
+            is_full=False)
+
+        timestamp_file_tran.write()
 
     def restore(self, restore_point):
         print "Perform restore for restore point \"{}\"".format(restore_point)
