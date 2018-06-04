@@ -56,10 +56,23 @@ class TestMethods(unittest.TestCase):
             "test1db_full_20180601_112429_S02-03.cdmp")
 
     def test_when_to_run_a_backup(self):
-        self.assertEqual(True, Timing.should_run_regular_backup_now(
-            now=Timing.parse("20180604_113000"),
+        # One minute before official schedule do not run a full backup
+        self.assertEqual(False, Timing.should_run_regular_backup_now(
+            now=Timing.parse("20180604_005900"),
+            fullbackupat_str="01:00:00",
+            age_of_last_backup_in_seconds=23*3600
+        ))
+        # Two minutes after full backup schedule, skip, because the successful backup is 39 seconds old
+        self.assertEqual(False, Timing.should_run_regular_backup_now(
+            now=Timing.parse("20180604_010200"),
             fullbackupat_str="01:00:00",
             age_of_last_backup_in_seconds=39
+        ))
+        # Two minutes after full backup schedule, run, because the successful backup is 23 hours old
+        self.assertEqual(True, Timing.should_run_regular_backup_now(
+            now=Timing.parse("20180604_010200"),
+            fullbackupat_str="01:00:00",
+            age_of_last_backup_in_seconds=23*3600
         ))
 
 class StorageConfiguration:
@@ -138,15 +151,23 @@ class Timing:
 
     @staticmethod
     def should_run_regular_backup_now(now, fullbackupat_str, age_of_last_backup_in_seconds):
-        print("now={now}   backup_at={backup_at} age={age}".format(now=now, backup_at=fullbackupat_str, age=age_of_last_backup_in_seconds))
+        logging.debug("now={now} backup_at={backup_at} age={age}".format(now=now, backup_at=fullbackupat_str, age=age_of_last_backup_in_seconds))
+        now_secs=3600*now.tm_hour + 60*now.tm_min + now.tm_sec
 
         t = time.strptime(fullbackupat_str, "%H:%M:%S")
-        scheduled=3600*t.tm_hour+60*t.tm_min+t.tm_sec
+        full_backup_at_secs=3600*t.tm_hour + 60*t.tm_min + t.tm_sec
 
-        now_secs=3600*now.tm_hour+60*now.tm_min+now.tm_sec
-
-        return now_secs-scheduled > 0
-        # time passed and last backup is older
+        seconds_behind_backup_time = now_secs - full_backup_at_secs
+        if (seconds_behind_backup_time < 0):
+            logging.debug("We are {sec} seconds before the backup time".format(sec=(-seconds_behind_backup_time)))
+            return False
+        else:
+            if age_of_last_backup_in_seconds > seconds_behind_backup_time:
+                logging.debug("Last backup is {age} seconds old, and we should have backed-up {sec} secs ago --> Run Backup".format(age=age_of_last_backup_in_seconds, sec=seconds_behind_backup_time))
+                return True
+            else:
+                logging.debug("Last backup is {age} seconds old, and we're {sec} secs past schedule".format(age=age_of_last_backup_in_seconds, sec=seconds_behind_backup_time))
+                return False
 
     @staticmethod
     def now():
