@@ -139,29 +139,6 @@ class Timing:
     time_format="%Y%m%d_%H%M%S"
 
     @staticmethod
-    def should_run_regular_backup_now(fullbackupat_str, age_of_last_backup_in_seconds, now=time.gmtime()):
-        t = time.strptime(fullbackupat_str, "%H:%M:%S")
-
-        now_epoch=calendar.timegm(now)
-        sched=datetime.datetime(now.tm_year, now.tm_mon, now.tm_mday, t.tm_hour, t.tm_min, t.tm_sec).utctimetuple()
-        sched_epoch=calendar.timegm(sched)
-        seconds_behind_backup_time = now_epoch - sched_epoch
-
-        logging.info("now={now} now_epoch={now_epoch} backup_at={backup_at} sched_epoch={sched_epoch} age={age} seconds_behind_backup_time={seconds_behind_backup_time}".format(
-            now=now, now_epoch=now_epoch, backup_at=fullbackupat_str, sched_epoch=sched_epoch, age=age_of_last_backup_in_seconds, seconds_behind_backup_time=seconds_behind_backup_time))
-
-        if (seconds_behind_backup_time < 0):
-            logging.debug("We are {sec} seconds before the backup time".format(sec=(-seconds_behind_backup_time)))
-            return False
-        else:
-            if age_of_last_backup_in_seconds > seconds_behind_backup_time:
-                logging.debug("Last backup is {age} seconds old, and we should have backed-up {sec} secs ago --> Run Backup".format(age=age_of_last_backup_in_seconds, sec=seconds_behind_backup_time))
-                return True
-            else:
-                logging.debug("Last backup is {age} seconds old, and we're {sec} secs past schedule".format(age=age_of_last_backup_in_seconds, sec=seconds_behind_backup_time))
-                return False
-
-    @staticmethod
     def now():
         return Timing.datetime_to_timestr(time.gmtime())
 
@@ -201,14 +178,21 @@ class BackupTimestampBlob:
         return Timing.time_diff_in_seconds(self.read(), Timing.now())
 
     def full_backup_required(self):
-        last_run = self.age_of_last_backup_in_seconds()
-        max_age_allowed = self.instance_metadata.maximum_age_still_respect_business_hours
-        full_backup_needed = last_run > max_age_allowed
-        if full_backup_needed:
-            logging.warn("Checking need for full backup: Last backup {last_run}s ago. Forceful threshold {max_age_allowed}: Must run".format(last_run=last_run, max_age_allowed=max_age_allowed))
+        return self.age_of_last_backup_in_seconds() > self.instance_metadata.maximum_age_still_respect_business_hours
+
+    def should_run_regular_backup_now(self):
+        now=time.gmtime()
+        now_epoch=calendar.timegm(now)
+
+        fullbackupat_str=self.instance_metadata.fullbackupat
+        t = time.strptime(fullbackupat_str, "%H:%M:%S")
+        sched=datetime.datetime(now.tm_year, now.tm_mon, now.tm_mday, t.tm_hour, t.tm_min, t.tm_sec).utctimetuple()
+        sched_epoch=calendar.timegm(sched)
+
+        if (now_epoch < sched_epoch):
+            return False
         else:
-            logging.info("Checking need for full backup: Last backup {last_run}s ago. Forceful threshold {max_age_allowed}: Can skip full backup".format(last_run=last_run, max_age_allowed=max_age_allowed))
-        return full_backup_needed
+            return self.age_of_last_backup_in_seconds() > now_epoch - sched_epoch
 
     def write(self):
         self.storage_cfg.block_blob_service.create_blob_from_text(
@@ -244,10 +228,7 @@ class BackupAgent:
             instance_metadata=self.instance_metadata, 
             is_full=True)
 
-        is_full_backup_regular=Timing.should_run_regular_backup_now(
-            fullbackupat_str=self.instance_metadata.fullbackupat, 
-            age_of_last_backup_in_seconds=timestamp_file_full.age_of_last_backup_in_seconds())
-
+        is_full_backup_regular=timestamp_file_full.should_run_regular_backup_now()
         is_full_backup_emergency=timestamp_file_full.full_backup_required()
 
         is_full_backup = is_full_backup_regular or is_full_backup_emergency
