@@ -252,20 +252,17 @@ class BackupAgent:
             instance_metadata=self.instance_metadata, 
             is_full=True)
 
-        run_regular_full_backup=Timing.should_run_regular_backup_now(
+        full_backup_regular=Timing.should_run_regular_backup_now(
             fullbackupat_str=self.instance_metadata.fullbackupat, 
             age_of_last_backup_in_seconds=timestamp_file_full.age_of_last_backup_in_seconds())
 
-        run_emergency_full_backup=timestamp_file_full.full_backup_required()
+        full_backup_emergency=timestamp_file_full.full_backup_required()
 
-        if run_regular_full_backup:
-            logging.info("Run regular full backup")
-            self.do_full_backup(timestamp_file_full)
-        elif run_emergency_full_backup:
-            logging.info("Run emergency full backup")
+        if full_backup_regular or full_backup_emergency:
+            logging.info("Run full backup: regular={regular} emergency={emergency}".format(regular=full_backup_regular, emergency=full_backup_emergency))
             self.do_full_backup(timestamp_file_full)
         else:
-            logging.info("Run transaction full backup")
+            logging.info("Run transaction backup")
             self.do_transaction_backup()
 
     def do_full_backup(self, timestamp_file_full):
