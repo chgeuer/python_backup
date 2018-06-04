@@ -1,0 +1,10 @@
+{
+    "compute": {
+        "subscriptionId": "724467b5-bee4-484b-bf13-d6a5505d2b51",
+        "resourceGroupName": "backuptest",
+        "name": "christianlaptop",
+        "vmId": "42c2b1a2-6db9-4955-9ad5-cc5ccc21279c",
+        "tags": "fullbackupat:10:30:00;maximum_age_still_respect_business_hours:60;business_hours_utc:07:00:00-16:00:00"
+    },
+    "network": {"interface": [{"ipv4": {"ipAddress": [{"publicIpAddress": "40.113.129.65"}]}}]}
+}

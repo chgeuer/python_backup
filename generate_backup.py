@@ -22,6 +22,7 @@ import re
 import glob
 import argparse
 import time
+import calendar
 import datetime
 import json
 import hashlib
@@ -136,17 +137,19 @@ class Naming:
 
 class Timing:
     time_format="%Y%m%d_%H%M%S"
-    time_window_minutes=60
 
     @staticmethod
     def should_run_regular_backup_now(fullbackupat_str, age_of_last_backup_in_seconds, now=time.gmtime()):
-        logging.debug("now={now} backup_at={backup_at} age={age}".format(now=now, backup_at=fullbackupat_str, age=age_of_last_backup_in_seconds))
-        now_secs=3600*now.tm_hour + 60*now.tm_min + now.tm_sec
-
         t = time.strptime(fullbackupat_str, "%H:%M:%S")
-        full_backup_at_secs=3600*t.tm_hour + 60*t.tm_min + t.tm_sec
 
-        seconds_behind_backup_time = now_secs - full_backup_at_secs
+        now_epoch=calendar.timegm(now)
+        sched=datetime.datetime(now.tm_year, now.tm_mon, now.tm_mday, t.tm_hour, t.tm_min, t.tm_sec).utctimetuple()
+        sched_epoch=calendar.timegm(sched)
+        seconds_behind_backup_time = now_epoch - sched_epoch
+
+        logging.info("now={now} now_epoch={now_epoch} backup_at={backup_at} sched_epoch={sched_epoch} age={age} seconds_behind_backup_time={seconds_behind_backup_time}".format(
+            now=now, now_epoch=now_epoch, backup_at=fullbackupat_str, sched_epoch=sched_epoch, age=age_of_last_backup_in_seconds, seconds_behind_backup_time=seconds_behind_backup_time))
+
         if (seconds_behind_backup_time < 0):
             logging.debug("We are {sec} seconds before the backup time".format(sec=(-seconds_behind_backup_time)))
             return False
