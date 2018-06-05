@@ -239,6 +239,7 @@ class BackupAgent:
         subprocess.check_output(["./isql.py", "-f"])
         source = "."
         pattern = "*.cdmp"
+        # TODO only for full files
         for filename in glob.glob1(dirname=source, pattern=pattern):
             file_path = os.path.join(source, filename)
             exists = self.storage_cfg.block_blob_service.exists(
@@ -251,7 +252,7 @@ class BackupAgent:
                     blob_name=filename, file_path=file_path,
                     validate_content=True, max_connections=4)
             os.remove(file_path)
-        timestamp_file_full.write()
+        timestamp_file_full.write() # make sure we use proper timestamp info
 
     def do_transaction_backup(self):
         timestamp_file_tran = BackupTimestampBlob(
