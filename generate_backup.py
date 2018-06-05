@@ -23,6 +23,8 @@ from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.blob.models import ContentSettings
 from azure.common import AzureMissingResourceHttpError
 
+
+
 class TestMethods(unittest.TestCase):
     def test_time_diff_in_seconds(self):
         self.assertEqual(Timing.time_diff_in_seconds("20180106_120000", "20180106_120010"), 10)
@@ -107,14 +109,7 @@ class Naming:
 
     @staticmethod
     def construct_filename(dbname, is_full, timestamp, stripe_index, stripe_count):
-        format_str = (
-            {
-                True:  "{dbname}_{type}_{ts}_S{idx:02d}-{cnt:02d}.cdmp", 
-                False: "{dbname}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp"
-            }
-        )[stripe_count < 100]
-
-        return format_str.format(
+        return "{dbname}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp".format(
             dbname=dbname, 
             type=Naming.backup_type_str(is_full), 
             ts=Timing.datetime_to_timestr(timestamp),
