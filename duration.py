@@ -452,25 +452,52 @@ class BackupAgent:
 
     @staticmethod
     def should_run_full_backup(now_time, dbname, force, latest_full_backup_timestamp, business_hours, db_backup_interval_min, db_backup_interval_max):
+        # >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=same_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+        # False
         """
             >>> business_hours=BusinessHours.parse_tag_str(BusinessHours._BusinessHours__sample_data())
             >>> db_backup_interval_min=ScheduleParser.parse_timedelta("24h")
             >>> db_backup_interval_max=ScheduleParser.parse_timedelta("3d")
-            >>> really_old_backup =                   "20170515_010000"
-            >>> recent_backup     =                   "20180606_010000"
+            >>> five_day_backup =                     "20180601_010000"
+            >>> two_day_backup =                      "20180604_010000"
+            >>> same_day_backup =                     "20180606_010000"
             >>> during_business_hours  = Timing.parse("20180606_150000")
             >>> outside_business_hours = Timing.parse("20180606_220000")
             >>> 
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=recent_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=same_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            True
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=two_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            True
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=five_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            True
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=same_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             False
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=recent_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=two_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            False
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=five_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            True
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=same_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            False
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=two_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            True
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=five_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            True
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=same_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            True
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=two_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            True
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=five_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
         """
         allowed_by_business = business_hours.is_backup_allowed_time(now_time)
         age_of_latest_backup_in_storage = Timing.time_diff(latest_full_backup_timestamp, Timing.datetime_to_timestr(now_time))
         min_interval_allows_backup = age_of_latest_backup_in_storage > db_backup_interval_min
         max_interval_requires_backup = age_of_latest_backup_in_storage > db_backup_interval_max
-        perform_full_backup = allowed_by_business and min_interval_allows_backup or max_interval_requires_backup or force
+        perform_full_backup = (
+            allowed_by_business and min_interval_allows_backup or 
+            max_interval_requires_backup or 
+            force
+        )
 
 
         logging.info("Full backup requested. Current time: {now}. Last backup in storage: {last}. Age of backup {age}".format(now=Timing.datetime_to_timestr(now_time), last=latest_full_backup_timestamp, age=age_of_latest_backup_in_storage))
