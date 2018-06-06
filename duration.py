@@ -332,6 +332,7 @@ class BackupConfiguration:
     def get_log_backup_interval_min(self): return self.get_value("log_backup_interval_min")
     def get_log_backup_interval_max(self): return self.get_value("log_backup_interval_max")
     def get_business_hours(self): return self.get_value("backup.businesshours")
+    def get_databases_to_skip(self): return [ "dbccdb" ]
     
     def get_storage_client(self):
         block_blob_service = BlockBlobService(
@@ -344,10 +345,11 @@ class BackupAgent:
     def __init__(self, config_filename):
         self.backup_configuration = BackupConfiguration(config_filename)
 
-    def full_backup(self):
+    def full_backup(self, force=False):
         try:
             with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
                 print "full_backup Not yet impl on VM {}".format(self.backup_configuration.get_vm_name())
+                print "force {}".format(force)
                 print "full backup allowed now: {}".format(self.backup_configuration.get_business_hours().is_backup_allowed_now_localtime())
         except pid.PidFileAlreadyLockedError:
             logging.warn("Skip full backup, already running")
@@ -379,6 +381,7 @@ class Runner:
         parser = argparse.ArgumentParser()
         parser.add_argument("-c", "--config", help="the JSON config file")
         parser.add_argument("-f", "--full-backup", help="Perform full backup", action="store_true")
+        parser.add_argument("-ff", "--full-backup-force", help="Perform forceful full backup (ignores business hour or age of last backup)", action="store_true")
         parser.add_argument("-t", "--transaction-backup", help="Perform full backup", action="store_true")
         parser.add_argument("-r", "--restore", help="Perform restore for date")
         parser.add_argument("-u", "--unit-tests", help="Run unit tests", action="store_true")
@@ -389,8 +392,8 @@ class Runner:
         Runner.configure_logging()
         parser = Runner.arg_parser() 
         args = parser.parse_args()
-        if args.full_backup:
-            BackupAgent(args.config).full_backup()
+        if args.full_backup or args.full_backup_force:
+            BackupAgent(args.config).full_backup(force=args.full_backup_force)
         elif args.transaction_backup:
             BackupAgent(args.config).transaction_backup()
         elif args.restore:
