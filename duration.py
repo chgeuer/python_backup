@@ -170,21 +170,18 @@ class Timing:
         return time.strptime(time_str, Timing.time_format)
 
     @staticmethod
-    def timestr_to_datetime(time_str):
-        t = Timing.parse(time_str)
-        return datetime.datetime(
-            year=t.tm_year, month=t.tm_mon, day=t.tm_mday,
-            hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
-
-    @staticmethod
-    def time_diff(timestr_1, timestr_2):
+    def time_diff(time_1_str, time_2_str):
         """
             >>> Timing.time_diff("20180106_120000", "20180106_120010")
             datetime.timedelta(0, 10)
             >>> Timing.time_diff("20180106_110000", "20180106_120010")
             datetime.timedelta(0, 3610)
         """
-        return Timing.timestr_to_datetime(timestr_2) - Timing.timestr_to_datetime(timestr_1)
+        t1 = Timing.parse(time_1_str)
+        dt1 = datetime.datetime(year=t1.tm_year, month=t1.tm_mon, day=t1.tm_mday, hour=t1.tm_hour, minute=t1.tm_min, second=t1.tm_sec)
+        t2 = Timing.parse(time_2_str)
+        dt2 = datetime.datetime(year=t2.tm_year, month=t2.tm_mon, day=t2.tm_mday, hour=t2.tm_hour, minute=t2.tm_min, second=t2.tm_sec)
+        return dt2 - dt1
 
     @staticmethod
     def time_diff_in_seconds(timestr_1, timestr_2):
@@ -194,8 +191,7 @@ class Timing:
             >>> Timing.time_diff_in_seconds("20180106_110000", "20180106_120010")
             3610
         """
-        diff=Timing.timestr_to_datetime(timestr_2) - Timing.timestr_to_datetime(timestr_1)
-        return int(diff.total_seconds())
+        return int(Timing.time_diff(timestr_1, timestr_2).total_seconds())
 
 class Naming:
     @staticmethod
@@ -460,10 +456,11 @@ class BackupAgent:
             >>> business_hours=BusinessHours.parse_tag_str(BusinessHours._BusinessHours__sample_data())
             >>> db_backup_interval_min=ScheduleParser.parse_timedelta("24h")
             >>> db_backup_interval_max=ScheduleParser.parse_timedelta("3d")
-            >>> really_old_backup      = Timing.parse("20180515_010000")
-            >>> recent_backup          = Timing.parse("20180606_010000")
+            >>> really_old_backup =                   "20170515_010000"
+            >>> recent_backup     =                   "20180606_010000"
             >>> during_business_hours  = Timing.parse("20180606_150000")
             >>> outside_business_hours = Timing.parse("20180606_220000")
+            >>> 
             >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=recent_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             False
             >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=recent_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
