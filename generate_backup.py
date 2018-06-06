@@ -1,46 +1,7 @@
 #!/usr/bin/env python2.7
 
-import sys
-import os
-import platform
-import subprocess
-import re
-import glob
-import argparse
-import time
-import calendar
-import datetime
-import json
-import hashlib
-import base64
-import requests
-import logging
-import unittest
-import socket
-
-import pid
-from azure.storage.blob import BlockBlobService, PublicAccess
-from azure.storage.blob.models import ContentSettings
-from azure.common import AzureMissingResourceHttpError
-
-
 
 class TestMethods(unittest.TestCase):
-    def test_time_diff_in_seconds(self):
-        self.assertEqual(Timing.time_diff_in_seconds("20180106_120000", "20180106_120010"), 10)
-        self.assertEqual(Timing.time_diff_in_seconds("20180106_110000", "20180106_120010"), 3610)
-        self.assertEqual(
-            Naming.construct_filename(
-                dbname="test1db", is_full=True, 
-                timestamp=Timing.parse("20180601_112429"), 
-                stripe_index=2, stripe_count=101), 
-            "test1db_full_20180601_112429_S002-101.cdmp")
-        self.assertEqual(
-            Naming.construct_filename(
-                dbname="test1db", is_full=True, 
-                timestamp=Timing.parse("20180601_112429"), 
-                stripe_index=2, stripe_count=3), 
-            "test1db_full_20180601_112429_S02-03.cdmp")
 
     def test_when_to_run_a_full_backup(self):
         test_data = [
@@ -58,90 +19,6 @@ class TestMethods(unittest.TestCase):
                 age_of_last_backup_in_seconds=d[1]['age'],
                 now=Timing.parse(d[1]['now'])
             ))
-
-class StorageConfiguration:
-    account_name = None
-    account_key = None
-    block_blob_service = None
-    container_name = None
-    def __init__(self, filename):
-        with open(filename, mode='rt') as file:
-            content = file.read()
-        j = (json.JSONDecoder()).decode(content)
-        self.account_name=j['account_name']
-        self.account_key=j['account_key']
-        self.container_name=j['container_name']
-        self.block_blob_service = BlockBlobService(
-            account_name=self.account_name, 
-            account_key=self.account_key)
-        _created = self.block_blob_service.create_container(container_name=self.container_name)
-
-class AzureVMInstanceMetadata:
-    @staticmethod
-    def request_metadata(api_version="2017-12-01"):
-        url="http://169.254.169.254/metadata/instance?api-version={v}".format(v=api_version)
-        response = requests.get(url=url, headers={"Metadata": "true"})
-        return response.json()
-
-    @staticmethod
-    def create_instance():
-        # TODO remove the local machine check here... 
-        if socket.gethostname() == "erlang":
-            with open("meta.json", mode='rt') as file:
-                return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(file.read()))
-        else:
-            return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata())
-
-    def __init__(self, req):
-        self.config = req()
-        self.subscription_id = self.config["compute"]["subscriptionId"]
-        self.resource_group_name = self.config["compute"]["resourceGroupName"]
-        self.vm_name = self.config["compute"]["name"]
-        self.tags_value = self.config['compute']['tags']
-        self.tags = dict(kvp.split(":", 1) for kvp in (self.tags_value.split(";")))
-        self.fullbackupat = self.tags["fullbackupat"]
-        self.maximum_age_still_respect_business_hours = int(self.tags["maximum_age_still_respect_business_hours"])
-
-class Naming:
-    @staticmethod
-    def backup_type_str(is_full):
-        return ({True:"full", False:"tran"})[is_full]
-
-    @staticmethod
-    def construct_filename(dbname, is_full, timestamp, stripe_index, stripe_count):
-        return "{dbname}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp".format(
-            dbname=dbname, 
-            type=Naming.backup_type_str(is_full), 
-            ts=Timing.datetime_to_timestr(timestamp),
-            idx=int(stripe_index), 
-            cnt=int(stripe_count))
-
-class Timing:
-    time_format="%Y%m%d_%H%M%S"
-
-    @staticmethod
-    def now():
-        return Timing.datetime_to_timestr(time.gmtime())
-
-    @staticmethod
-    def datetime_to_timestr(t):
-        return time.strftime(Timing.time_format, t)
-
-    @staticmethod 
-    def parse(time_str):
-        return time.strptime(time_str, Timing.time_format)
-
-    @staticmethod
-    def timestr_to_datetime(time_str):
-        t = Timing.parse(time_str)
-        return datetime.datetime(
-            year=t.tm_year, month=t.tm_mon, day=t.tm_mday,
-            hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
-
-    @staticmethod
-    def time_diff_in_seconds(timestr_1, timestr_2):
-        diff=Timing.timestr_to_datetime(timestr_2) - Timing.timestr_to_datetime(timestr_1)
-        return int(diff.total_seconds())
 
 class BackupTimestampBlob:
     def __init__(self, storage_cfg, instance_metadata, is_full):
@@ -236,7 +113,14 @@ class BackupAgent:
         logging.info("Last full backup : {age_in_seconds} secs ago".format(
             age_in_seconds=timestamp_file_full.age_of_last_backup_in_seconds()))
 
+        start == now()
         subprocess.check_output(["./isql.py", "-f"])
+        end == now()
+
+        filename_in_local_disk_bak      = "{start}.cdmp"
+        filename_in_blob_storage =        "{start}__{end}__cdmp"
+        filename_in_local_disk_restore  = "{start}.cdmp"
+
         source = "."
         pattern = "*.cdmp"
         # TODO only for full files
@@ -265,40 +149,3 @@ class BackupAgent:
     def restore(self, restore_point):
         print "Perform restore for restore point \"{}\"".format(restore_point)
 
-class Runner:
-    @staticmethod
-    def configure_logging():
-        logfile_name='backup.log'
-        logging.basicConfig(
-            filename=logfile_name,
-            level=logging.INFO,
-            format="%(asctime)-15s pid-%(process)d line-%(lineno)d %(levelname)s: \"%(message)s\""
-            )
-        logging.getLogger('azure.storage').setLevel(logging.FATAL)
-
-    @staticmethod
-    def arg_parser():
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-c", "--config", help="the JSON config file")
-        parser.add_argument("-b", "--backup", help="Perform backup", action="store_true")
-        parser.add_argument("-r", "--restore", help="Perform restore for date")
-        parser.add_argument("-t", "--tests", help="Run tests", action="store_true")
-        return parser
-
-    @staticmethod
-    def main():
-        Runner.configure_logging()
-        parser = Runner.arg_parser() 
-        args = parser.parse_args()
-        if args.backup:
-            BackupAgent(args.config).backup()
-        elif args.restore:
-            BackupAgent(args.config).restore(args.restore)
-        elif args.tests:
-            suite = unittest.TestLoader().loadTestsFromTestCase(TestMethods)
-            unittest.TextTestRunner(verbosity=2).run(suite)
-        else:
-            parser.print_help()
-
-if __name__ == '__main__':
-    Runner.main()

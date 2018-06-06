@@ -194,17 +194,31 @@ class Naming:
         return ({True:"full", False:"tran"})[is_full]
 
     @staticmethod
-    def construct_filename(dbname, is_full, timestamp, stripe_index, stripe_count):
+    def construct_filename(dbname, is_full, start_timestamp, stripe_index, stripe_count):
         """
-            >>> Naming.construct_filename(dbname="test1db", is_full=True, timestamp=Timing.parse("20180601_112429"), stripe_index=2, stripe_count=101)
+            >>> Naming.construct_filename(dbname="test1db", is_full=True, start_timestamp=Timing.parse("20180601_112429"), stripe_index=2, stripe_count=101)
             'test1db_full_20180601_112429_S002-101.cdmp'
-            >>> Naming.construct_filename(dbname="test1db", is_full=False, timestamp=Timing.parse("20180601_112429"), stripe_index=2, stripe_count=101)
+            >>> Naming.construct_filename(dbname="test1db", is_full=False, start_timestamp=Timing.parse("20180601_112429"), stripe_index=2, stripe_count=101)
             'test1db_tran_20180601_112429_S002-101.cdmp'
         """
-        return "{dbname}_{type}_{ts}_S{idx:03d}-{cnt:03d}.cdmp".format(
+        return "{dbname}_{type}_{start_timestamp}_S{idx:03d}-{cnt:03d}.cdmp".format(
             dbname=dbname, 
             type=Naming.backup_type_str(is_full), 
-            ts=Timing.datetime_to_timestr(timestamp),
+            start_timestamp=Timing.datetime_to_timestr(start_timestamp),
+            idx=int(stripe_index), 
+            cnt=int(stripe_count))
+
+    @staticmethod
+    def construct_blobname(dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count):
+        """
+            >>> Naming.construct_blobname(dbname="test1db", is_full=True, start_timestamp=Timing.parse("20180601_112429"), end_timestamp=Timing.parse("20180601_131234"), stripe_index=2, stripe_count=101)
+            'test1db_full_20180601_112429--20180601_131234_S002-101.cdmp'
+        """
+        return "{dbname}_{type}_{start}--{end}_S{idx:03d}-{cnt:03d}.cdmp".format(
+            dbname=dbname, 
+            type=Naming.backup_type_str(is_full), 
+            start=Timing.datetime_to_timestr(start_timestamp),
+            end=Timing.datetime_to_timestr(end_timestamp),
             idx=int(stripe_index), 
             cnt=int(stripe_count))
 
@@ -242,8 +256,11 @@ class AzureVMInstanceMetadata:
         self.resource_group_name = str(first_json["compute"]["resourceGroupName"])
         self.vm_name = str(first_json["compute"]["name"])
 
+    def json(self):
+        return self.req()
+
     def get_tags(self):
-        tags_value = str(self.req()['compute']['tags'])
+        tags_value = str(self.json()['compute']['tags'])
         return dict(kvp.split(":", 1) for kvp in (tags_value.split(";")))
 
 class BackupConfigurationFile:
@@ -287,9 +304,15 @@ class BackupConfiguration:
         self.data = {
             "sap.CID": lambda: self.cfg_file.get_value("sap.CID"),
             "sap.SID": lambda: self.cfg_file.get_value("sap.SID"),
+
+            "vm_name": lambda: self.instance_metadata.vm_name,
+            "subscription_id": lambda: self.instance_metadata.subscription_id,
+            "resource_group_name": lambda: self.instance_metadata.resource_group_name,
+
             "azure.storage.account_name": lambda: self.cfg_file.get_value("azure.storage.account_name"),
             "azure.storage.account_key": lambda: self.cfg_file.get_value("azure.storage.account_key"),
             "azure.storage.container_name": lambda: self.cfg_file.get_value("azure.storage.container_name"),
+
             "db.backup.interval.min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db.backup.interval.min"]),
             "db.backup.interval.max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db.backup.interval.max"]),
             "log.backup.interval.min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["log.backup.interval.min"]),
@@ -297,18 +320,19 @@ class BackupConfiguration:
             "backup.businesshours": lambda: BusinessHours(self.instance_metadata.get_tags())
         }
 
-    def get_value(self, key):
-        return self.data[key]()
-    def get_full_backup_interval_min(self):
-        return self.get_value("db.backup.interval.min")
-    def get_full_backup_interval_max(self):
-        return self.get_value("db.backup.interval.max")
-    def get_tran_backup_interval_min(self):
-        return self.get_value("log.backup.interval.min")
-    def get_tran_backup_interval_max(self):
-        return self.get_value("log.backup.interval.max")
-    def get_business_hours(self):
-        return self.get_value("backup.businesshours")
+    def get_value(self, key): return self.data[key]()
+
+    def get_vm_name(self): return self.get_value("vm_name")
+    def get_subscription_id(self): return self.get_value("subscription_id")
+    def get_resource_group_name(self): return self.get_value("resource_group_name")
+    def get_CID(self): return self.get_value("sap.CID")
+    def get_SID(self): return self.get_value("sap.SID")
+    def get_full_backup_interval_min(self): return self.get_value("db.backup.interval.min")
+    def get_full_backup_interval_max(self): return self.get_value("db.backup.interval.max")
+    def get_tran_backup_interval_min(self): return self.get_value("log.backup.interval.min")
+    def get_tran_backup_interval_max(self): return self.get_value("log.backup.interval.max")
+    def get_business_hours(self): return self.get_value("backup.businesshours")
+    
     def get_storage_client(self):
         block_blob_service = BlockBlobService(
             account_name=self.get_value("azure.storage.account_name"), 
@@ -316,6 +340,56 @@ class BackupConfiguration:
         _created = block_blob_service.create_container(container_name=self.get_value("azure.storage.container_name"))
         return block_blob_service
 
+class BackupAgent:
+    def __init__(self, config_filename):
+        self.backup_configuration = BackupConfiguration(config_filename)
+
+    def full_backup(self):
+        print "full_backup Not yet impl on VM {}".format(self.backup_configuration.get_vm_name())
+
+    def transaction_backup(self):
+        print "transaction_backup Not yet impl"
+
+    def restore(self, restore_point):
+        print "restore Not yet impl"
+
+class Runner:
+    @staticmethod
+    def configure_logging():
+        logfile_name='backup.log'
+        logging.basicConfig(
+            filename=logfile_name,
+            level=logging.INFO,
+            format="%(asctime)-15s pid-%(process)d line-%(lineno)d %(levelname)s: \"%(message)s\""
+            )
+        logging.getLogger('azure.storage').setLevel(logging.FATAL)
+
+    @staticmethod
+    def arg_parser():
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-c", "--config", help="the JSON config file")
+        parser.add_argument("-f", "--full-backup", help="Perform full backup", action="store_true")
+        parser.add_argument("-t", "--transaction-backup", help="Perform full backup", action="store_true")
+        parser.add_argument("-r", "--restore", help="Perform restore for date")
+        parser.add_argument("-u", "--unit-tests", help="Run unit tests", action="store_true")
+        return parser
+
+    @staticmethod
+    def main():
+        Runner.configure_logging()
+        parser = Runner.arg_parser() 
+        args = parser.parse_args()
+        if args.full_backup:
+            BackupAgent(args.config).full_backup()
+        elif args.transaction_backup:
+            BackupAgent(args.config).transaction_backup()
+        elif args.restore:
+            BackupAgent(args.config).restore(args.restore)
+        elif args.unit_tests:
+            import doctest
+            doctest.testmod(verbose=True)
+        else:
+            parser.print_help()
+
 if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
+    Runner.main()
