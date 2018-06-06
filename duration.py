@@ -345,11 +345,20 @@ class BackupAgent:
         self.backup_configuration = BackupConfiguration(config_filename)
 
     def full_backup(self):
-        print "full_backup Not yet impl on VM {}".format(self.backup_configuration.get_vm_name())
-        print "full backup allowed now: {}".format(self.backup_configuration.get_business_hours().is_backup_allowed_now_localtime())
+        try:
+            with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
+                print "full_backup Not yet impl on VM {}".format(self.backup_configuration.get_vm_name())
+                print "full backup allowed now: {}".format(self.backup_configuration.get_business_hours().is_backup_allowed_now_localtime())
+        except pid.PidFileAlreadyLockedError:
+            logging.warn("Skip full backup, already running")
 
     def transaction_backup(self):
-        print "transaction_backup Not yet impl"
+        try:
+            with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
+                print "transaction_backup Not yet impl"
+                logging.info("Run transaction log backup")
+        except pid.PidFileAlreadyLockedError:
+            logging.warn("Skip transaction log backup, already running")
 
     def restore(self, restore_point):
         print "restore Not yet impl"
