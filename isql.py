@@ -1,5 +1,6 @@
 #!/usr/bin/env python2.7
 
+import time
 import argparse
 import subprocess
 
@@ -10,6 +11,7 @@ def arg_parser():
     return parser
 
 def create(name, mb):
+    time.sleep(2)
     return subprocess.check_output(["/bin/dd", "if=/dev/urandom", "of={}".format(name), "count=1024", "bs={}".format(int(1024*mb))])
 
 def main():

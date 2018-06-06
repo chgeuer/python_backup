@@ -177,6 +177,16 @@ class Timing:
             hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
 
     @staticmethod
+    def time_diff(timestr_1, timestr_2):
+        """
+            >>> Timing.time_diff("20180106_120000", "20180106_120010")
+            datetime.timedelta(0, 10)
+            >>> Timing.time_diff("20180106_110000", "20180106_120010")
+            datetime.timedelta(0, 3610)
+        """
+        return Timing.timestr_to_datetime(timestr_2) - Timing.timestr_to_datetime(timestr_1)
+
+    @staticmethod
     def time_diff_in_seconds(timestr_1, timestr_2):
         """
             >>> Timing.time_diff_in_seconds("20180106_120000", "20180106_120010")
@@ -222,6 +232,14 @@ class Naming:
             start_timestamp=Timing.datetime_to_timestr(start_timestamp),
             idx=int(stripe_index), 
             cnt=int(stripe_count))
+
+    @staticmethod
+    def construct_blobname_prefix(dbname, is_full):
+        """
+            >>> Naming.construct_blobname_prefix(dbname="test1db", is_full=True)
+            'test1db_full_'
+        """
+        return "{dbname}_{type}_".format(dbname=dbname, type=Naming.backup_type_str(is_full))
 
     @staticmethod
     def construct_blobname(dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count):
@@ -333,11 +351,16 @@ class BackupConfiguration:
             >>> some_tuesday_evening = Timing.parse("20180605_215959")
             >>> cfg.get_business_hours().is_backup_allowed_time(some_tuesday_evening)
             True
-            >>> cfg.get_storage_client() != None
+            >>> cfg.storage_client != None
             True
         """
         self.cfg_file = BackupConfigurationFile(filename=config_filename)
         self.instance_metadata = AzureVMInstanceMetadata.create_instance()
+        self._block_blob_service = None
+
+        #
+        # This dict contains function callbacks (lambdas) to return the value based on the current value
+        #
         self.data = {
             "sap.CID": lambda: self.cfg_file.get_value("sap.CID"),
             "sap.SID": lambda: self.cfg_file.get_value("sap.SID"),
@@ -358,7 +381,6 @@ class BackupConfiguration:
         }
 
     def get_value(self, key): return self.data[key]()
-
     def get_vm_name(self): return self.get_value("vm_name")
     def get_subscription_id(self): return self.get_value("subscription_id")
     def get_resource_group_name(self): return self.get_value("resource_group_name")
@@ -370,13 +392,21 @@ class BackupConfiguration:
     def get_log_backup_interval_max(self): return self.get_value("log_backup_interval_max")
     def get_business_hours(self): return self.get_value("backup.businesshours")
     def get_databases_to_skip(self): return [ "dbccdb" ]
-    
-    def get_storage_client(self):
-        block_blob_service = BlockBlobService(
-            account_name=self.get_value("azure.storage.account_name"), 
-            account_key=self.get_value("azure.storage.account_key"))
-        _created = block_blob_service.create_container(container_name=self.get_value("azure.storage.container_name"))
-        return block_blob_service
+
+    def __get_azure_storage_account_name(self): return self.get_value("azure.storage.account_name")
+    def __get_azure_storage_account_key(self): return self.get_value("azure.storage.account_key")
+
+    @property 
+    def azure_storage_container_name(self): return self.get_value("azure.storage.container_name")
+
+    @property
+    def storage_client(self):
+        if not self._block_blob_service:
+            self._block_blob_service = BlockBlobService(
+                account_name=self.__get_azure_storage_account_name(), 
+                account_key=self.__get_azure_storage_account_key())
+            _created = self._block_blob_service.create_container(container_name=self.azure_storage_container_name)
+        return self._block_blob_service
 
 class DatabaseConnector:
     def __init__(self, backup_configuration):
@@ -399,22 +429,86 @@ class BackupAgent:
         for dbname in databases_to_backup:
             self.full_backup_single_db(dbname=dbname, force=force, skip_upload=skip_upload, output_dir=output_dir)
 
+    def existing_backups_for_db(self, dbname, is_full):
+        existing_blobs_dict = dict()
+        marker = None
+        while True:
+            results = self.backup_configuration.storage_client.list_blobs(
+                container_name=self.backup_configuration.azure_storage_container_name,
+                prefix=Naming.construct_blobname_prefix(dbname=dbname, is_full=is_full), 
+                marker=marker)
+            for blob in results:
+                blob_name=blob.name
+                end_time_of_existing_blob = Naming.parse_blobname(blob_name)[3]
+                if not existing_blobs_dict.has_key(end_time_of_existing_blob):
+                    existing_blobs_dict[end_time_of_existing_blob] = []
+                existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
+
+            if results.next_marker:
+                marker = results.next_marker
+            else:
+                break
+        return existing_blobs_dict
+
+    def latest_full_backup_timestamp(self, dbname):
+        existing_blobs_dict = self.existing_backups_for_db(dbname=dbname, is_full=True)
+        return sorted(existing_blobs_dict.keys(), cmp=lambda a,b: Timing.time_diff_in_seconds(b, a))[-1:][0]
+
+    @staticmethod
+    def should_run_full_backup(now_time, dbname, force, latest_full_backup_timestamp, business_hours, db_backup_interval_min, db_backup_interval_max):
+        """
+            >>> business_hours=BusinessHours.parse_tag_str(BusinessHours._BusinessHours__sample_data())
+            >>> db_backup_interval_min=ScheduleParser.parse_timedelta("24h")
+            >>> db_backup_interval_max=ScheduleParser.parse_timedelta("3d")
+            >>> really_old_backup      = Timing.parse("20180515_010000")
+            >>> recent_backup          = Timing.parse("20180606_010000")
+            >>> during_business_hours  = Timing.parse("20180606_150000")
+            >>> outside_business_hours = Timing.parse("20180606_220000")
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=recent_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            False
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=recent_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            True
+        """
+        allowed_by_business = business_hours.is_backup_allowed_time(now_time)
+        age_of_latest_backup_in_storage = Timing.time_diff(latest_full_backup_timestamp, Timing.datetime_to_timestr(now_time))
+        min_interval_allows_backup = age_of_latest_backup_in_storage > db_backup_interval_min
+        max_interval_requires_backup = age_of_latest_backup_in_storage > db_backup_interval_max
+        perform_full_backup = allowed_by_business and min_interval_allows_backup or max_interval_requires_backup or force
+
+
+        logging.info("Full backup requested. Current time: {now}. Last backup in storage: {last}. Age of backup {age}".format(now=Timing.datetime_to_timestr(now_time), last=latest_full_backup_timestamp, age=age_of_latest_backup_in_storage))
+        logging.info("Backup requirements: min=\"{min}\" max=\"{max}\"".format(min=db_backup_interval_min,max=db_backup_interval_max))
+        logging.info("Forced by user: {force}. Backup allowed by business hours: {allowed_by_business}. min_interval_allows_backup={min_interval_allows_backup}. max_interval_requires_backup={max_interval_requires_backup}".format(force=force, allowed_by_business=allowed_by_business, min_interval_allows_backup=min_interval_allows_backup, max_interval_requires_backup=max_interval_requires_backup))
+        logging.info("Decision to backup: {perform_full_backup}.".format(perform_full_backup=perform_full_backup))
+
+        return perform_full_backup
+
     def full_backup_single_db(self, dbname, force, skip_upload, output_dir):
+        if not BackupAgent.should_run_full_backup(
+                now_time=Timing.now_localtime(), 
+                dbname=dbname, force=force, 
+                latest_full_backup_timestamp=self.latest_full_backup_timestamp(dbname),
+                business_hours=self.backup_configuration.get_business_hours(), 
+                db_backup_interval_min=self.backup_configuration.get_db_backup_interval_min(), 
+                db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max()):
+            logging.info("Skipping backup")
+            return
+
         start_timestamp = Timing.now_localtime()
-        allowed_by_business = self.backup_configuration.get_business_hours().is_backup_allowed_time(start_timestamp)
-
-        print("Attempting full backup: dbname={dbname} start_timestamp={start_timestamp} allowed_by_business={allowed_by_business} force={force} skip_upload={skip_upload} output_dir=\"{output_dir}\" ".format(
-            dbname=dbname, start_timestamp=start_timestamp, allowed_by_business=allowed_by_business, 
-            force=force, skip_upload=skip_upload, output_dir=output_dir))
-
         file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp, stripe_index=1, stripe_count=1)
-
         subprocess.check_output(["./isql.py", "-f", file_name])
         end_timestamp = Timing.now_localtime()
-
         blob_name = Naming.construct_blobname(dbname=dbname, is_full=True, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=1, stripe_count=1)
         print("Upload {f} to {b}".format(f=file_name, b=blob_name))
 
+        source = "."
+        file_path = os.path.join(source, file_name)
+        self.backup_configuration.storage_client.create_blob_from_path(
+            container_name=self.backup_configuration.azure_storage_container_name, 
+            blob_name=blob_name, 
+            file_path=file_path,
+            validate_content=True, max_connections=4)
+        os.remove(file_path)
 
     def transaction_backup(self):
         print("transaction_backup Not yet impl")
