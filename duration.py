@@ -346,6 +346,7 @@ class BackupAgent:
 
     def full_backup(self):
         print "full_backup Not yet impl on VM {}".format(self.backup_configuration.get_vm_name())
+        print "full backup allowed now: {}".format(self.backup_configuration.get_business_hours().is_backup_allowed_now_localtime())
 
     def transaction_backup(self):
         print "transaction_backup Not yet impl"
