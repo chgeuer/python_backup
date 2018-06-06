@@ -1,5 +1,6 @@
 #!/usr/bin/env python2.7
 
+from __future__ import print_function
 import sys
 import os
 import platform
@@ -22,6 +23,9 @@ import pid
 from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.blob.models import ContentSettings
 from azure.common import AzureMissingResourceHttpError
+
+def eprint(*args, **kwargs):
+    __future__.print(*args, file=sys.stderr, **kwargs)
 
 class ScheduleParser:
     @staticmethod
@@ -346,18 +350,17 @@ class BackupAgent:
         self.backup_configuration = BackupConfiguration(config_filename)
 
     def full_backup(self, force=False):
-        time.sleep(5)
-        print "full_backup Not yet impl on VM {}".format(self.backup_configuration.get_vm_name())
-        print "force {}".format(force)
-        print "full backup allowed now: {}".format(self.backup_configuration.get_business_hours().is_backup_allowed_now_localtime())
+        print("full_backup Not yet impl on VM {}".format(self.backup_configuration.get_vm_name()))
+        print("force {}".format(force))
+        print("full backup allowed now: {}".format(self.backup_configuration.get_business_hours().is_backup_allowed_now_localtime()))
         logging.info("Run full log backup")
 
     def transaction_backup(self):
-        print "transaction_backup Not yet impl"
+        print("transaction_backup Not yet impl")
         logging.info("Run transaction log backup")
 
     def restore(self, restore_point):
-        print "restore Not yet impl restore for point {}".format(restore_point)
+        print("restore Not yet impl restore for point {}".format(restore_point))
 
 class Runner:
     @staticmethod
@@ -392,6 +395,7 @@ class Runner:
                     BackupAgent(args.config).full_backup(force=args.full_backup_force)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
+                eprint("Skipping full backup, there is a full-backup in flight currently")
         elif args.transaction_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
