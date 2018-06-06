@@ -147,18 +147,19 @@ class BusinessHours:
         return self.is_backup_allowed_dh(day=1 + time.tm_wday, hour=time.tm_hour)
 
     def is_backup_allowed_now_localtime(self):
-        return self.is_backup_allowed_time(time=time.localtime())
+        return self.is_backup_allowed_time(time=Timing.now_localtime())
 
 class Timing:
     time_format="%Y%m%d_%H%M%S"
 
     @staticmethod
-    def now_localtime():
-        return Timing.datetime_to_timestr(time.localtime())
+    def now_localtime(): return time.localtime()
 
     @staticmethod
-    def datetime_to_timestr(t):
-        return time.strftime(Timing.time_format, t)
+    def now_localtime_string(): return Timing.datetime_to_timestr(time.localtime())
+
+    @staticmethod
+    def datetime_to_timestr(t): return time.strftime(Timing.time_format, t)
 
     @staticmethod 
     def parse(time_str):
@@ -198,6 +199,16 @@ class Naming:
         return ({True:"full", False:"tran"})[is_full]
 
     @staticmethod
+    def type_str_is_full(type_str):
+        """
+            >>> Naming.type_str_is_full('full')
+            True
+            >>> Naming.type_str_is_full('tran')
+            False
+        """
+        return ({"full":True, "tran":False})[type_str]
+
+    @staticmethod
     def construct_filename(dbname, is_full, start_timestamp, stripe_index, stripe_count):
         """
             >>> Naming.construct_filename(dbname="test1db", is_full=True, start_timestamp=Timing.parse("20180601_112429"), stripe_index=2, stripe_count=101)
@@ -225,6 +236,28 @@ class Naming:
             end=Timing.datetime_to_timestr(end_timestamp),
             idx=int(stripe_index), 
             cnt=int(stripe_count))
+
+    @staticmethod
+    def parse_filename(filename):
+        """
+            >>> Naming.parse_filename('test1db_full_20180601_112429_S002-101.cdmp')
+            ('test1db', True, '20180601_112429', 2, 101)
+            >>> Naming.parse_filename('test1db_tran_20180601_112429_S02-08.cdmp')
+            ('test1db', False, '20180601_112429', 2, 8)
+        """
+        m=re.search(r'(?P<dbname>\S+?)_(?P<type>full|tran)_(?P<start>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
+        return (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), int(m.group('idx')), int(m.group('cnt')))
+
+    @staticmethod
+    def parse_blobname(filename):
+        """
+            >>> Naming.parse_blobname('test1db_full_20180601_112429--20180601_131234_S002-101.cdmp')
+            ('test1db', True, '20180601_112429', '20180601_131234', 2, 101)
+            >>> Naming.parse_blobname('test1db_tran_20180601_112429--20180601_131234_S2-008.cdmp')
+            ('test1db', False, '20180601_112429', '20180601_131234', 2, 8)
+        """
+        m=re.search(r'(?P<dbname>\S+?)_(?P<type>full|tran)_(?P<start>\d{8}_\d{6})--(?P<end>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
+        return (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), m.group('end'), int(m.group('idx')), int(m.group('cnt')))
 
 class AzureVMInstanceMetadata:
     @staticmethod
@@ -345,16 +378,43 @@ class BackupConfiguration:
         _created = block_blob_service.create_container(container_name=self.get_value("azure.storage.container_name"))
         return block_blob_service
 
+class DatabaseConnector:
+    def __init__(self, backup_configuration):
+        self.backup_configuration = backup_configuration
+
+    def list_databases(self):
+        return [ "A", "B", "C" ]
+
 class BackupAgent:
     def __init__(self, config_filename):
         self.backup_configuration = BackupConfiguration(config_filename)
 
-    def full_backup(self, force=False):
-        print("full_backup Not yet impl on VM {}".format(self.backup_configuration.get_vm_name()))
-        print("force {}".format(force))
-        print("full backup allowed now: {}".format(self.backup_configuration.get_business_hours().is_backup_allowed_now_localtime()))
-        logging.info("Run full log backup")
-        time.sleep(10)
+    def full_backup(self, force=False, skip_upload=False, output_dir=None, databases=None):
+        database_connector = DatabaseConnector(self.backup_configuration)
+        if databases != None:
+            databases_to_backup = databases.split(",")
+        else:
+            databases_to_backup = database_connector.list_databases()
+
+        for dbname in databases_to_backup:
+            self.full_backup_single_db(dbname=dbname, force=force, skip_upload=skip_upload, output_dir=output_dir)
+
+    def full_backup_single_db(self, dbname, force, skip_upload, output_dir):
+        start_timestamp = Timing.now_localtime()
+        allowed_by_business = self.backup_configuration.get_business_hours().is_backup_allowed_time(start_timestamp)
+
+        print("Attempting full backup: dbname={dbname} start_timestamp={start_timestamp} allowed_by_business={allowed_by_business} force={force} skip_upload={skip_upload} output_dir=\"{output_dir}\" ".format(
+            dbname=dbname, start_timestamp=start_timestamp, allowed_by_business=allowed_by_business, 
+            force=force, skip_upload=skip_upload, output_dir=output_dir))
+
+        file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp, stripe_index=1, stripe_count=1)
+
+        subprocess.check_output(["./isql.py", "-f", file_name])
+        end_timestamp = Timing.now_localtime()
+
+        blob_name = Naming.construct_blobname(dbname=dbname, is_full=True, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=1, stripe_count=1)
+        print("Upload {f} to {b}".format(f=file_name, b=blob_name))
+
 
     def transaction_backup(self):
         print("transaction_backup Not yet impl")
@@ -377,12 +437,15 @@ class Runner:
     @staticmethod
     def arg_parser():
         parser = argparse.ArgumentParser()
-        parser.add_argument("-c", "--config", help="the path to the config file")
-        parser.add_argument("-f", "--full-backup", help="Perform full backup", action="store_true")
+        parser.add_argument("-c",  "--config", help="the path to the config file")
+        parser.add_argument("-f",  "--full-backup", help="Perform full backup", action="store_true")
         parser.add_argument("-ff", "--full-backup-force", help="Perform forceful full backup (ignores business hour or age of last backup)", action="store_true")
-        parser.add_argument("-t", "--transaction-backup", help="Perform full backup", action="store_true")
-        parser.add_argument("-r", "--restore", help="Perform restore for date")
-        parser.add_argument("-u", "--unit-tests", help="Run unit tests", action="store_true")
+        parser.add_argument("-s",  "--skip-upload", help="Skip uploads of backup files", action="store_true")
+        parser.add_argument("-o",  "--output-dir", help="Specify target folder for backup files")
+        parser.add_argument("-db", "--databases", help="Select databases to backup or restore")
+        parser.add_argument("-t",  "--transaction-backup", help="Perform full backup", action="store_true")
+        parser.add_argument("-r",  "--restore", help="Perform restore for date")
+        parser.add_argument("-u",  "--unit-tests", help="Run unit tests", action="store_true")
         return parser
 
     @staticmethod
@@ -393,7 +456,11 @@ class Runner:
         if args.full_backup or args.full_backup_force:
             try:
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
-                    BackupAgent(args.config).full_backup(force=args.full_backup_force)
+                    BackupAgent(args.config).full_backup(
+                        force=args.full_backup_force, 
+                        skip_upload=args.skip_upload,
+                        output_dir=args.output_dir,
+                        databases=args.databases)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
                 eprint("Skipping full backup, there is a full-backup in flight currently")
@@ -407,7 +474,8 @@ class Runner:
             BackupAgent(args.config).restore(args.restore)
         elif args.unit_tests:
             import doctest
-            doctest.testmod(verbose=True)
+            doctest.testmod()
+            # doctest.testmod(verbose=True)
         else:
             parser.print_help()
 

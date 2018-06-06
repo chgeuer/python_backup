@@ -79,10 +79,6 @@ class BackupTimestampBlob:
             return "19000101_000000"
 
 class BackupAgent:
-    def __init__(self, filename):
-        self.storage_cfg = StorageConfiguration(filename)
-        self.instance_metadata = AzureVMInstanceMetadata.create_instance()
-
     def backup(self):
         timestamp_file_full = BackupTimestampBlob(
             storage_cfg=self.storage_cfg, 
