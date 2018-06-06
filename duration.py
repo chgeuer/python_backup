@@ -273,6 +273,28 @@ class Naming:
         m=re.search(r'(?P<dbname>\S+?)_(?P<type>full|tran)_(?P<start>\d{8}_\d{6})--(?P<end>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
         return (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), m.group('end'), int(m.group('idx')), int(m.group('cnt')))
 
+    @staticmethod
+    def blobname_to_filename(blobname):
+        parts = Naming.parse_blobname(blobname)
+        return Naming.construct_filename(
+                    dbname=parts[0],
+                    is_full=parts[1],
+                    start_timestamp=Timing.parse(parts[2]),
+                    # skip parts[3] which is end-timestamp
+                    stripe_index=parts[4],
+                    stripe_count=parts[5])
+
+class BackupBlobName:
+    def __init__(self, blobname):
+        self.blobname = blobname
+        parts = Naming.parse_blobname(self.blobname)
+        self.dbname = parts[0]
+        self.is_full = parts[1]
+        self.start_timestamp = parts[2]
+        self.end_timestamp = parts[3]
+        self.stripe_index = parts[4]
+        self.stripe_count = parts[5]
+
 class AzureVMInstanceMetadata:
     @staticmethod
     def request_metadata(api_version="2017-12-01"):
@@ -409,7 +431,7 @@ class DatabaseConnector:
         self.backup_configuration = backup_configuration
 
     def list_databases(self):
-        return [ "A", "B", "C" ]
+        return [ "A" ]
 
 class BackupAgent:
     def __init__(self, config_filename):
@@ -440,6 +462,27 @@ class BackupAgent:
                     existing_blobs_dict[end_time_of_existing_blob] = []
                 existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
 
+            if results.next_marker:
+                marker = results.next_marker
+            else:
+                break
+        return existing_blobs_dict
+
+    def existing_backups(self):
+        existing_blobs_dict = dict()
+        marker = None
+        while True:
+            results = self.backup_configuration.storage_client.list_blobs(
+                container_name=self.backup_configuration.azure_storage_container_name,
+                marker=marker)
+
+            for blob in results:
+                blob_name=blob.name
+                end_time_of_existing_blob = Naming.parse_blobname(blob_name)[3]
+                if not existing_blobs_dict.has_key(end_time_of_existing_blob):
+                    existing_blobs_dict[end_time_of_existing_blob] = []
+                existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
+                
             if results.next_marker:
                 marker = results.next_marker
             else:
@@ -545,6 +588,14 @@ class BackupAgent:
         print("transaction_backup Not yet impl")
         logging.info("Run transaction log backup")
 
+    def list_backups(self):
+        baks_dict = self.existing_backups()
+        for end_timestamp in baks_dict.keys():
+            stripes = baks_dict[end_timestamp]
+            for blobname in stripes:
+                filename = Naming.blobname_to_filename(blobname)
+                print("{}".format(filename))
+
     def restore(self, restore_point):
         print("restore Not yet impl restore for point {}".format(restore_point))
 
@@ -570,6 +621,7 @@ class Runner:
         parser.add_argument("-db", "--databases", help="Select databases to backup or restore")
         parser.add_argument("-t",  "--transaction-backup", help="Perform full backup", action="store_true")
         parser.add_argument("-r",  "--restore", help="Perform restore for date")
+        parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
         parser.add_argument("-u",  "--unit-tests", help="Run unit tests", action="store_true")
         return parser
 
@@ -597,6 +649,8 @@ class Runner:
                 logging.warn("Skip transaction log backup, already running")
         elif args.restore:
             BackupAgent(args.config).restore(args.restore)
+        elif args.list_backups:
+            BackupAgent(args.config).list_backups()
         elif args.unit_tests:
             import doctest
             doctest.testmod()
