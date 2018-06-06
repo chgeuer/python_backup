@@ -25,7 +25,7 @@ from azure.storage.blob.models import ContentSettings
 from azure.common import AzureMissingResourceHttpError
 
 def eprint(*args, **kwargs):
-    __future__.print(*args, file=sys.stderr, **kwargs)
+    print(*args, file=sys.stderr, **kwargs)
 
 class ScheduleParser:
     @staticmethod
