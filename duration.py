@@ -354,6 +354,7 @@ class BackupAgent:
         print("force {}".format(force))
         print("full backup allowed now: {}".format(self.backup_configuration.get_business_hours().is_backup_allowed_now_localtime()))
         logging.info("Run full log backup")
+        time.sleep(10)
 
     def transaction_backup(self):
         print("transaction_backup Not yet impl")
@@ -376,7 +377,7 @@ class Runner:
     @staticmethod
     def arg_parser():
         parser = argparse.ArgumentParser()
-        parser.add_argument("-c", "--config", help="the JSON config file")
+        parser.add_argument("-c", "--config", help="the path to the config file")
         parser.add_argument("-f", "--full-backup", help="Perform full backup", action="store_true")
         parser.add_argument("-ff", "--full-backup-force", help="Perform forceful full backup (ignores business hour or age of last backup)", action="store_true")
         parser.add_argument("-t", "--transaction-backup", help="Perform full backup", action="store_true")
