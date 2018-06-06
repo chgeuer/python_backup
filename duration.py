@@ -66,24 +66,24 @@ class ScheduleParser:
         return reduce(lambda x, y: x + y, durations)
 
 class BusinessHours:
-    standard_prefix="db.backup.window"
+    standard_prefix="db_backup_window"
 
     @staticmethod
     def __sample_data():
         return (
-            "db.backup.window.1:111111 111000 000000 011111;"
-            "db.backup.window.2:111111 111000 000000 011111;"
-            "db.backup.window.3:111111 111000 000000 011111;"
-            "db.backup.window.4:111111 111000 000000 011111;"
-            "db.backup.window.5:111111 111000 000000 011111;"
-            "db.backup.window.6:111111 111111 111111 111111;"
-            "db.backup.window.7:111111 111111 111111 111111"
+            "db_backup_window_1:111111 111000 000000 011111;"
+            "db_backup_window_2:111111 111000 000000 011111;"
+            "db_backup_window_3:111111 111000 000000 011111;"
+            "db_backup_window_4:111111 111000 000000 011111;"
+            "db_backup_window_5:111111 111000 000000 011111;"
+            "db_backup_window_6:111111 111111 111111 111111;"
+            "db_backup_window_7:111111 111111 111111 111111"
             )
 
     @staticmethod
     def parse_tag_str(tags_value, prefix=standard_prefix):
         """
-            >>> BusinessHours.parse_tag_str(BusinessHours._BusinessHours__sample_data(), 'db.backup.window').tags['db.backup.window.1']
+            >>> BusinessHours.parse_tag_str(BusinessHours._BusinessHours__sample_data(), 'db_backup_window').tags['db_backup_window_1']
             '111111 111000 000000 011111'
         """
         tags = dict(kvp.split(":", 1) for kvp in (tags_value.split(";")))
@@ -109,7 +109,7 @@ class BusinessHours:
         self.prefix = prefix
         self.hours = dict()
         for day in range(1, 8):
-            x = tags["{prefix}.{day}".format(prefix=prefix, day=day)]
+            x = tags["{prefix}_{day}".format(prefix=prefix, day=day)]
             self.hours[day] = BusinessHours.parse_day(x)
     
     def is_backup_allowed_dh(self, day, hour):
@@ -291,7 +291,7 @@ class BackupConfiguration:
             >>> cfg = BackupConfiguration(config_filename="config.txt")
             >>> cfg.get_value("sap.CID")
             'ABC'
-            >>> cfg.get_full_backup_interval_min()
+            >>> cfg.get_db_backup_interval_min()
             datetime.timedelta(1)
             >>> some_tuesday_evening = Timing.parse("20180605_215959")
             >>> cfg.get_business_hours().is_backup_allowed_time(some_tuesday_evening)
@@ -313,10 +313,10 @@ class BackupConfiguration:
             "azure.storage.account_key": lambda: self.cfg_file.get_value("azure.storage.account_key"),
             "azure.storage.container_name": lambda: self.cfg_file.get_value("azure.storage.container_name"),
 
-            "db.backup.interval.min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db.backup.interval.min"]),
-            "db.backup.interval.max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db.backup.interval.max"]),
-            "log.backup.interval.min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["log.backup.interval.min"]),
-            "log.backup.interval.max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["log.backup.interval.max"]),
+            "db_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db_backup_interval_min"]),
+            "db_backup_interval_max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db_backup_interval_max"]),
+            "log_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["log_backup_interval_min"]),
+            "log_backup_interval_max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["log_backup_interval_max"]),
             "backup.businesshours": lambda: BusinessHours(self.instance_metadata.get_tags())
         }
 
@@ -327,10 +327,10 @@ class BackupConfiguration:
     def get_resource_group_name(self): return self.get_value("resource_group_name")
     def get_CID(self): return self.get_value("sap.CID")
     def get_SID(self): return self.get_value("sap.SID")
-    def get_full_backup_interval_min(self): return self.get_value("db.backup.interval.min")
-    def get_full_backup_interval_max(self): return self.get_value("db.backup.interval.max")
-    def get_tran_backup_interval_min(self): return self.get_value("log.backup.interval.min")
-    def get_tran_backup_interval_max(self): return self.get_value("log.backup.interval.max")
+    def get_db_backup_interval_min(self): return self.get_value("db_backup_interval_min")
+    def get_db_backup_interval_max(self): return self.get_value("db_backup_interval_max")
+    def get_log_backup_interval_min(self): return self.get_value("log_backup_interval_min")
+    def get_log_backup_interval_max(self): return self.get_value("log_backup_interval_max")
     def get_business_hours(self): return self.get_value("backup.businesshours")
     
     def get_storage_client(self):

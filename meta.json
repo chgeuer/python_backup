@@ -4,7 +4,7 @@
         "resourceGroupName": "backuptest",
         "name": "christianlaptop",
         "vmId": "42c2b1a2-6db9-4955-9ad5-cc5ccc21279c",
-        "tags":"db.backup.interval.min:1d;db.backup.interval.max:3d;log.backup.interval.min:10m;log.backup.interval.max:30m;db.backup.window.1:111111 111000 000000 011111;db.backup.window.2:111111 111000 000000 011111;db.backup.window.3:111111 111000 000000 011111;db.backup.window.4:111111 111000 000000 011111;db.backup.window.5:111111 111000 000000 011111;db.backup.window.6:111111 111111 111111 111111;db.backup.window.7:111111 111111 111111 111111"
+        "tags":"db_backup_interval_min:1d;db_backup_interval_max:3d;log_backup_interval_min:10m;log_backup_interval_max:30m;db_backup_window_1:111111 111000 000000 011111;db_backup_window_2:111111 111000 000000 011111;db_backup_window_3:111111 111000 000000 011111;db_backup_window_4:111111 111000 000000 011111;db_backup_window_5:111111 111000 000000 011111;db_backup_window_6:111111 111111 111111 111111;db_backup_window_7:111111 111111 111111 111111"
     },
     "network": {"interface": [{"ipv4": {"ipAddress": [{"publicIpAddress": "40.113.129.65"}]}}]}
 }
