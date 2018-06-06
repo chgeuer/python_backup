@@ -346,24 +346,17 @@ class BackupAgent:
         self.backup_configuration = BackupConfiguration(config_filename)
 
     def full_backup(self, force=False):
-        try:
-            with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
-                print "full_backup Not yet impl on VM {}".format(self.backup_configuration.get_vm_name())
-                print "force {}".format(force)
-                print "full backup allowed now: {}".format(self.backup_configuration.get_business_hours().is_backup_allowed_now_localtime())
-        except pid.PidFileAlreadyLockedError:
-            logging.warn("Skip full backup, already running")
+        print "full_backup Not yet impl on VM {}".format(self.backup_configuration.get_vm_name())
+        print "force {}".format(force)
+        print "full backup allowed now: {}".format(self.backup_configuration.get_business_hours().is_backup_allowed_now_localtime())
+        logging.info("Run full log backup")
 
     def transaction_backup(self):
-        try:
-            with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
-                print "transaction_backup Not yet impl"
-                logging.info("Run transaction log backup")
-        except pid.PidFileAlreadyLockedError:
-            logging.warn("Skip transaction log backup, already running")
+        print "transaction_backup Not yet impl"
+        logging.info("Run transaction log backup")
 
     def restore(self, restore_point):
-        print "restore Not yet impl"
+        print "restore Not yet impl restore for point {}".format(restore_point)
 
 class Runner:
     @staticmethod
@@ -393,9 +386,17 @@ class Runner:
         parser = Runner.arg_parser() 
         args = parser.parse_args()
         if args.full_backup or args.full_backup_force:
-            BackupAgent(args.config).full_backup(force=args.full_backup_force)
+            try:
+                with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
+                    BackupAgent(args.config).full_backup(force=args.full_backup_force)
+            except pid.PidFileAlreadyLockedError:
+                logging.warn("Skip full backup, already running")
         elif args.transaction_backup:
-            BackupAgent(args.config).transaction_backup()
+            try:
+                with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
+                    BackupAgent(args.config).transaction_backup()
+            except pid.PidFileAlreadyLockedError:
+                logging.warn("Skip transaction log backup, already running")
         elif args.restore:
             BackupAgent(args.config).restore(args.restore)
         elif args.unit_tests:
