@@ -1,29 +1,33 @@
 #!/usr/bin/env python2.7
 
+import sys
 import time
 import argparse
 import subprocess
 
 def arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--backup-full", help="Perform full backup")
-    parser.add_argument("-t", "--backup-transactions", help="Perform transaction backup")
+    parser.add_argument("-U", help="<username>")
+    parser.add_argument("-P", help="<password>")
+    parser.add_argument("-S", help="<SID>")
+    parser.add_argument("-w", help="<width>")
+    parser.add_argument("-b", help="<suppress_headers>")
+    parser.add_argument("-f", "--filename")
     return parser
 
 def create(name, mb):
+    with open(name, mode='wt') as file:
+        for line in sys.stdin:
+            file.write(line)
+
     time.sleep(2)
-    return subprocess.check_output(["/bin/dd", "if=/dev/urandom", "of={}".format(name), "count=1024", "bs={}".format(int(1024*mb))])
+    # return subprocess.check_output(["/bin/dd", "if=/dev/urandom", "of={}".format(name), "count=1024", "bs={}".format(int(1024*mb))])
 
 def main():
     parser = arg_parser() 
     args = parser.parse_args()
-    if args.backup_full:
-        create(args.backup_full, 1)
-    elif args.backup_transactions:
-        create(args.backup_transactions, 1)
-    else:
-        parser.print_help()
-        exit()
+
+    create(args.filename, 1)
 
 if __name__ == '__main__':
     main()

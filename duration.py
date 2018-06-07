@@ -25,7 +25,7 @@ from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.blob.models import ContentSettings
 from azure.common import AzureMissingResourceHttpError
 
-def eprint(*args, **kwargs):
+def printe(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 class ScheduleParser:
@@ -436,12 +436,36 @@ class DatabaseConnector:
     def __init__(self, backup_configuration):
         self.backup_configuration = backup_configuration
 
-    @staticmethod
-    def get_database_password(sid):
+    def get_database_password(self, sid):
+        sid = self.backup_configuration.get_SID()
         return subprocess.check_output(["/sybase/{sid}/dba/bin/dbsp".format(sid=sid), "***REMOVED***"])
 
     def list_databases(self):
         return [ "A" ]
+
+    def determine_full_database_backup_stripe_count(self, dbname):
+        return 1
+
+    def create_full_backup(self, dbname, start_timestamp, stripe_count):
+        stdout = ""
+        stderr = ""
+        for stripe_index in range(1, stripe_count + 1):
+            file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+            o, e = DatabaseConnector.call_process(["./isql.py", "-f", file_name], stdin="Bunch of SQL here")
+            stdout = stdout + o
+            stderr = stderr + e
+        return (stdout, stderr)
+
+    @staticmethod
+    def call_process(command_line, stdin):
+        # subprocess.check_output(["./isql.py", "-f", file_name])
+        p = subprocess.Popen(
+            command_line, 
+            stdin=subprocess.PIPE, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate(stdin)
+        return (stdout, stderr)
 
 class BackupAgent:
     """
@@ -584,21 +608,30 @@ class BackupAgent:
             logging.info("Skipping backup")
             return
 
-        start_timestamp = Timing.now_localtime()
-        file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp, stripe_index=1, stripe_count=1)
-        subprocess.check_output(["./isql.py", "-f", file_name])
-        end_timestamp = Timing.now_localtime()
-        blob_name = Naming.construct_blobname(dbname=dbname, is_full=True, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=1, stripe_count=1)
-        print("Upload {f} to {b}".format(f=file_name, b=blob_name))
+        db_connector = DatabaseConnector(self.backup_configuration)
+        stripe_count = db_connector.determine_full_database_backup_stripe_count(dbname=dbname)
 
-        source = "."
-        file_path = os.path.join(source, file_name)
-        self.backup_configuration.storage_client.create_blob_from_path(
-            container_name=self.backup_configuration.azure_storage_container_name, 
-            blob_name=blob_name, 
-            file_path=file_path,
-            validate_content=True, max_connections=4)
-        os.remove(file_path)
+        start_timestamp = Timing.now_localtime()
+        stdout, stderr = db_connector.create_full_backup(dbname=dbname, start_timestamp=start_timestamp, stripe_count=stripe_count)
+        end_timestamp = Timing.now_localtime()
+
+        print(stdout)
+        printe(stderr)
+
+        for stripe_index in range(1, stripe_count + 1):
+            file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+            blob_name = Naming.construct_blobname(dbname=dbname, is_full=True, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+            print("Upload {f} to {b}".format(f=file_name, b=blob_name))
+
+            source = "."
+            file_path = os.path.join(source, file_name)
+            self.backup_configuration.storage_client.create_blob_from_path(
+                container_name=self.backup_configuration.azure_storage_container_name, 
+                blob_name=blob_name, 
+                file_path=file_path,
+                validate_content=True, 
+                max_connections=4)
+            os.remove(file_path)
 
     def transaction_backup(self):
         print("transaction_backup Not yet impl")

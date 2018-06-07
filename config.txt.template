@@ -1,0 +1,6 @@
+# Some comment
+sap.SID:                       JLD
+sap.CID:                       ABC
+azure.storage.account_name:    erlang
+azure.storage.account_key:     hkfhsdkjfhkshsfhkjshkjfd/Yn8k85MQ==
+azure.storage.container_name:  foo
