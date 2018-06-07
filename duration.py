@@ -444,6 +444,9 @@ class DatabaseConnector:
         return [ "A" ]
 
 class BackupAgent:
+    """
+        The concrete backup business logic
+    """
     def __init__(self, config_filename):
         self.backup_configuration = BackupConfiguration(config_filename)
 
@@ -467,7 +470,8 @@ class BackupAgent:
                 marker=marker)
             for blob in results:
                 blob_name=blob.name
-                end_time_of_existing_blob = Naming.parse_blobname(blob_name)[3]
+                parts = Naming.parse_blobname(blob_name)
+                end_time_of_existing_blob = parts[3]
                 if not existing_blobs_dict.has_key(end_time_of_existing_blob):
                     existing_blobs_dict[end_time_of_existing_blob] = []
                 existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
@@ -478,7 +482,7 @@ class BackupAgent:
                 break
         return existing_blobs_dict
 
-    def existing_backups(self):
+    def existing_backups(self, databases=[]):
         existing_blobs_dict = dict()
         marker = None
         while True:
@@ -488,10 +492,12 @@ class BackupAgent:
 
             for blob in results:
                 blob_name=blob.name
-                end_time_of_existing_blob = Naming.parse_blobname(blob_name)[3]
-                if not existing_blobs_dict.has_key(end_time_of_existing_blob):
-                    existing_blobs_dict[end_time_of_existing_blob] = []
-                existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
+                parts = Naming.parse_blobname(blob_name)
+                end_time_of_existing_blob = parts[3]
+                if len(databases) == 0 or parts[0] in databases:
+                    if not existing_blobs_dict.has_key(end_time_of_existing_blob):
+                        existing_blobs_dict[end_time_of_existing_blob] = []
+                    existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
 
             if results.next_marker:
                 marker = results.next_marker
@@ -505,9 +511,9 @@ class BackupAgent:
 
     @staticmethod
     def should_run_full_backup(now_time, dbname, force, latest_full_backup_timestamp, business_hours, db_backup_interval_min, db_backup_interval_max):
-        # >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=same_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-        # False
         """
+            Determine whether a backup should be executed. 
+
             >>> business_hours=BusinessHours.parse_tag_str(BusinessHours._BusinessHours__sample_data())
             >>> db_backup_interval_min=ScheduleParser.parse_timedelta("24h")
             >>> db_backup_interval_max=ScheduleParser.parse_timedelta("3d")
@@ -598,8 +604,8 @@ class BackupAgent:
         print("transaction_backup Not yet impl")
         logging.info("Run transaction log backup")
 
-    def list_backups(self):
-        baks_dict = self.existing_backups()
+    def list_backups(self, databases = []):
+        baks_dict = self.existing_backups(databases=databases)
         for end_timestamp in baks_dict.keys():
             # http://mark-dot-net.blogspot.com/2014/03/python-equivalents-of-linq-methods.html
             stripes = baks_dict[end_timestamp]
@@ -630,7 +636,7 @@ class Runner:
         parser.add_argument("-ff", "--full-backup-force", help="Perform forceful full backup (ignores business hour or age of last backup)", action="store_true")
         parser.add_argument("-s",  "--skip-upload", help="Skip uploads of backup files", action="store_true")
         parser.add_argument("-o",  "--output-dir", help="Specify target folder for backup files")
-        parser.add_argument("-db", "--databases", help="Select databases to backup or restore")
+        parser.add_argument("-db", "--databases", help="Select databases to backup or restore ('--databases A,B,C')")
         parser.add_argument("-t",  "--transaction-backup", help="Perform full backup", action="store_true")
         parser.add_argument("-r",  "--restore", help="Perform restore for date")
         parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
@@ -642,6 +648,12 @@ class Runner:
         Runner.configure_logging()
         parser = Runner.arg_parser() 
         args = parser.parse_args()
+
+        if args.databases:
+            databases =  args.databases.split(",")
+        else:
+            databases = []
+
         if args.full_backup or args.full_backup_force:
             try:
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
@@ -662,7 +674,7 @@ class Runner:
         elif args.restore:
             BackupAgent(args.config).restore(args.restore)
         elif args.list_backups:
-            BackupAgent(args.config).list_backups()
+            BackupAgent(args.config).list_backups(databases=databases)
         elif args.unit_tests:
             import doctest
             #doctest.testmod()
@@ -671,5 +683,4 @@ class Runner:
             parser.print_help()
 
 if __name__ == "__main__":
-    DatabaseConnector.get_database_password("AZU")
-    #Runner.main()
+    Runner.main()
