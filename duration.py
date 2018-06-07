@@ -18,6 +18,7 @@ import requests
 import logging
 import unittest
 import socket
+from itertools import groupby
 
 import pid
 from azure.storage.blob import BlockBlobService, PublicAccess
@@ -295,6 +296,12 @@ class BackupBlobName:
         self.stripe_index = parts[4]
         self.stripe_count = parts[5]
 
+class DevelopmentSettings:
+    @staticmethod
+    @property
+    def is_christians_developer_box():
+        return socket.gethostname() == "erlang"
+
 class AzureVMInstanceMetadata:
     @staticmethod
     def request_metadata(api_version="2017-12-01"):
@@ -310,8 +317,7 @@ class AzureVMInstanceMetadata:
             >>> meta.vm_name
             'somevm'
         """
-        christian_demo_machine = socket.gethostname() == "erlang" # TODO remove the local machine check here...
-        if christian_demo_machine:
+        if DevelopmentSettings.is_christians_developer_box:
             return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(AzureVMInstanceMetadata.__get_test_data("meta.json")))
         else:
             return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata())
@@ -430,6 +436,10 @@ class DatabaseConnector:
     def __init__(self, backup_configuration):
         self.backup_configuration = backup_configuration
 
+    @staticmethod
+    def get_database_password(sid):
+        return subprocess.check_output(["/sybase/{sid}/dba/bin/dbsp".format(sid=sid), "***REMOVED***"])
+
     def list_databases(self):
         return [ "A" ]
 
@@ -482,7 +492,7 @@ class BackupAgent:
                 if not existing_blobs_dict.has_key(end_time_of_existing_blob):
                     existing_blobs_dict[end_time_of_existing_blob] = []
                 existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
-                
+
             if results.next_marker:
                 marker = results.next_marker
             else:
@@ -591,10 +601,12 @@ class BackupAgent:
     def list_backups(self):
         baks_dict = self.existing_backups()
         for end_timestamp in baks_dict.keys():
+            # http://mark-dot-net.blogspot.com/2014/03/python-equivalents-of-linq-methods.html
             stripes = baks_dict[end_timestamp]
-            for blobname in stripes:
-                filename = Naming.blobname_to_filename(blobname)
-                print("{}".format(filename))
+            stripes = map(lambda blobname: { "blobname":blobname, "filename": Naming.blobname_to_filename(blobname), "parts": Naming.parse_blobname(blobname) }, stripes)
+            groupedData = groupby(stripes, lambda s: "Database \"{dbname}\" {type} finished {end}".format(dbname=s["parts"][0], type=Naming.backup_type_str(s["parts"][1]), end=s["parts"][3]))
+            for group, values in groupedData:
+                print("{backup} {files}".format(backup=group, files=list(map(lambda s: s["parts"][4], values))))
 
     def restore(self, restore_point):
         print("restore Not yet impl restore for point {}".format(restore_point))
@@ -653,10 +665,11 @@ class Runner:
             BackupAgent(args.config).list_backups()
         elif args.unit_tests:
             import doctest
-            doctest.testmod()
-            # doctest.testmod(verbose=True)
+            #doctest.testmod()
+            doctest.testmod(verbose=True)
         else:
             parser.print_help()
 
 if __name__ == "__main__":
-    Runner.main()
+    DatabaseConnector.get_database_password("AZU")
+    #Runner.main()
