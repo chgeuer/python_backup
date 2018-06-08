@@ -453,11 +453,37 @@ class DatabaseConnector:
     @staticmethod
     def create_sql_statement(local_directory, dbname, is_full, start_timestamp, stripe_count):
         """
-            >>> print(DatabaseConnector.create_sql_statement(
-                local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
             use master
             go
             dump database to /tmp/AZU_full_20180629_124500_S001-001.cdmp
+            with compression = '101'
+            go
+
+            >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
+            use master
+            go
+            dump database to /tmp/AZU_full_20180629_124500_S001-004.cdmp
+                stripe on /tmp/AZU_full_20180629_124500_S002-004.cdmp
+                stripe on /tmp/AZU_full_20180629_124500_S003-004.cdmp
+                stripe on /tmp/AZU_full_20180629_124500_S004-004.cdmp
+            with compression = '101'
+            go
+
+            >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            use master
+            go
+            dump transaction to /tmp/AZU_tran_20180629_124500_S001-001.cdmp
+            with compression = '101'
+            go
+
+            >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
+            use master
+            go
+            dump transaction to /tmp/AZU_tran_20180629_124500_S001-004.cdmp
+                stripe on /tmp/AZU_tran_20180629_124500_S002-004.cdmp
+                stripe on /tmp/AZU_tran_20180629_124500_S003-004.cdmp
+                stripe on /tmp/AZU_tran_20180629_124500_S004-004.cdmp
             with compression = '101'
             go
         """
