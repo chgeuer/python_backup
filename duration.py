@@ -444,7 +444,7 @@ class DatabaseConnector:
         return [ "A" ]
 
     def determine_full_database_backup_stripe_count(self, dbname):
-        return 1
+        return 9
 
     def create_full_backup(self, dbname, start_timestamp, stripe_count):
         stdout = ""
@@ -480,6 +480,7 @@ class BackupAgent:
             databases_to_backup = databases.split(",")
         else:
             databases_to_backup = database_connector.list_databases()
+           # TODO excluded data bases
 
         for dbname in databases_to_backup:
             self.full_backup_single_db(dbname=dbname, force=force, skip_upload=skip_upload, output_dir=output_dir)
@@ -531,6 +532,9 @@ class BackupAgent:
 
     def latest_full_backup_timestamp(self, dbname):
         existing_blobs_dict = self.existing_backups_for_db(dbname=dbname, is_full=True)
+        if len(existing_blobs_dict.keys()) == 0:
+            return "20000000_000000"
+        
         return sorted(existing_blobs_dict.keys(), cmp=lambda a,b: Timing.time_diff_in_seconds(b, a))[-1:][0]
 
     @staticmethod
@@ -590,10 +594,10 @@ class BackupAgent:
         max_interval_requires_backup = age_of_latest_backup_in_storage > db_backup_interval_max
         perform_full_backup = (allowed_by_business and min_interval_allows_backup or max_interval_requires_backup or force)
 
-        logging.info("Full backup requested. Current time: {now}. Last backup in storage: {last}. Age of backup {age}".format(now=Timing.datetime_to_timestr(now_time), last=latest_full_backup_timestamp, age=age_of_latest_backup_in_storage))
-        logging.info("Backup requirements: min=\"{min}\" max=\"{max}\"".format(min=db_backup_interval_min,max=db_backup_interval_max))
-        logging.info("Forced by user: {force}. Backup allowed by business hours: {allowed_by_business}. min_interval_allows_backup={min_interval_allows_backup}. max_interval_requires_backup={max_interval_requires_backup}".format(force=force, allowed_by_business=allowed_by_business, min_interval_allows_backup=min_interval_allows_backup, max_interval_requires_backup=max_interval_requires_backup))
-        logging.info("Decision to backup: {perform_full_backup}.".format(perform_full_backup=perform_full_backup))
+        # logging.info("Full backup requested. Current time: {now}. Last backup in storage: {last}. Age of backup {age}".format(now=Timing.datetime_to_timestr(now_time), last=latest_full_backup_timestamp, age=age_of_latest_backup_in_storage))
+        # logging.info("Backup requirements: min=\"{min}\" max=\"{max}\"".format(min=db_backup_interval_min,max=db_backup_interval_max))
+        # logging.info("Forced by user: {force}. Backup allowed by business hours: {allowed_by_business}. min_interval_allows_backup={min_interval_allows_backup}. max_interval_requires_backup={max_interval_requires_backup}".format(force=force, allowed_by_business=allowed_by_business, min_interval_allows_backup=min_interval_allows_backup, max_interval_requires_backup=max_interval_requires_backup))
+        # logging.info("Decision to backup: {perform_full_backup}.".format(perform_full_backup=perform_full_backup))
 
         return perform_full_backup
 
@@ -605,7 +609,8 @@ class BackupAgent:
                 business_hours=self.backup_configuration.get_business_hours(), 
                 db_backup_interval_min=self.backup_configuration.get_db_backup_interval_min(), 
                 db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max()):
-            logging.info("Skipping backup")
+            logging.info("Skipping backup of database {dbname}".format(dbname=dbname))
+            print("Skipping backup of database {dbname}".format(dbname=dbname))
             return
 
         db_connector = DatabaseConnector(self.backup_configuration)
@@ -627,8 +632,8 @@ class BackupAgent:
             file_path = os.path.join(source, file_name)
             self.backup_configuration.storage_client.create_blob_from_path(
                 container_name=self.backup_configuration.azure_storage_container_name, 
-                blob_name=blob_name, 
                 file_path=file_path,
+                blob_name=blob_name, 
                 validate_content=True, 
                 max_connections=4)
             os.remove(file_path)
@@ -642,9 +647,16 @@ class BackupAgent:
         for end_timestamp in baks_dict.keys():
             # http://mark-dot-net.blogspot.com/2014/03/python-equivalents-of-linq-methods.html
             stripes = baks_dict[end_timestamp]
-            stripes = map(lambda blobname: { "blobname":blobname, "filename": Naming.blobname_to_filename(blobname), "parts": Naming.parse_blobname(blobname) }, stripes)
-            groupedData = groupby(stripes, lambda s: "Database \"{dbname}\" {type} finished {end}".format(dbname=s["parts"][0], type=Naming.backup_type_str(s["parts"][1]), end=s["parts"][3]))
-            for group, values in groupedData:
+            stripes = map(lambda blobname: { 
+                    "blobname":blobname, 
+                    "filename": Naming.blobname_to_filename(blobname), 
+                    "parts": Naming.parse_blobname(blobname) 
+                }, stripes)
+
+            group_by_key=lambda x: "Database \"{dbname}\" {type} finished {end}".format(
+                dbname=x["parts"][0], type=Naming.backup_type_str(x["parts"][1]), end=x["parts"][3])
+
+            for group, values in groupby(stripes, key=group_by_key): 
                 print("{backup} {files}".format(backup=group, files=list(map(lambda s: s["parts"][4], values))))
 
     def restore(self, restore_point):
@@ -697,7 +709,7 @@ class Runner:
                         databases=args.databases)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
-                eprint("Skipping full backup, there is a full-backup in flight currently")
+                printe("Skipping full backup, there is a full-backup in flight currently")
         elif args.transaction_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
