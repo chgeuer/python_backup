@@ -487,6 +487,7 @@ class DatabaseConnector:
             with compression = '101'
             go
         """
+
         files = map(lambda stripe_index: 
             Naming.local_filesystem_name(
                 directory=local_directory, 
@@ -499,6 +500,13 @@ class DatabaseConnector:
         return "\n".join([
             "use master",
             "go",
+            {
+                False:"",
+                True: "\n".join([
+                    "sp_dboption {dbname}, 'trunc log on chkpt', 'false'".format(dbname=dbname),
+                    "go"
+                ])
+            }[is_full],
             "dump {type} to {file_names}".format(
                 type={True:"database", False:"transaction"}[is_full],
                 file_names="\n    stripe on ".join(files)
