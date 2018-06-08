@@ -375,8 +375,6 @@ class BackupConfiguration:
             >>> some_tuesday_evening = Timing.parse("20180605_215959")
             >>> cfg.get_business_hours().is_backup_allowed_time(some_tuesday_evening)
             True
-            >>> cfg.storage_client != None
-            True
         """
         self.cfg_file = BackupConfigurationFile(filename=config_filename)
         self.instance_metadata = AzureVMInstanceMetadata.create_instance()
@@ -533,8 +531,8 @@ class BackupAgent:
     def latest_full_backup_timestamp(self, dbname):
         existing_blobs_dict = self.existing_backups_for_db(dbname=dbname, is_full=True)
         if len(existing_blobs_dict.keys()) == 0:
-            return "20000000_000000"
-        
+            return "19000101_000000"
+
         return sorted(existing_blobs_dict.keys(), cmp=lambda a,b: Timing.time_diff_in_seconds(b, a))[-1:][0]
 
     @staticmethod
@@ -722,8 +720,8 @@ class Runner:
             BackupAgent(args.config).list_backups(databases=databases)
         elif args.unit_tests:
             import doctest
-            #doctest.testmod()
-            doctest.testmod(verbose=True)
+            doctest.testmod()
+            # doctest.testmod(verbose=True)
         else:
             parser.print_help()
 
