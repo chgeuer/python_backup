@@ -456,12 +456,16 @@ class DatabaseConnector:
             >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
             use master
             go
+            sp_dboption AZU, 'trunc log on chkpt', 'false'
+            go
             dump database to /tmp/AZU_full_20180629_124500_S001-001.cdmp
             with compression = '101'
             go
 
             >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
             use master
+            go
+            sp_dboption AZU, 'trunc log on chkpt', 'false'
             go
             dump database to /tmp/AZU_full_20180629_124500_S001-004.cdmp
                 stripe on /tmp/AZU_full_20180629_124500_S002-004.cdmp
@@ -497,23 +501,29 @@ class DatabaseConnector:
                 stripe_index=stripe_index, 
                 stripe_count=stripe_count), range(1, stripe_count + 1))
 
-        return "\n".join([
-            "use master",
-            "go",
+        return "\n".join(
+            [
+                "use master",
+                "go"
+            ]
+            +
             {
-                False:"",
-                True: "\n".join([
+                False:[],
+                True: [
                     "sp_dboption {dbname}, 'trunc log on chkpt', 'false'".format(dbname=dbname),
                     "go"
-                ])
-            }[is_full],
+                ]
+            }[is_full]
+            +
+            [
             "dump {type} to {file_names}".format(
                 type={True:"database", False:"transaction"}[is_full],
                 file_names="\n    stripe on ".join(files)
             ),
             "with compression = '101'",
             "go"
-        ])
+            ]
+        )
 
     def create_full_backup(self, dbname, start_timestamp, stripe_count):
         stdout = ""
