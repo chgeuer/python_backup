@@ -508,20 +508,20 @@ class DatabaseConnector:
             ]
             +
             {
-                False:[],
-                True: [
-                    "sp_dboption {dbname}, 'trunc log on chkpt', 'false'".format(dbname=dbname),
-                    "go"
-                ]
+            False:[],
+            True: [
+                "sp_dboption {dbname}, 'trunc log on chkpt', 'false'".format(dbname=dbname),
+                "go"
+            ]
             }[is_full]
             +
             [
-            "dump {type} to {file_names}".format(
-                type={True:"database", False:"transaction"}[is_full],
-                file_names="\n    stripe on ".join(files)
-            ),
-            "with compression = '101'",
-            "go"
+                "dump {type} to {file_names}".format(
+                    type={True:"database", False:"transaction"}[is_full],
+                    file_names="\n    stripe on ".join(files)
+                ),
+                "with compression = '101'",
+                "go"
             ]
         )
 
