@@ -15,7 +15,7 @@ def arg_parser():
     parser.add_argument("-f", "--filename")
     return parser
 
-def create(name, mb):
+def create(name):
     with open(name, mode='wt') as file:
         for line in sys.stdin:
             file.write(line)
@@ -27,7 +27,7 @@ def main():
     parser = arg_parser() 
     args = parser.parse_args()
 
-    create(args.filename, 1)
+    create(args.filename)
 
 if __name__ == '__main__':
     main()

@@ -231,6 +231,12 @@ class Naming:
             cnt=int(stripe_count))
 
     @staticmethod
+    def local_filesystem_name(directory, dbname, is_full, start_timestamp, stripe_index, stripe_count):
+        file_name = Naming.construct_filename(
+            dbname, is_full, start_timestamp, stripe_index, stripe_count)
+        return os.path.join(directory, file_name)
+
+    @staticmethod
     def construct_blobname_prefix(dbname, is_full):
         """
             >>> Naming.construct_blobname_prefix(dbname="test1db", is_full=True)
@@ -444,6 +450,36 @@ class DatabaseConnector:
     def determine_full_database_backup_stripe_count(self, dbname):
         return 9
 
+    @staticmethod
+    def create_sql_statement(local_directory, dbname, is_full, start_timestamp, stripe_count):
+        """
+            >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            use master
+            go
+            dump database to /tmp/AZU_full_20180629_124500_S001-001.cdmp
+            with compression = '101'
+            go
+        """
+        files = map(lambda stripe_index: 
+            Naming.local_filesystem_name(
+                directory=local_directory, 
+                dbname=dbname, 
+                is_full=is_full, 
+                start_timestamp=start_timestamp, 
+                stripe_index=stripe_index, 
+                stripe_count=stripe_count), range(1, stripe_count + 1))
+
+        return "\n".join([
+            "use master",
+            "go",
+            "dump {type} to {file_names}".format(
+                type={True:"database", False:"transaction"}[is_full],
+                file_names="\n    stripe on ".join(files)
+            ),
+            "with compression = '101'",
+            "go"
+        ])
+
     def create_full_backup(self, dbname, start_timestamp, stripe_count):
         stdout = ""
         stderr = ""
@@ -453,6 +489,18 @@ class DatabaseConnector:
             stdout = stdout + o
             stderr = stderr + e
         return (stdout, stderr)
+
+    @staticmethod
+    def create_isql_commandline(sid, password, username="sa"):
+        supress_header = "-b"
+        return [
+            "/opt/sap/OCS-16_0/bin/isql",
+            "-S", sid,
+            "-U", username,
+            "-P", password,
+            "-w", "999",
+            supress_header
+        ]
 
     @staticmethod
     def call_process(command_line, stdin):
