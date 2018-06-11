@@ -445,7 +445,18 @@ class DatabaseConnector:
         return subprocess.check_output(["/sybase/{sid}/dba/bin/dbsp".format(sid=sid), "***REMOVED***"])
 
     def list_databases(self):
-        return [ "A" ]
+        return DatabaseConnector.call_process(
+            command_line=DatabaseConnector.create_isql_commandline(
+                sid=self.backup_configuration.get_SID(),
+                password=self.get_database_password()),
+            stdin=list_databases_sql_statememt()).split("\n")
+
+    @staticmethod
+    def list_databases_sql_statememt():
+        return "\n".join([
+            "sp_helpdb",
+            "go"
+        ])
 
     def determine_full_database_backup_stripe_count(self, dbname):
         return 9
