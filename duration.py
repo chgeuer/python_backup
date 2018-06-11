@@ -445,14 +445,9 @@ class DatabaseConnector:
         print("Password for sid {sid}".format(sid=sid))
         return subprocess.check_output(["/sybase/{sid}/dba/bin/dbsp".format(sid=sid), "***REMOVED***"])
 
-    def list_databases(self):
-        (stdout, _stderr) = DatabaseConnector.call_process(
-            command_line=DatabaseConnector.create_isql_commandline(
-                sid=self.backup_configuration.get_SID(),
-                password=self.get_database_password(sid=self.backup_configuration.get_SID())),
-            stdin=DatabaseConnector.list_databases_sql_statememt())
+    def determine_full_database_backup_stripe_count(self, dbname):
+        return 9
 
-        return stdout.split("\n")
 
     @staticmethod
     def list_databases_sql_statememt():
@@ -461,13 +456,16 @@ class DatabaseConnector:
             "go"
         ])
 
-    def determine_full_database_backup_stripe_count(self, dbname):
-        return 9
+    def list_databases(self):
+        (stdout, _stderr) = DatabaseConnector.call_process(
+            command_line=self.isql(),
+            stdin=DatabaseConnector.list_databases_sql_statememt())
+        return stdout.split("\n")
 
     @staticmethod
-    def create_sql_statement(local_directory, dbname, is_full, start_timestamp, stripe_count):
+    def create_backup_sql_statement(local_directory, dbname, is_full, start_timestamp, stripe_count):
         """
-            >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            >>> print(DatabaseConnector.create_backup_sql_statement(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
             use master
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
@@ -476,7 +474,7 @@ class DatabaseConnector:
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
+            >>> print(DatabaseConnector.create_backup_sql_statement(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
             use master
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
@@ -488,14 +486,14 @@ class DatabaseConnector:
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            >>> print(DatabaseConnector.create_backup_sql_statement(local_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
             use master
             go
             dump transaction to /tmp/AZU_tran_20180629_124500_S001-001.cdmp
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.create_sql_statement(local_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
+            >>> print(DatabaseConnector.create_backup_sql_statement(local_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
             use master
             go
             dump transaction to /tmp/AZU_tran_20180629_124500_S001-004.cdmp
@@ -540,19 +538,23 @@ class DatabaseConnector:
         )
 
     def create_full_backup(self, dbname, start_timestamp, stripe_count):
-        stdout = ""
-        stderr = ""
-        for stripe_index in range(1, stripe_count + 1):
-            file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
-            o, e = DatabaseConnector.call_process([DatabaseConnector.isql_path(), "-f", file_name], stdin="Bunch of SQL here")
-            stdout = stdout + o
-            stderr = stderr + e
-        return (stdout, stderr)
+        return DatabaseConnector.call_process(
+            command_line=self.isql(),
+            stdin=DatabaseConnector.create_backup_sql_statement(
+                local_directory=".", 
+                dbname=dbname, is_full=True, 
+                start_timestamp=start_timestamp, 
+                stripe_count=stripe_count))
 
     @staticmethod
     def isql_path():
         # "./isql.py"
         return "/opt/sap/OCS-16_0/bin/isql"
+
+    def isql(self):
+        sid=self.backup_configuration.get_SID()
+        return DatabaseConnector.create_isql_commandline(sid=sid,
+            password=self.get_database_password(sid=sid))
 
     @staticmethod
     def create_isql_commandline(sid, password, username="sa"):
