@@ -579,10 +579,12 @@ class DatabaseConnector:
             }[is_full]
             +
             [
-                "dump {type} {dbname} to '{file_names}'".format(
+                "dump {type} {dbname} to {file_names}".format(
                     type={True:"database", False:"transaction"}[is_full],
                     dbname=dbname,
-                    file_names="'\n    stripe on '".join(files)
+                    file_names="\n    stripe on ".join(
+                        map(lambda fn: "'{fn}'".format(fn=fn))
+                    )
                 ),
                 "with compression = '101'",
                 "go"
