@@ -444,13 +444,11 @@ class DatabaseConnector:
         sid = self.backup_configuration.get_SID()
         executable = "/sybase/{sid}/dba/bin/dbsp".format(sid=sid)
         arg = "***REMOVED***"
-
-        # return subprocess.check_output([executable, arg]).strip()
         stdout, _stderr = DatabaseConnector.call_process(command_line=[executable, arg], stdin="")
         return str(stdout).strip()
 
     def determine_full_database_backup_stripe_count(self, dbname):
-        return 2
+        return 1
 
     @staticmethod
     def sql_statement_list_databases(is_full):
@@ -587,13 +585,14 @@ class DatabaseConnector:
         )
 
     def create_full_backup(self, dbname, start_timestamp, stripe_count):
-        return DatabaseConnector.call_process(
-            command_line=self.isql(),
-            stdin=DatabaseConnector.sql_statement_create_backup(
+        sql = DatabaseConnector.sql_statement_create_backup(
                 local_directory=".", 
                 dbname=dbname, is_full=True, 
                 start_timestamp=start_timestamp, 
-                stripe_count=stripe_count))
+                stripe_count=stripe_count)
+
+        print("Try to full backup of {}\n{}".format(dbname, sql))
+        return DatabaseConnector.call_process(command_line=self.isql(), stdin=sql)
 
     @staticmethod
     def isql_path():
@@ -642,8 +641,6 @@ class BackupAgent:
             databases_to_backup = databases.split(",")
         else:
             databases_to_backup = database_connector.list_databases(is_full=True)
-
-        print("DB List: {}".format(" ".join(databases_to_backup)))
 
         # TODO excluded data bases
 
