@@ -442,13 +442,13 @@ class DatabaseConnector:
 
     def get_database_password(self, sid):
         sid = self.backup_configuration.get_SID()
-        password=subprocess.check_output(["/sybase/{sid}/dba/bin/dbsp".format(sid=sid), "***REMOVED***"])
-        print("Password for SID={sid} password={password}".format(sid=sid, password=password))
-        return password
+        return subprocess.check_output([
+            "/sybase/{sid}/dba/bin/dbsp".format(sid=sid), 
+            "***REMOVED***"
+        ])
 
     def determine_full_database_backup_stripe_count(self, dbname):
-        return 9
-
+        return 2
 
     @staticmethod
     def list_databases_sql_statememt():
@@ -461,6 +461,10 @@ class DatabaseConnector:
         print("Listing databases CID={cid} SID={sid}".format(
             cid=self.backup_configuration.get_CID(),
             sid=self.backup_configuration.get_SID()))
+
+        print("Calling {}".format(" ".join(self.isql())))
+        print(DatabaseConnector.list_databases_sql_statememt())
+
         (stdout, _stderr) = DatabaseConnector.call_process(
             command_line=self.isql(),
             stdin=DatabaseConnector.list_databases_sql_statememt())
