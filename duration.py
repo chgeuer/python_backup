@@ -575,6 +575,7 @@ class DatabaseConnector:
             [
                 "dump {type} {dbname} to '{file_names}'".format(
                     type={True:"database", False:"transaction"}[is_full],
+                    dbname=dbname,
                     file_names="\n    stripe on ".join(files)
                 ),
                 "with compression = '101'",
