@@ -586,7 +586,7 @@ class DatabaseConnector:
 
     def create_full_backup(self, dbname, start_timestamp, stripe_count):
         sql = DatabaseConnector.sql_statement_create_backup(
-                local_directory=".", 
+                local_directory=os.getcwd(), 
                 dbname=dbname, is_full=True, 
                 start_timestamp=start_timestamp, 
                 stripe_count=stripe_count)
@@ -790,7 +790,7 @@ class BackupAgent:
             blob_name = Naming.construct_blobname(dbname=dbname, is_full=True, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
             print("Upload {f} to {b}".format(f=file_name, b=blob_name))
 
-            source = "."
+            source = os.getcwd()
             file_path = os.path.join(source, file_name)
             self.backup_configuration.storage_client.create_blob_from_path(
                 container_name=self.backup_configuration.azure_storage_container_name, 
