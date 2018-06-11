@@ -573,7 +573,7 @@ class DatabaseConnector:
             }[is_full]
             +
             [
-                "dump {type} to {file_names}".format(
+                "dump {type} to '{file_names}'".format(
                     type={True:"database", False:"transaction"}[is_full],
                     file_names="\n    stripe on ".join(files)
                 ),
