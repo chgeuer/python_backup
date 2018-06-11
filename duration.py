@@ -683,10 +683,11 @@ class DatabaseConnector:
     def call_process(command_line, stdin):
         p = subprocess.Popen(
             command_line,
-            env=DatabaseConnector.get_ase_environment(),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+            env=DatabaseConnector.get_ase_environment()
+        )
         stdout, stderr = p.communicate(stdin + "\n")
         return (stdout, stderr)
 
@@ -704,10 +705,15 @@ class BackupAgent:
         else:
             databases_to_backup = database_connector.list_databases(is_full=True)
 
-        # TODO excluded data bases
-
+        skip_dbs = self.backup_configuration.get_databases_to_skip()
+        databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
+          
         for dbname in databases_to_backup:
-            self.full_backup_single_db(dbname=dbname, force=force, skip_upload=skip_upload, output_dir=output_dir)
+            self.full_backup_single_db(
+                dbname=dbname, 
+                force=force, 
+                skip_upload=skip_upload, 
+                output_dir=output_dir)
 
     def existing_backups_for_db(self, dbname, is_full):
         existing_blobs_dict = dict()
