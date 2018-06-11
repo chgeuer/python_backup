@@ -515,7 +515,7 @@ class DatabaseConnector:
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
             go
-            dump database to /tmp/AZU_full_20180629_124500_S001-001.cdmp
+            dump database AZU to /tmp/AZU_full_20180629_124500_S001-001.cdmp
             with compression = '101'
             go
 
@@ -524,7 +524,7 @@ class DatabaseConnector:
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
             go
-            dump database to /tmp/AZU_full_20180629_124500_S001-004.cdmp
+            dump database AZU to /tmp/AZU_full_20180629_124500_S001-004.cdmp
                 stripe on /tmp/AZU_full_20180629_124500_S002-004.cdmp
                 stripe on /tmp/AZU_full_20180629_124500_S003-004.cdmp
                 stripe on /tmp/AZU_full_20180629_124500_S004-004.cdmp
@@ -534,14 +534,14 @@ class DatabaseConnector:
             >>> print(DatabaseConnector.sql_statement_create_backup(local_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
             use master
             go
-            dump transaction to /tmp/AZU_tran_20180629_124500_S001-001.cdmp
+            dump transaction AZU to /tmp/AZU_tran_20180629_124500_S001-001.cdmp
             with compression = '101'
             go
 
             >>> print(DatabaseConnector.sql_statement_create_backup(local_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
             use master
             go
-            dump transaction to /tmp/AZU_tran_20180629_124500_S001-004.cdmp
+            dump transaction AZU to /tmp/AZU_tran_20180629_124500_S001-004.cdmp
                 stripe on /tmp/AZU_tran_20180629_124500_S002-004.cdmp
                 stripe on /tmp/AZU_tran_20180629_124500_S003-004.cdmp
                 stripe on /tmp/AZU_tran_20180629_124500_S004-004.cdmp
@@ -573,7 +573,7 @@ class DatabaseConnector:
             }[is_full]
             +
             [
-                "dump {type} to '{file_names}'".format(
+                "dump {type} {dbname} to '{file_names}'".format(
                     type={True:"database", False:"transaction"}[is_full],
                     file_names="\n    stripe on ".join(files)
                 ),
