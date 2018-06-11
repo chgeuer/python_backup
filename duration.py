@@ -50,6 +50,8 @@ class ScheduleParser:
     @staticmethod
     def parse_timedelta(time_val):
         """
+            Parses a time delta.
+
             >>> ScheduleParser.parse_timedelta('1w 3d 2s')
             datetime.timedelta(10, 2)
             >>> ScheduleParser.parse_timedelta('7d')
@@ -58,8 +60,6 @@ class ScheduleParser:
             datetime.timedelta(7, 20)
             >>> ScheduleParser.parse_timedelta('1d 1h 1m 1s')
             datetime.timedelta(1, 3661)
-            >>> ScheduleParser.parse_timedelta('1d 23h 59m 59s')
-            datetime.timedelta(1, 86399)
             >>> ScheduleParser.parse_timedelta('1d 23h 59m 59s')
             datetime.timedelta(1, 86399)
             >>> ScheduleParser.parse_timedelta('1d 23h 59m 60s')
@@ -521,7 +521,7 @@ class DatabaseConnector:
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
             go
-            dump database AZU to /tmp/AZU_full_20180629_124500_S001-001.cdmp
+            dump database AZU to '/tmp/AZU_full_20180629_124500_S001-001.cdmp'
             with compression = '101'
             go
 
@@ -530,27 +530,27 @@ class DatabaseConnector:
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
             go
-            dump database AZU to /tmp/AZU_full_20180629_124500_S001-004.cdmp
-                stripe on /tmp/AZU_full_20180629_124500_S002-004.cdmp
-                stripe on /tmp/AZU_full_20180629_124500_S003-004.cdmp
-                stripe on /tmp/AZU_full_20180629_124500_S004-004.cdmp
+            dump database AZU to '/tmp/AZU_full_20180629_124500_S001-004.cdmp'
+                stripe on '/tmp/AZU_full_20180629_124500_S002-004.cdmp'
+                stripe on '/tmp/AZU_full_20180629_124500_S003-004.cdmp'
+                stripe on '/tmp/AZU_full_20180629_124500_S004-004.cdmp'
             with compression = '101'
             go
 
             >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
             use master
             go
-            dump transaction AZU to /tmp/AZU_tran_20180629_124500_S001-001.cdmp
+            dump transaction AZU to '/tmp/AZU_tran_20180629_124500_S001-001.cdmp'
             with compression = '101'
             go
 
             >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
             use master
             go
-            dump transaction AZU to /tmp/AZU_tran_20180629_124500_S001-004.cdmp
-                stripe on /tmp/AZU_tran_20180629_124500_S002-004.cdmp
-                stripe on /tmp/AZU_tran_20180629_124500_S003-004.cdmp
-                stripe on /tmp/AZU_tran_20180629_124500_S004-004.cdmp
+            dump transaction AZU to '/tmp/AZU_tran_20180629_124500_S001-004.cdmp'
+                stripe on '/tmp/AZU_tran_20180629_124500_S002-004.cdmp'
+                stripe on '/tmp/AZU_tran_20180629_124500_S003-004.cdmp'
+                stripe on '/tmp/AZU_tran_20180629_124500_S004-004.cdmp'
             with compression = '101'
             go
         """
@@ -582,7 +582,7 @@ class DatabaseConnector:
                 "dump {type} {dbname} to '{file_names}'".format(
                     type={True:"database", False:"transaction"}[is_full],
                     dbname=dbname,
-                    file_names="\n    stripe on ".join(files)
+                    file_names="'\n    stripe on '".join(files)
                 ),
                 "with compression = '101'",
                 "go"
