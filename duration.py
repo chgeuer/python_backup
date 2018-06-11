@@ -456,44 +456,43 @@ class DatabaseConnector:
     def sql_statement_list_databases(is_full):
         return "\n".join(
             [
-                "set nocount on"
-                "go"
-                "select name, status, status2 into #dbname"
-                "    from master..sysdatabases"
+                "set nocount on",
+                "go",
+                "select name, status, status2 into #dbname",
+                "    from master..sysdatabases",
                 "    where dbid <> 2 and status3 & 256 = 0"
             ]
             +
             {
                 False:[
-                    "delete from #dbname"
-                    "    where status2 & 16 = 16 or status2 & 32 = 32 or status & 8 = 8"
-                    "delete from #dbname"
-                    "    where tran_dumpable_status(name) <> 0"
+                    "delete from #dbname where status2 & 16 = 16 or status2 & 32 = 32 or status & 8 = 8",
+                    "delete from #dbname where tran_dumpable_status(name) <> 0"
                 ],
                 True: []
             }[is_full]
             +
             [
-                "declare @inputstrg varchar(1000)"
-                "declare @delim_pos int"
-                "select @inputstrg = ''"
-                "if char_length(@inputstrg) > 1"
-                "begin"
-                "    create table #selected_dbs(sequence int identity, dbname varchar(50))"
-                "    while char_length(@inputstrg) > 0"
-                "    begin"
-                "        select @delim_pos = charindex(',', @inputstrg)"
-                "        if @delim_pos = 0"
-                "        begin"
-                "            select @delim_pos = char_length(@inputstrg) + 1"
-                "        end"
-                "        insert into #selected_dbs(dbname) select substring(@inputstrg, 1, @delim_pos - 1)"
-                "        select @inputstrg = substring(@inputstrg, @delim_pos + 1, char_length(@inputstrg))"
-                "    end"
-                "    delete from #dbname where name not in (select dbname from #selected_dbs)"
-                "end"
-                "select name from #dbname order by 1"
-                "go"
+                "declare @inputstrg varchar(1000)",
+                "declare @delim_pos int",
+                "select @inputstrg = ''",
+                "if char_length(@inputstrg) > 1",
+                "begin",
+                "    create table #selected_dbs(sequence int identity, dbname varchar(50))",
+                "    while char_length(@inputstrg) > 0",
+                "    begin",
+                "        select @delim_pos = charindex(',', @inputstrg)",
+                "        if @delim_pos = 0",
+                "        begin",
+                "            select @delim_pos = char_length(@inputstrg) + 1",
+                "        end",
+                "        insert into #selected_dbs(dbname) select substring(@inputstrg, 1, @delim_pos - 1)",
+                "        select @inputstrg = substring(@inputstrg, @delim_pos + 1, char_length(@inputstrg))",
+                "    end",
+                "    delete from #dbname where name not in (select dbname from #selected_dbs)",
+                "end",
+                "select name from #dbname order by 1",
+                "go",
+                ""
             ])
 
     def list_databases(self, is_full):
@@ -580,8 +579,10 @@ class DatabaseConnector:
                     file_names="\n    stripe on ".join(files)
                 ),
                 "with compression = '101'",
-                "go"
+                "go",
+                ""
             ]
+            
         )
 
     def create_full_backup(self, dbname, start_timestamp, stripe_count):
