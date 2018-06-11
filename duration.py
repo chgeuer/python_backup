@@ -436,6 +436,9 @@ class BackupConfiguration:
             _created = self._block_blob_service.create_container(container_name=self.azure_storage_container_name)
         return self._block_blob_service
 
+    def local_directory(self):
+        return "/tmp" # os.getcwd()
+
 class DatabaseConnector:
     def __init__(self, backup_configuration):
         self.backup_configuration = backup_configuration
@@ -587,7 +590,7 @@ class DatabaseConnector:
 
     def create_full_backup(self, dbname, start_timestamp, stripe_count):
         sql = DatabaseConnector.sql_statement_create_backup(
-                local_directory=os.getcwd(), 
+                local_directory=self.backup_configuration.local_directory(), 
                 dbname=dbname, is_full=True, 
                 start_timestamp=start_timestamp, 
                 stripe_count=stripe_count)
@@ -620,9 +623,64 @@ class DatabaseConnector:
         ]
 
     @staticmethod
+    def get_ase_environment():
+        ase_env = os.environ.copy()
+
+        ase_env.environ["SAP_JRE7"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
+        ase_env.environ["SAP_JRE7_64"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
+        ase_env.environ["SAP_JRE8"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
+        ase_env.environ["SAP_JRE8_64"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
+        ase_env.environ["SYBASE_JRE_RTDS"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
+        ase_env.environ["COCKPIT_JAVA_HOME"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
+        ase_env.environ["SYBASE"]="/opt/sap"
+        ase_env.environ["SYBROOT"]="/opt/sap"
+        ase_env.environ["SYBASE_OCS"]="OCS-16_0"
+        ase_env.environ["SYBASE_ASE"]="ASE-16_0"
+        ase_env.environ["SYBASE_WS"]="WS-16_0"
+
+        ase_env.environ["INCLUDE"] = os.pathsep.join([
+            "/opt/sap/OCS-16_0/include",
+            ase_env.environ["INCLUDE"]
+        ])
+
+        ase_env.environ["LIB"] = os.pathsep.join([
+            "/opt/sap/OCS-16_0/lib",
+            ase_env.environ["LIB"]
+        ])
+
+        ase_env.environ["LD_LIBRARY_PATH"] = os.pathsep.join([
+            "/opt/sap/ASE-16_0/lib",
+            "/opt/sap/OCS-16_0/lib",
+            "/opt/sap/OCS-16_0/lib3p64",
+            "/opt/sap/OCS-16_0/lib3p",
+            "/opt/sap/DataAccess/ODBC/lib",
+            "/opt/sap/DataAccess64/ODBC/lib",
+            ase_env.environ["LD_LIBRARY_PATH"]
+        ])
+
+        ase_env.environ["PATH"] = os.pathsep.join([
+            "/opt/sap/ASE-16_0/jobscheduler/bin",
+            "/opt/sap/OCS-16_0/bin",
+            "/opt/sap/COCKPIT-4/bin",
+            "/opt/sap/ASE-16_0/bin",
+            "/opt/sap/ASE-16_0/install",
+            ase_env.environ["PATH"]
+         ])
+
+        ase_env["PATH"] = os.pathsep.join([
+            "/usr/sbin",
+            "/sbin",
+            ase_env["PATH"]])
+
+        os.unsetenv("LANG")
+
+        return ase_env
+
+    @staticmethod
     def call_process(command_line, stdin):
         p = subprocess.Popen(
-            command_line, 
+            command_line,
+            env=DatabaseConnector.get_ase_environment(),
             stdin=subprocess.PIPE, 
             stdout=subprocess.PIPE, 
             stderr=subprocess.PIPE)
@@ -791,7 +849,7 @@ class BackupAgent:
             blob_name = Naming.construct_blobname(dbname=dbname, is_full=True, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
             print("Upload {f} to {b}".format(f=file_name, b=blob_name))
 
-            source = os.getcwd()
+            source = self.backup_configuration.local_directory()
             file_path = os.path.join(source, file_name)
             self.backup_configuration.storage_client.create_blob_from_path(
                 container_name=self.backup_configuration.azure_storage_container_name, 
