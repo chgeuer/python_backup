@@ -514,9 +514,9 @@ class DatabaseConnector:
                 stdout.split("\n")))
 
     @staticmethod
-    def sql_statement_create_backup(dbname, is_full, start_timestamp, stripe_count, output_directory):
+    def sql_statement_create_backup(dbname, is_full, start_timestamp, stripe_count, output_dir):
         """
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
             use master
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
@@ -525,7 +525,7 @@ class DatabaseConnector:
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
             use master
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
@@ -537,14 +537,14 @@ class DatabaseConnector:
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
             use master
             go
             dump transaction AZU to /tmp/AZU_tran_20180629_124500_S001-001.cdmp
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
             use master
             go
             dump transaction AZU to /tmp/AZU_tran_20180629_124500_S001-004.cdmp
@@ -557,7 +557,7 @@ class DatabaseConnector:
 
         files = map(lambda stripe_index: 
             Naming.local_filesystem_name(
-                directory=output_directory, 
+                directory=output_dir, 
                 dbname=dbname, 
                 is_full=is_full, 
                 start_timestamp=start_timestamp, 
@@ -589,12 +589,12 @@ class DatabaseConnector:
             ]
         )
 
-    def create_full_backup(self, dbname, start_timestamp, stripe_count, output_directory):
+    def create_full_backup(self, dbname, start_timestamp, stripe_count, output_dir):
         sql = DatabaseConnector.sql_statement_create_backup(
                 dbname=dbname, is_full=True, 
                 start_timestamp=start_timestamp, 
                 stripe_count=stripe_count,
-                output_directory=output_directory)
+                output_dir=output_dir)
 
         return DatabaseConnector.call_process(command_line=self.isql(), stdin=sql)
 
@@ -863,10 +863,9 @@ class BackupAgent:
         for stripe_index in range(1, stripe_count + 1):
             file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
             blob_name = Naming.construct_blobname(dbname=dbname, is_full=True, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
-            print("Upload {f} to {b}".format(f=file_name, b=blob_name))
+            file_path = os.path.join(output_dir, file_name)
 
-            source = self.backup_configuration.local_directory()
-            file_path = os.path.join(source, file_name)
+            print("Upload {f} to {b}".format(f=file_path, b=blob_name))
             self.backup_configuration.storage_client.create_blob_from_path(
                 container_name=self.backup_configuration.azure_storage_container_name, 
                 file_path=file_path,
