@@ -445,11 +445,13 @@ class DatabaseConnector:
         return subprocess.check_output(["/sybase/{sid}/dba/bin/dbsp".format(sid=sid), "***REMOVED***"])
 
     def list_databases(self):
-        return DatabaseConnector.call_process(
+        (stdout, _stderr) = DatabaseConnector.call_process(
             command_line=DatabaseConnector.create_isql_commandline(
                 sid=self.backup_configuration.get_SID(),
-                password=self.get_database_password()),
-            stdin=list_databases_sql_statememt()).split("\n")
+                password=self.get_database_password(sid=self.backup_configuration.get_SID())),
+            stdin=DatabaseConnector.list_databases_sql_statememt())
+
+        return stdout.split("\n")
 
     @staticmethod
     def list_databases_sql_statememt():
@@ -541,16 +543,21 @@ class DatabaseConnector:
         stderr = ""
         for stripe_index in range(1, stripe_count + 1):
             file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
-            o, e = DatabaseConnector.call_process(["./isql.py", "-f", file_name], stdin="Bunch of SQL here")
+            o, e = DatabaseConnector.call_process([DatabaseConnector.isql_path(), "-f", file_name], stdin="Bunch of SQL here")
             stdout = stdout + o
             stderr = stderr + e
         return (stdout, stderr)
 
     @staticmethod
+    def isql_path():
+        # "./isql.py"
+        return "/opt/sap/OCS-16_0/bin/isql"
+
+    @staticmethod
     def create_isql_commandline(sid, password, username="sa"):
         supress_header = "-b"
         return [
-            "/opt/sap/OCS-16_0/bin/isql",
+            DatabaseConnector.isql_path(),
             "-S", sid,
             "-U", username,
             "-P", password,
@@ -560,7 +567,6 @@ class DatabaseConnector:
 
     @staticmethod
     def call_process(command_line, stdin):
-        # subprocess.check_output(["./isql.py", "-f", file_name])
         p = subprocess.Popen(
             command_line, 
             stdin=subprocess.PIPE, 
