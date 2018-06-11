@@ -442,8 +442,9 @@ class DatabaseConnector:
 
     def get_database_password(self, sid):
         sid = self.backup_configuration.get_SID()
-        print("Password for sid {sid}".format(sid=sid))
-        return subprocess.check_output(["/sybase/{sid}/dba/bin/dbsp".format(sid=sid), "***REMOVED***"])
+        password=subprocess.check_output(["/sybase/{sid}/dba/bin/dbsp".format(sid=sid), "***REMOVED***"])
+        print("Password for SID={sid} password={password}".format(sid=sid, password=password))
+        return password
 
     def determine_full_database_backup_stripe_count(self, dbname):
         return 9
