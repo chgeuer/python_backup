@@ -583,7 +583,7 @@ class DatabaseConnector:
                     type={True:"database", False:"transaction"}[is_full],
                     dbname=dbname,
                     file_names="\n    stripe on ".join(
-                        map(lambda fn: "'{fn}'".format(fn=fn))
+                        map(lambda fn: "'{fn}'".format(fn=fn), files)
                     )
                 ),
                 "with compression = '101'",
