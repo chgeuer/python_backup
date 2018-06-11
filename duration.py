@@ -492,8 +492,7 @@ class DatabaseConnector:
                 "    delete from #dbname where name not in (select dbname from #selected_dbs)",
                 "end",
                 "select name from #dbname order by 1",
-                "go",
-                ""
+                "go"
             ])
 
     def list_databases(self, is_full):
@@ -586,10 +585,8 @@ class DatabaseConnector:
                     file_names="\n    stripe on ".join(files)
                 ),
                 "with compression = '101'",
-                "go",
-                ""
+                "go"
             ]
-            
         )
 
     def create_full_backup(self, dbname, start_timestamp, stripe_count):
@@ -630,12 +627,18 @@ class DatabaseConnector:
     def get_ase_environment():
         ase_env = os.environ.copy()
 
-        ase_env["SAP_JRE7"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
-        ase_env["SAP_JRE7_64"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
-        ase_env["SAP_JRE8"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
-        ase_env["SAP_JRE8_64"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
-        ase_env["SYBASE_JRE_RTDS"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
-        ase_env["COCKPIT_JAVA_HOME"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
+        p=lambda path: "/opt/sap/{path}".format(path=path)
+
+        jre7=p("shared/SAPJRE-7_1_049_64BIT")
+        ase_env["SAP_JRE7"]=jre7
+        ase_env["SAP_JRE7_64"]=jre7
+        ase_env["SYBASE_JRE_RTDS"]=jre7
+
+        jre8="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
+        ase_env["SAP_JRE8"]=jre8
+        ase_env["SAP_JRE8_64"]=jre8
+        ase_env["COCKPIT_JAVA_HOME"]=jre8
+
         ase_env["SYBASE"]="/opt/sap"
         ase_env["SYBROOT"]="/opt/sap"
         ase_env["SYBASE_OCS"]="OCS-16_0"
@@ -685,7 +688,7 @@ class DatabaseConnector:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
-        stdout, stderr = p.communicate(stdin)
+        stdout, stderr = p.communicate(stdin + "\n")
         return (stdout, stderr)
 
 class BackupAgent:
