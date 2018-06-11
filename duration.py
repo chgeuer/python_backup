@@ -436,8 +436,8 @@ class BackupConfiguration:
             _created = self._block_blob_service.create_container(container_name=self.azure_storage_container_name)
         return self._block_blob_service
 
-    def local_directory(self):
-        return "/tmp" # os.getcwd()
+    def get_standard_local_directory(self):
+        return "/tmp"
 
 class DatabaseConnector:
     def __init__(self, backup_configuration):
@@ -514,9 +514,9 @@ class DatabaseConnector:
                 stdout.split("\n")))
 
     @staticmethod
-    def sql_statement_create_backup(local_directory, dbname, is_full, start_timestamp, stripe_count):
+    def sql_statement_create_backup(dbname, is_full, start_timestamp, stripe_count, output_directory):
         """
-            >>> print(DatabaseConnector.sql_statement_create_backup(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
             use master
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
@@ -525,7 +525,7 @@ class DatabaseConnector:
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.sql_statement_create_backup(local_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_directory="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
             use master
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
@@ -537,14 +537,14 @@ class DatabaseConnector:
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.sql_statement_create_backup(local_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
             use master
             go
             dump transaction AZU to /tmp/AZU_tran_20180629_124500_S001-001.cdmp
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.sql_statement_create_backup(local_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_directory="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
             use master
             go
             dump transaction AZU to /tmp/AZU_tran_20180629_124500_S001-004.cdmp
@@ -557,7 +557,7 @@ class DatabaseConnector:
 
         files = map(lambda stripe_index: 
             Naming.local_filesystem_name(
-                directory=local_directory, 
+                directory=output_directory, 
                 dbname=dbname, 
                 is_full=is_full, 
                 start_timestamp=start_timestamp, 
@@ -589,14 +589,13 @@ class DatabaseConnector:
             ]
         )
 
-    def create_full_backup(self, dbname, start_timestamp, stripe_count):
+    def create_full_backup(self, dbname, start_timestamp, stripe_count, output_directory):
         sql = DatabaseConnector.sql_statement_create_backup(
-                local_directory=self.backup_configuration.local_directory(), 
                 dbname=dbname, is_full=True, 
                 start_timestamp=start_timestamp, 
-                stripe_count=stripe_count)
+                stripe_count=stripe_count,
+                output_directory=output_directory)
 
-        print("Try to full backup of {}\n{}".format(dbname, sql))
         return DatabaseConnector.call_process(command_line=self.isql(), stdin=sql)
 
     @staticmethod
@@ -707,7 +706,10 @@ class BackupAgent:
 
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
-          
+
+        if output_dir == None:
+            output_dir = self.backup_configuration.get_standard_local_directory()
+
         for dbname in databases_to_backup:
             self.full_backup_single_db(
                 dbname=dbname, 
@@ -844,10 +846,15 @@ class BackupAgent:
             return
 
         db_connector = DatabaseConnector(self.backup_configuration)
-        stripe_count = db_connector.determine_full_database_backup_stripe_count(dbname=dbname)
+        stripe_count = db_connector.determine_full_database_backup_stripe_count(
+            dbname=dbname)
 
         start_timestamp = Timing.now_localtime()
-        stdout, stderr = db_connector.create_full_backup(dbname=dbname, start_timestamp=start_timestamp, stripe_count=stripe_count)
+        stdout, stderr = db_connector.create_full_backup(
+            dbname=dbname, 
+            start_timestamp=start_timestamp, 
+            stripe_count=stripe_count, 
+            output_dir=output_dir)
         end_timestamp = Timing.now_localtime()
 
         print(stdout)
