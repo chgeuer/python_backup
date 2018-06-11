@@ -442,10 +442,12 @@ class DatabaseConnector:
 
     def get_database_password(self, sid):
         sid = self.backup_configuration.get_SID()
-        return subprocess.check_output([
-            "/sybase/{sid}/dba/bin/dbsp".format(sid=sid), 
-            "***REMOVED***"
-        ])
+        executable = "/sybase/{sid}/dba/bin/dbsp".format(sid=sid)
+        arg = "***REMOVED***"
+
+        # return subprocess.check_output([executable, arg]).strip()
+        stdout, _stderr = DatabaseConnector.call_process(command_line=[executable, arg], stdin="")
+        return str(stdout).strip()
 
     def determine_full_database_backup_stripe_count(self, dbname):
         return 2
