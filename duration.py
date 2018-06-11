@@ -626,45 +626,45 @@ class DatabaseConnector:
     def get_ase_environment():
         ase_env = os.environ.copy()
 
-        ase_env.environ["SAP_JRE7"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
-        ase_env.environ["SAP_JRE7_64"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
-        ase_env.environ["SAP_JRE8"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
-        ase_env.environ["SAP_JRE8_64"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
-        ase_env.environ["SYBASE_JRE_RTDS"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
-        ase_env.environ["COCKPIT_JAVA_HOME"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
-        ase_env.environ["SYBASE"]="/opt/sap"
-        ase_env.environ["SYBROOT"]="/opt/sap"
-        ase_env.environ["SYBASE_OCS"]="OCS-16_0"
-        ase_env.environ["SYBASE_ASE"]="ASE-16_0"
-        ase_env.environ["SYBASE_WS"]="WS-16_0"
+        ase_env["SAP_JRE7"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
+        ase_env["SAP_JRE7_64"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
+        ase_env["SAP_JRE8"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
+        ase_env["SAP_JRE8_64"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
+        ase_env["SYBASE_JRE_RTDS"]="/opt/sap/shared/SAPJRE-7_1_049_64BIT"
+        ase_env["COCKPIT_JAVA_HOME"]="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
+        ase_env["SYBASE"]="/opt/sap"
+        ase_env["SYBROOT"]="/opt/sap"
+        ase_env["SYBASE_OCS"]="OCS-16_0"
+        ase_env["SYBASE_ASE"]="ASE-16_0"
+        ase_env["SYBASE_WS"]="WS-16_0"
 
-        ase_env.environ["INCLUDE"] = os.pathsep.join([
+        ase_env["INCLUDE"] = os.pathsep.join([
             "/opt/sap/OCS-16_0/include",
-            ase_env.environ["INCLUDE"]
+            ase_env["INCLUDE"]
         ])
 
-        ase_env.environ["LIB"] = os.pathsep.join([
+        ase_env["LIB"] = os.pathsep.join([
             "/opt/sap/OCS-16_0/lib",
-            ase_env.environ["LIB"]
+            ase_env["LIB"]
         ])
 
-        ase_env.environ["LD_LIBRARY_PATH"] = os.pathsep.join([
+        ase_env["LD_LIBRARY_PATH"] = os.pathsep.join([
             "/opt/sap/ASE-16_0/lib",
             "/opt/sap/OCS-16_0/lib",
             "/opt/sap/OCS-16_0/lib3p64",
             "/opt/sap/OCS-16_0/lib3p",
             "/opt/sap/DataAccess/ODBC/lib",
             "/opt/sap/DataAccess64/ODBC/lib",
-            ase_env.environ["LD_LIBRARY_PATH"]
+            ase_env["LD_LIBRARY_PATH"]
         ])
 
-        ase_env.environ["PATH"] = os.pathsep.join([
+        ase_env["PATH"] = os.pathsep.join([
             "/opt/sap/ASE-16_0/jobscheduler/bin",
             "/opt/sap/OCS-16_0/bin",
             "/opt/sap/COCKPIT-4/bin",
             "/opt/sap/ASE-16_0/bin",
             "/opt/sap/ASE-16_0/install",
-            ase_env.environ["PATH"]
+            ase_env["PATH"]
          ])
 
         ase_env["PATH"] = os.pathsep.join([
@@ -672,7 +672,9 @@ class DatabaseConnector:
             "/sbin",
             ase_env["PATH"]])
 
-        os.unsetenv("LANG")
+        del(ase_env["LANG"])
+
+        #os.unsetenv("LANG")
 
         return ase_env
 
