@@ -562,16 +562,18 @@ class DatabaseConnector:
         return "/opt/sap/OCS-16_0/bin/isql"
 
     def isql(self):
-        sid=self.backup_configuration.get_SID()
-        return DatabaseConnector.create_isql_commandline(sid=sid,
-            password=self.get_database_password(sid=sid))
+        return DatabaseConnector.create_isql_commandline(
+            server_name=self.backup_configuration.get_CID(),
+            username="sapsa",
+            password=self.get_database_password(
+                sid=self.backup_configuration.get_SID()))
 
     @staticmethod
-    def create_isql_commandline(sid, password, username="sa"):
+    def create_isql_commandline(server_name, username, password):
         supress_header = "-b"
         return [
             DatabaseConnector.isql_path(),
-            "-S", sid,
+            "-S", server_name,
             "-U", username,
             "-P", password,
             "-w", "999",
