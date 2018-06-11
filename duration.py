@@ -568,11 +568,11 @@ class DatabaseConnector:
             ]
             +
             {
-            False:[],
-            True: [
-                "sp_dboption {dbname}, 'trunc log on chkpt', 'false'".format(dbname=dbname),
-                "go"
-            ]
+                False: [],
+                True: [
+                    "sp_dboption {dbname}, 'trunc log on chkpt', 'false'".format(dbname=dbname),
+                    "go"
+                ]
             }[is_full]
             +
             [
@@ -640,22 +640,22 @@ class DatabaseConnector:
 
         ase_env["INCLUDE"] = os.pathsep.join([
             "/opt/sap/OCS-16_0/include",
-            ase_env["INCLUDE"]
+            ase_env.get("INCLUDE", "")
         ])
 
         ase_env["LIB"] = os.pathsep.join([
             "/opt/sap/OCS-16_0/lib",
-            ase_env["LIB"]
+            ase_env.get("LIB", "")
         ])
 
         ase_env["LD_LIBRARY_PATH"] = os.pathsep.join([
             "/opt/sap/ASE-16_0/lib",
             "/opt/sap/OCS-16_0/lib",
-            "/opt/sap/OCS-16_0/lib3p64",
             "/opt/sap/OCS-16_0/lib3p",
+            "/opt/sap/OCS-16_0/lib3p64",
             "/opt/sap/DataAccess/ODBC/lib",
             "/opt/sap/DataAccess64/ODBC/lib",
-            ase_env["LD_LIBRARY_PATH"]
+            ase_env.get("LD_LIBRARY_PATH", "")
         ])
 
         ase_env["PATH"] = os.pathsep.join([
@@ -664,17 +664,12 @@ class DatabaseConnector:
             "/opt/sap/COCKPIT-4/bin",
             "/opt/sap/ASE-16_0/bin",
             "/opt/sap/ASE-16_0/install",
-            ase_env["PATH"]
-         ])
-
-        ase_env["PATH"] = os.pathsep.join([
             "/usr/sbin",
             "/sbin",
-            ase_env["PATH"]])
+            ase_env.get("PATH", "")
+         ])
 
         del(ase_env["LANG"])
-
-        #os.unsetenv("LANG")
 
         return ase_env
 
@@ -683,8 +678,8 @@ class DatabaseConnector:
         p = subprocess.Popen(
             command_line,
             env=DatabaseConnector.get_ase_environment(),
-            stdin=subprocess.PIPE, 
-            stdout=subprocess.PIPE, 
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         stdout, stderr = p.communicate(stdin)
         return (stdout, stderr)
