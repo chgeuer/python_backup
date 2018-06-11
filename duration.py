@@ -508,7 +508,11 @@ class DatabaseConnector:
             command_line=self.isql(),
             stdin=DatabaseConnector.sql_statement_list_databases(is_full=is_full))
 
-        return map(lambda s: s.strip(), stdout.split("\n"))
+        return filter(
+            lambda e: e != "", 
+            map(
+                lambda s: s.strip(), 
+                stdout.split("\n")))
 
     @staticmethod
     def sql_statement_create_backup(local_directory, dbname, is_full, start_timestamp, stripe_count):
