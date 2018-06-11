@@ -627,50 +627,49 @@ class DatabaseConnector:
     def get_ase_environment():
         ase_env = os.environ.copy()
 
-        p=lambda path: "/opt/sap/{path}".format(path=path)
+        p=lambda path: os.path.join("/opt/sap", path)
 
         jre7=p("shared/SAPJRE-7_1_049_64BIT")
+        jre8=p("shared/SAPJRE-8_1_029_64BIT")
+
         ase_env["SAP_JRE7"]=jre7
         ase_env["SAP_JRE7_64"]=jre7
         ase_env["SYBASE_JRE_RTDS"]=jre7
-
-        jre8="/opt/sap/shared/SAPJRE-8_1_029_64BIT"
         ase_env["SAP_JRE8"]=jre8
         ase_env["SAP_JRE8_64"]=jre8
         ase_env["COCKPIT_JAVA_HOME"]=jre8
-
-        ase_env["SYBASE"]="/opt/sap"
-        ase_env["SYBROOT"]="/opt/sap"
+        ase_env["SYBASE"]=p("")
+        ase_env["SYBROOT"]=p("")
         ase_env["SYBASE_OCS"]="OCS-16_0"
         ase_env["SYBASE_ASE"]="ASE-16_0"
         ase_env["SYBASE_WS"]="WS-16_0"
 
         ase_env["INCLUDE"] = os.pathsep.join([
-            "/opt/sap/OCS-16_0/include",
+            p("OCS-16_0/include"),
             ase_env.get("INCLUDE", "")
         ])
 
         ase_env["LIB"] = os.pathsep.join([
-            "/opt/sap/OCS-16_0/lib",
+            p("OCS-16_0/lib"),
             ase_env.get("LIB", "")
         ])
 
         ase_env["LD_LIBRARY_PATH"] = os.pathsep.join([
-            "/opt/sap/ASE-16_0/lib",
-            "/opt/sap/OCS-16_0/lib",
-            "/opt/sap/OCS-16_0/lib3p",
-            "/opt/sap/OCS-16_0/lib3p64",
-            "/opt/sap/DataAccess/ODBC/lib",
-            "/opt/sap/DataAccess64/ODBC/lib",
+            p("ASE-16_0/lib"),
+            p("OCS-16_0/lib"),
+            p("OCS-16_0/lib3p"),
+            p("OCS-16_0/lib3p64"),
+            p("DataAccess/ODBC/lib"),
+            p("DataAccess64/ODBC/lib"),
             ase_env.get("LD_LIBRARY_PATH", "")
         ])
 
         ase_env["PATH"] = os.pathsep.join([
-            "/opt/sap/ASE-16_0/jobscheduler/bin",
-            "/opt/sap/OCS-16_0/bin",
-            "/opt/sap/COCKPIT-4/bin",
-            "/opt/sap/ASE-16_0/bin",
-            "/opt/sap/ASE-16_0/install",
+            p("ASE-16_0/bin"),
+            p("ASE-16_0/install"),
+            p("ASE-16_0/jobscheduler/bin"),
+            p("OCS-16_0/bin"),
+            p("COCKPIT-4/bin"),
             "/usr/sbin",
             "/sbin",
             ase_env.get("PATH", "")
