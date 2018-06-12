@@ -906,7 +906,7 @@ class Runner:
         logfile_name='backup.log'
         logging.basicConfig(
             filename=logfile_name,
-            level=logging.INFO,
+            level=logging.DEBUG,
             format="%(asctime)-15s pid-%(process)d line-%(lineno)d %(levelname)s: \"%(message)s\""
             )
         logging.getLogger('azure.storage').setLevel(logging.FATAL)
