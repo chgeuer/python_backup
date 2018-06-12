@@ -451,7 +451,7 @@ class DatabaseConnector:
         return str(stdout).strip()
 
     def determine_full_database_backup_stripe_count(self, dbname):
-        return 1
+        return 3
 
     @staticmethod
     def sql_statement_list_databases(is_full):
@@ -864,7 +864,7 @@ class BackupAgent:
         printe(stderr)
 
         for stripe_index in range(1, stripe_count + 1):
-            file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+            file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp,                              stripe_index=stripe_index, stripe_count=stripe_count)
             blob_name = Naming.construct_blobname(dbname=dbname, is_full=True, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
             file_path = os.path.join(output_dir, file_name)
 
