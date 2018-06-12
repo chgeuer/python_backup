@@ -676,7 +676,8 @@ class DatabaseConnector:
             ase_env.get("PATH", "")
          ])
 
-        del(ase_env["LANG"])
+        if ase_env.has_key("LANG"):
+            del(ase_env["LANG"])
 
         return ase_env
 
