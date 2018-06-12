@@ -922,10 +922,10 @@ class BackupAgent:
                 latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=False),
                 log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min()):
 
-            log_msg="Skipping backup of transactions for {dbname}. (min={min} latest={latest} now={now}".format(dbname=dbname,
+            log_msg="Skipping backup of transactions for {dbname}. (min='{min}' latest='{latest}' now='{now}'".format(dbname=dbname,
                 min=self.backup_configuration.get_log_backup_interval_min(),
                 latest=self.latest_backup_timestamp(dbname=dbname, is_full=False),
-                now=Timing.now_localtime())
+                now=Timing.now_localtime_string())
             logging.info(log_msg)
             print(log_msg)
             return
