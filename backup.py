@@ -304,7 +304,6 @@ class BackupBlobName:
 
 class DevelopmentSettings:
     @staticmethod
-    @property
     def is_christians_developer_box():
         return socket.gethostname() == "erlang"
 
@@ -323,7 +322,7 @@ class AzureVMInstanceMetadata:
             >>> meta.vm_name
             'somevm'
         """
-        if DevelopmentSettings.is_christians_developer_box:
+        if DevelopmentSettings.is_christians_developer_box():
             return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(AzureVMInstanceMetadata.__get_test_data("meta.json")))
         else:
             return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata())
@@ -994,6 +993,7 @@ class BackupAgent:
         print("restore Not yet impl restore for point {}".format(restore_point))
 
     def show_configuration(self):
+        print("christian Developer Box:            {}".format(DevelopmentSettings.is_christians_developer_box()))
         print("azure.vm_name:                      {}".format(self.backup_configuration.get_vm_name()))
         print("azure.resource_group_name:          {}".format(self.backup_configuration.get_resource_group_name()))
         print("azure.subscription_id:              {}".format(self.backup_configuration.get_subscription_id()))
