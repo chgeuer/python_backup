@@ -1001,9 +1001,10 @@ class BackupAgent:
 
             #result = {}
             for group, values in groupby(stripes, key=group_by_key): 
-                print("{backup} {files}".format(
-                    backup=group, 
-                    files=list(map(lambda s: s["stripe_index"], values))))
+                files = list(map(lambda s: s["stripe_index"], values))
+                print("{backup} {files}".format(backup=group, files=files))
+
+
 
     def restore(self, restore_point):
         print("restore Not yet impl restore for point {}".format(restore_point))
