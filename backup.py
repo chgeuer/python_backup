@@ -700,6 +700,28 @@ class BackupAgent:
     def __init__(self, config_filename):
         self.backup_configuration = BackupConfiguration(config_filename)
 
+    def list_restore_blobs(self, dbname):
+        existing_blobs_dict = dict()
+        marker = None
+        while True:
+            results = self.backup_configuration.storage_client.list_blobs(
+                container_name=self.backup_configuration.azure_storage_container_name,
+                prefix="{dbname}_".format(dbname=dbname), 
+                marker=marker)
+            for blob in results:
+                blob_name=blob.name
+                parts = Naming.parse_blobname(blob_name)
+                end_time_of_existing_blob = parts[3]
+                if not existing_blobs_dict.has_key(end_time_of_existing_blob):
+                    existing_blobs_dict[end_time_of_existing_blob] = []
+                existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
+
+            if results.next_marker:
+                marker = results.next_marker
+            else:
+                break
+        return existing_blobs_dict
+
     def existing_backups_for_db(self, dbname, is_full):
         existing_blobs_dict = dict()
         marker = None
@@ -890,7 +912,7 @@ class BackupAgent:
                     max_connections=4)
                 os.remove(file_path)
 
-    def transaction_backup(self, output_dir=None, databases=None):
+    def transaction_backup(self, output_dir=None, databases=None, force=False):
         database_connector = DatabaseConnector(self.backup_configuration)
         if databases != None:
             databases_to_backup = databases.split(",")
@@ -906,18 +928,23 @@ class BackupAgent:
         for dbname in databases_to_backup:
             self.tran_backup_single_db(
                 dbname=dbname, 
-                output_dir=output_dir)
+                output_dir=output_dir, 
+                force=force)
 
     @staticmethod
-    def should_run_tran_backup(now_time, latest_tran_backup_timestamp, log_backup_interval_min):
+    def should_run_tran_backup(now_time, force, latest_tran_backup_timestamp, log_backup_interval_min):
+        if force:
+            return True
+
         age_of_latest_backup_in_storage = Timing.time_diff(latest_tran_backup_timestamp, Timing.datetime_to_timestr(now_time))
         min_interval_allows_backup = age_of_latest_backup_in_storage > log_backup_interval_min
         perform_tran_backup = min_interval_allows_backup
-        return perform_tran_backup
+        return perform_tran_backup 
 
-    def tran_backup_single_db(self, dbname, output_dir):
+    def tran_backup_single_db(self, dbname, output_dir, force):
         if not BackupAgent.should_run_tran_backup(
                 now_time=Timing.now_localtime(), 
+                force=force,
                 latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=False),
                 log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min()):
 
@@ -988,10 +1015,10 @@ class BackupAgent:
                     "parts": x["parts"],
                     "dbname": x["parts"][0],
                     "is_full": x["parts"][1],
-                    "start": x["parts"][2],
+                    #"start": x["parts"][2],
                     "end": x["parts"][3],
                     "stripe_index": x["parts"][4],
-                    "stripe_count": x["parts"][5]
+                    #"stripe_count": x["parts"][5]
                 }, stripes)
 
             group_by_key=lambda x: "Database \"{dbname}\" {type} finished {end}".format(
@@ -999,18 +1026,28 @@ class BackupAgent:
                 type=Naming.backup_type_str(x["is_full"]), 
                 end=x["end"])
 
-            #result = {}
             for group, values in groupby(stripes, key=group_by_key): 
                 files = list(map(lambda s: s["stripe_index"], values))
                 print("{backup} {files}".format(backup=group, files=files))
 
+    def restore(self, restore_point, databases):
+        database_connector = DatabaseConnector(self.backup_configuration)
+        if len(databases) == 0:
+            databases = database_connector.list_databases(is_full=True)
+        skip_dbs = self.backup_configuration.get_databases_to_skip()
+        databases = filter(lambda db: not (db in skip_dbs), databases)
+        for dbname in databases:
+            self.restore_single_db(restore_point=restore_point, dbname=dbname)
 
-
-    def restore(self, restore_point):
-        print("restore Not yet impl restore for point {}".format(restore_point))
+    def restore_single_db(self, restore_point, dbname):
+        print("restore point \"{}\" for db {}".format(restore_point, dbname))
+        blobs = self.list_restore_blobs(dbname=dbname)
+        for b in blobs:
+            print("blob: {}".format(b))
 
     def show_configuration(self):
-        print("christian Developer Box:            {}".format(DevelopmentSettings.is_christians_developer_box()))
+        if DevelopmentSettings.is_christians_developer_box():
+            print("WARNING!!! This seems to be Christian's Developer Box")
         print("azure.vm_name:                      {}".format(self.backup_configuration.get_vm_name()))
         print("azure.resource_group_name:          {}".format(self.backup_configuration.get_resource_group_name()))
         print("azure.subscription_id:              {}".format(self.backup_configuration.get_subscription_id()))
@@ -1041,11 +1078,12 @@ class Runner:
         parser = argparse.ArgumentParser()
         parser.add_argument("-c",  "--config", help="the path to the config file")
         parser.add_argument("-f",  "--full-backup", help="Perform full backup", action="store_true")
-        parser.add_argument("-ff", "--full-backup-force", help="Perform forceful full backup (ignores business hour or age of last backup)", action="store_true")
+        parser.add_argument("-ff", "--full-backup-force", help="Perform forceful full backup (ignores business hours or age of last backup)", action="store_true")
         parser.add_argument("-s",  "--skip-upload", help="Skip uploads of backup files", action="store_true")
         parser.add_argument("-o",  "--output-dir", help="Specify target folder for backup files")
         parser.add_argument("-db", "--databases", help="Select databases to backup or restore ('--databases A,B,C')")
-        parser.add_argument("-t",  "--transaction-backup", help="Perform full backup", action="store_true")
+        parser.add_argument("-t",  "--transaction-backup", help="Perform transactions backup", action="store_true")
+        parser.add_argument("-tf",  "--transaction-backup-force", help="Perform forceful transactions backup (ignores age of last backup)", action="store_true")
         parser.add_argument("-r",  "--restore", help="Perform restore for date")
         parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
         parser.add_argument("-u",  "--unit-tests", help="Run unit tests", action="store_true")
@@ -1074,14 +1112,15 @@ class Runner:
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
                 printe("Skipping full backup, there is a full-backup in flight currently")
-        elif args.transaction_backup:
+        elif args.transaction_backup or args.transaction_backup_force:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
-                    BackupAgent(args.config).transaction_backup()
+                    BackupAgent(args.config).transaction_backup(
+                        force=args.transaction_backup_force)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip transaction log backup, already running")
         elif args.restore:
-            BackupAgent(args.config).restore(args.restore)
+            BackupAgent(args.config).restore(restore_point=args.restore, databases=databases)
         elif args.list_backups:
             BackupAgent(args.config).list_backups(databases=databases)
         elif args.unit_tests:
