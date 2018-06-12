@@ -787,28 +787,6 @@ class BackupAgent:
     def __init__(self, config_filename):
         self.backup_configuration = BackupConfiguration(config_filename)
 
-    def list_restore_blobs(self, dbname):
-        existing_blobs_dict = dict()
-        marker = None
-        while True:
-            results = self.backup_configuration.storage_client.list_blobs(
-                container_name=self.backup_configuration.azure_storage_container_name,
-                prefix="{dbname}_".format(dbname=dbname), 
-                marker=marker)
-            for blob in results:
-                blob_name=blob.name
-                parts = Naming.parse_blobname(blob_name)
-                end_time_of_existing_blob = parts[3]
-                if not existing_blobs_dict.has_key(end_time_of_existing_blob):
-                    existing_blobs_dict[end_time_of_existing_blob] = []
-                existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
-
-            if results.next_marker:
-                marker = results.next_marker
-            else:
-                break
-        return existing_blobs_dict
-
     def existing_backups_for_db(self, dbname, is_full):
         existing_blobs_dict = dict()
         marker = None
@@ -1124,13 +1102,35 @@ class BackupAgent:
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases = filter(lambda db: not (db in skip_dbs), databases)
         for dbname in databases:
-            self.restore_single_db(restore_point=restore_point, dbname=dbname)
+            self.restore_single_db(dbname=dbname, restore_point=restore_point)
 
-    def restore_single_db(self, restore_point, dbname):
+    def restore_single_db(self, dbname, restore_point):
         print("restore point \"{}\" for db {}".format(restore_point, dbname))
         blobs = self.list_restore_blobs(dbname=dbname)
-        for b in blobs:
-            print("blob: {}".format(b))
+        for blobname, blobs in blobs:
+            print("blob: {} {}".format(blobname, blobs))
+
+    def list_restore_blobs(self, dbname):
+        existing_blobs_dict = dict()
+        marker = None
+        while True:
+            results = self.backup_configuration.storage_client.list_blobs(
+                container_name=self.backup_configuration.azure_storage_container_name,
+                prefix="{dbname}_".format(dbname=dbname), 
+                marker=marker)
+            for blob in results:
+                blob_name=blob.name
+                parts = Naming.parse_blobname(blob_name)
+                end_time_of_existing_blob = parts[3]
+                if not existing_blobs_dict.has_key(end_time_of_existing_blob):
+                    existing_blobs_dict[end_time_of_existing_blob] = []
+                existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
+            if results.next_marker:
+                marker = results.next_marker
+            else:
+                break
+        return existing_blobs_dict
+
 
     def show_configuration(self):
         if DevelopmentSettings.is_christians_developer_box():
@@ -1170,7 +1170,7 @@ class Runner:
         parser.add_argument("-o",  "--output-dir", help="Specify target folder for backup files")
         parser.add_argument("-db", "--databases", help="Select databases to backup or restore ('--databases A,B,C')")
         parser.add_argument("-t",  "--transaction-backup", help="Perform transactions backup", action="store_true")
-        parser.add_argument("-tf",  "--transaction-backup-force", help="Perform forceful transactions backup (ignores age of last backup)", action="store_true")
+        parser.add_argument("-tf", "--transaction-backup-force", help="Perform forceful transactions backup (ignores age of last backup)", action="store_true")
         parser.add_argument("-r",  "--restore", help="Perform restore for date")
         parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
         parser.add_argument("-u",  "--unit-tests", help="Run unit tests", action="store_true")
