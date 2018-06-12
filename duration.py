@@ -450,8 +450,11 @@ class DatabaseConnector:
         stdout, _stderr = DatabaseConnector.call_process(command_line=[executable, arg], stdin="")
         return str(stdout).strip()
 
-    def determine_full_database_backup_stripe_count(self, dbname):
-        return 3
+    def determine_database_backup_stripe_count(self, dbname, is_full):
+        if is_full:
+            return 3
+        else:
+            return 2
 
     @staticmethod
     def sql_statement_list_databases(is_full):
@@ -591,9 +594,9 @@ class DatabaseConnector:
             ]
         )
 
-    def create_full_backup(self, dbname, start_timestamp, stripe_count, output_dir):
+    def create_backup(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
         sql = DatabaseConnector.sql_statement_create_backup(
-                dbname=dbname, is_full=True, 
+                dbname=dbname, is_full=is_full, 
                 start_timestamp=start_timestamp, 
                 stripe_count=stripe_count,
                 output_dir=output_dir)
@@ -629,6 +632,7 @@ class DatabaseConnector:
         ase_env = os.environ.copy()
 
         p=lambda path: os.path.join("/opt/sap", path)
+        val=lambda name: ase_env.get(name, "")
 
         jre7=p("shared/SAPJRE-7_1_049_64BIT")
         jre8=p("shared/SAPJRE-8_1_029_64BIT")
@@ -647,12 +651,12 @@ class DatabaseConnector:
 
         ase_env["INCLUDE"] = os.pathsep.join([
             p("OCS-16_0/include"),
-            ase_env.get("INCLUDE", "")
+            val("INCLUDE")
         ])
 
         ase_env["LIB"] = os.pathsep.join([
             p("OCS-16_0/lib"),
-            ase_env.get("LIB", "")
+            val("LIB")
         ])
 
         ase_env["LD_LIBRARY_PATH"] = os.pathsep.join([
@@ -662,7 +666,7 @@ class DatabaseConnector:
             p("OCS-16_0/lib3p64"),
             p("DataAccess/ODBC/lib"),
             p("DataAccess64/ODBC/lib"),
-            ase_env.get("LD_LIBRARY_PATH", "")
+            val("LD_LIBRARY_PATH")
         ])
 
         ase_env["PATH"] = os.pathsep.join([
@@ -671,9 +675,7 @@ class DatabaseConnector:
             p("ASE-16_0/jobscheduler/bin"),
             p("OCS-16_0/bin"),
             p("COCKPIT-4/bin"),
-            "/usr/sbin",
-            "/sbin",
-            ase_env.get("PATH", "")
+            val("PATH")
          ])
 
         if ase_env.has_key("LANG"):
@@ -699,26 +701,6 @@ class BackupAgent:
     """
     def __init__(self, config_filename):
         self.backup_configuration = BackupConfiguration(config_filename)
-
-    def full_backup(self, force=False, skip_upload=False, output_dir=None, databases=None):
-        database_connector = DatabaseConnector(self.backup_configuration)
-        if databases != None:
-            databases_to_backup = databases.split(",")
-        else:
-            databases_to_backup = database_connector.list_databases(is_full=True)
-
-        skip_dbs = self.backup_configuration.get_databases_to_skip()
-        databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
-
-        if output_dir == None:
-            output_dir = self.backup_configuration.get_standard_local_directory()
-
-        for dbname in databases_to_backup:
-            self.full_backup_single_db(
-                dbname=dbname, 
-                force=force, 
-                skip_upload=skip_upload, 
-                output_dir=output_dir)
 
     def existing_backups_for_db(self, dbname, is_full):
         existing_blobs_dict = dict()
@@ -765,15 +747,34 @@ class BackupAgent:
                 break
         return existing_blobs_dict
 
-    def latest_full_backup_timestamp(self, dbname):
-        existing_blobs_dict = self.existing_backups_for_db(dbname=dbname, is_full=True)
+    def latest_backup_timestamp(self, dbname, is_full):
+        existing_blobs_dict = self.existing_backups_for_db(dbname=dbname, is_full=is_full)
         if len(existing_blobs_dict.keys()) == 0:
             return "19000101_000000"
-
         return sorted(existing_blobs_dict.keys(), cmp=lambda a,b: Timing.time_diff_in_seconds(b, a))[-1:][0]
 
+    def full_backup(self, force=False, skip_upload=False, output_dir=None, databases=None):
+        database_connector = DatabaseConnector(self.backup_configuration)
+        if databases != None:
+            databases_to_backup = databases.split(",")
+        else:
+            databases_to_backup = database_connector.list_databases(is_full=True)
+
+        skip_dbs = self.backup_configuration.get_databases_to_skip()
+        databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
+
+        if output_dir == None:
+            output_dir = self.backup_configuration.get_standard_local_directory()
+
+        for dbname in databases_to_backup:
+            self.full_backup_single_db(
+                dbname=dbname, 
+                force=force, 
+                skip_upload=skip_upload, 
+                output_dir=output_dir)
+
     @staticmethod
-    def should_run_full_backup(now_time, dbname, force, latest_full_backup_timestamp, business_hours, db_backup_interval_min, db_backup_interval_max):
+    def should_run_full_backup(now_time, force, latest_full_backup_timestamp, business_hours, db_backup_interval_min, db_backup_interval_max):
         """
             Determine whether a backup should be executed. 
 
@@ -787,40 +788,40 @@ class BackupAgent:
             >>> outside_business_hours = Timing.parse("20180606_220000")
             >>> 
             >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=same_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=same_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
             >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=two_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=two_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
             >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=five_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=five_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
             >>> # respecting business hours, and not needed anyway
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=same_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=same_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             False
             >>> # respecting business hours
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=two_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=two_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             False
             >>> # a really old backup, so we ignore business hours
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=five_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=five_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
             >>> # outside_business_hours, but same_day_backup, so no backup
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=same_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=same_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             False
             >>> # outside_business_hours and need to backup
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=two_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=two_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
             >>> # a really old backup
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=five_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=five_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
             >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=same_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=same_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
             >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=two_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=two_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
             >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=five_day_backup, dbname="testdb", business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
+            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=five_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
         """
         allowed_by_business = business_hours.is_backup_allowed_time(now_time)
@@ -838,9 +839,8 @@ class BackupAgent:
 
     def full_backup_single_db(self, dbname, force, skip_upload, output_dir):
         if not BackupAgent.should_run_full_backup(
-                now_time=Timing.now_localtime(), 
-                dbname=dbname, force=force, 
-                latest_full_backup_timestamp=self.latest_full_backup_timestamp(dbname),
+                now_time=Timing.now_localtime(), force=force, 
+                latest_full_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=True),
                 business_hours=self.backup_configuration.get_business_hours(), 
                 db_backup_interval_min=self.backup_configuration.get_db_backup_interval_min(), 
                 db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max()):
@@ -849,25 +849,117 @@ class BackupAgent:
             return
 
         db_connector = DatabaseConnector(self.backup_configuration)
-        stripe_count = db_connector.determine_full_database_backup_stripe_count(
-            dbname=dbname)
+        stripe_count = db_connector.determine_database_backup_stripe_count(
+            dbname=dbname, is_full=True)
 
         start_timestamp = Timing.now_localtime()
-        stdout, stderr = db_connector.create_full_backup(
+        stdout, stderr = db_connector.create_backup(
             dbname=dbname, 
+            is_full=True,
             start_timestamp=start_timestamp, 
             stripe_count=stripe_count, 
             output_dir=output_dir)
         end_timestamp = Timing.now_localtime()
 
-        print(stdout)
-        printe(stderr)
+        logging.info(stdout)
+        logging.warning(stderr)
+        # print(stdout)
+        # printe(stderr)
+
+        if not skip_upload:
+            for stripe_index in range(1, stripe_count + 1):
+                file_name = Naming.construct_filename(
+                    dbname=dbname, 
+                    is_full=True, 
+                    start_timestamp=start_timestamp,
+                    stripe_index=stripe_index, 
+                    stripe_count=stripe_count)
+                blob_name = Naming.construct_blobname(
+                    dbname=dbname, 
+                    is_full=True, 
+                    start_timestamp=start_timestamp, 
+                    end_timestamp=end_timestamp, 
+                    stripe_index=stripe_index, 
+                    stripe_count=stripe_count)
+
+                file_path = os.path.join(output_dir, file_name)
+                print("Upload {f} to {b}".format(f=file_path, b=blob_name))
+                self.backup_configuration.storage_client.create_blob_from_path(
+                    container_name=self.backup_configuration.azure_storage_container_name, 
+                    file_path=file_path,
+                    blob_name=blob_name, 
+                    validate_content=True, 
+                    max_connections=4)
+                os.remove(file_path)
+
+    def transaction_backup(self, output_dir=None, databases=None):
+        database_connector = DatabaseConnector(self.backup_configuration)
+        if databases != None:
+            databases_to_backup = databases.split(",")
+        else:
+            databases_to_backup = database_connector.list_databases(is_full=True)
+
+        skip_dbs = self.backup_configuration.get_databases_to_skip()
+        databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
+
+        if output_dir == None:
+            output_dir = self.backup_configuration.get_standard_local_directory()
+
+        for dbname in databases_to_backup:
+            self.tran_backup_single_db(
+                dbname=dbname, 
+                output_dir=output_dir)
+
+    @staticmethod
+    def should_run_tran_backup(now_time, latest_tran_backup_timestamp, log_backup_interval_min):
+        age_of_latest_backup_in_storage = Timing.time_diff(latest_tran_backup_timestamp, Timing.datetime_to_timestr(now_time))
+        min_interval_allows_backup = age_of_latest_backup_in_storage > log_backup_interval_min
+        perform_tran_backup = min_interval_allows_backup
+        return perform_tran_backup
+
+    def tran_backup_single_db(self, dbname, output_dir):
+        if not BackupAgent.should_run_tran_backup(
+                now_time=Timing.now_localtime(), 
+                latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=False),
+                log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min()):
+            logging.info("Skipping backup of transactions for {dbname}".format(dbname=dbname))
+            print("Skipping backup of transactions for {dbname}".format(dbname=dbname))
+            return
+
+        db_connector = DatabaseConnector(self.backup_configuration)
+        stripe_count = db_connector.determine_database_backup_stripe_count(
+            dbname=dbname, is_full=False)
+
+        start_timestamp = Timing.now_localtime()
+        stdout, stderr = db_connector.create_backup(
+            dbname=dbname, 
+            is_full=False,
+            start_timestamp=start_timestamp, 
+            stripe_count=stripe_count, 
+            output_dir=output_dir)
+        end_timestamp = Timing.now_localtime()
+
+        logging.info(stdout)
+        logging.warning(stderr)
+        # print(stdout)
+        # printe(stderr)
 
         for stripe_index in range(1, stripe_count + 1):
-            file_name = Naming.construct_filename(dbname=dbname, is_full=True, start_timestamp=start_timestamp,                              stripe_index=stripe_index, stripe_count=stripe_count)
-            blob_name = Naming.construct_blobname(dbname=dbname, is_full=True, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
-            file_path = os.path.join(output_dir, file_name)
+            file_name = Naming.construct_filename(
+                dbname=dbname, 
+                is_full=False, 
+                start_timestamp=start_timestamp,
+                stripe_index=stripe_index, 
+                stripe_count=stripe_count)
+            blob_name = Naming.construct_blobname(
+                dbname=dbname, 
+                is_full=False, 
+                start_timestamp=start_timestamp, 
+                end_timestamp=end_timestamp, 
+                stripe_index=stripe_index, 
+                stripe_count=stripe_count)
 
+            file_path = os.path.join(output_dir, file_name)
             print("Upload {f} to {b}".format(f=file_path, b=blob_name))
             self.backup_configuration.storage_client.create_blob_from_path(
                 container_name=self.backup_configuration.azure_storage_container_name, 
@@ -876,10 +968,6 @@ class BackupAgent:
                 validate_content=True, 
                 max_connections=4)
             os.remove(file_path)
-
-    def transaction_backup(self):
-        print("transaction_backup Not yet impl")
-        logging.info("Run transaction log backup")
 
     def list_backups(self, databases = []):
         baks_dict = self.existing_backups(databases=databases)
