@@ -977,21 +977,33 @@ class BackupAgent:
         for end_timestamp in baks_dict.keys():
             # http://mark-dot-net.blogspot.com/2014/03/python-equivalents-of-linq-methods.html
             stripes = baks_dict[end_timestamp]
-            stripes = map(lambda blobname: { 
-                    "blobname":blobname, 
-                    "filename": Naming.blobname_to_filename(blobname), 
-                    "parts": Naming.parse_blobname(blobname) 
+            stripes = map(lambda blobname: {
+                    "blobname":blobname,
+                    "filename": Naming.blobname_to_filename(blobname),
+                    "parts": Naming.parse_blobname(blobname)
+                }, stripes)
+            stripes = map(lambda x: {
+                    "blobname": x["blobname"],
+                    "filename": x["filename"],
+                    "parts": x["parts"],
+                    "dbname": x["parts"][0],
+                    "is_full": x["parts"][1],
+                    "start": x["parts"][2],
+                    "end": x["parts"][3],
+                    "stripe_index": x["parts"][4],
+                    "stripe_count": x["parts"][5]
                 }, stripes)
 
             group_by_key=lambda x: "Database \"{dbname}\" {type} finished {end}".format(
-                dbname=x["parts"][0], 
-                type=Naming.backup_type_str(x["parts"][1]), 
-                end=x["parts"][3])
+                dbname=x["dbname"], 
+                type=Naming.backup_type_str(x["is_full"]), 
+                end=x["end"])
 
+            #result = {}
             for group, values in groupby(stripes, key=group_by_key): 
                 print("{backup} {files}".format(
                     backup=group, 
-                    files=list(map(lambda s: s["parts"][4], values))))
+                    files=list(map(lambda s: s["stripe_index"], values))))
 
     def restore(self, restore_point):
         print("restore Not yet impl restore for point {}".format(restore_point))
