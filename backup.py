@@ -278,7 +278,10 @@ class Naming:
             ('test1db', False, '20180601_112429', '20180601_131234', 2, 8)
         """
         m=re.search(r'(?P<dbname>\S+?)_(?P<type>full|tran)_(?P<start>\d{8}_\d{6})--(?P<end>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
-        return (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), m.group('end'), int(m.group('idx')), int(m.group('cnt')))
+
+        (dbname, is_full, start_date, end_date, stripe_index, stripe_count) = (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), m.group('end'), int(m.group('idx')), int(m.group('cnt')))
+
+        return dbname, is_full, start_date, end_date, stripe_index, stripe_count
 
     @staticmethod
     def blobname_to_filename(blobname):
@@ -1107,10 +1110,10 @@ class BackupAgent:
     def restore_single_db(self, dbname, restore_point):
         print("restore point \"{}\" for db {}".format(restore_point, dbname))
         blobs = self.list_restore_blobs(dbname=dbname)
-        for enddate in blobs:
-            blobnames = blobs[enddate]
-            for blobname in blobnames:
-                print("blob: {} {}".format(enddate, blobname))
+        for end_date in blobs:
+            for blobname in blobs[end_date]:
+                (_dbname, is_full, start_date, end_date, stripe_index, stripe_count) = Naming.parse_blobname(blobname)
+                print("blob: {} {} {} {} {} {}".format(dbname, is_full, start_date, end_date, stripe_index, stripe_count))
 
     def list_restore_blobs(self, dbname):
         existing_blobs_dict = dict()
@@ -1127,13 +1130,11 @@ class BackupAgent:
                 if not existing_blobs_dict.has_key(end_time_of_existing_blob):
                     existing_blobs_dict[end_time_of_existing_blob] = []
                 existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
-                print("Name: {}".format(blob_name))
             if results.next_marker:
                 marker = results.next_marker
             else:
                 break
         return existing_blobs_dict
-
 
     def show_configuration(self):
         if DevelopmentSettings.is_christians_developer_box():
