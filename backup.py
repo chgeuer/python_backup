@@ -1108,7 +1108,8 @@ class BackupAgent:
         print("restore point \"{}\" for db {}".format(restore_point, dbname))
         blobs = self.list_restore_blobs(dbname=dbname)
         for blobname in blobs:
-            print("blob: {} {}".format(blobname))
+            f = blobs[blobname]
+            print("blob: {} {}".format(blobname, f))
 
     def list_restore_blobs(self, dbname):
         existing_blobs_dict = dict()
@@ -1125,6 +1126,7 @@ class BackupAgent:
                 if not existing_blobs_dict.has_key(end_time_of_existing_blob):
                     existing_blobs_dict[end_time_of_existing_blob] = []
                 existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
+                print("Name: {}".format(blob_name))
             if results.next_marker:
                 marker = results.next_marker
             else:
