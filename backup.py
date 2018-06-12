@@ -668,15 +668,7 @@ class DatabaseConnector:
 
     @staticmethod
     def isql_path():
-        # "./isql.py"
         return "/opt/sap/OCS-16_0/bin/isql"
-
-    def isql(self):
-        return DatabaseConnector.create_isql_commandline(
-            server_name=self.backup_configuration.get_CID(),
-            username="sapsa",
-            password=self.get_database_password(
-                sid=self.backup_configuration.get_SID()))
 
     @staticmethod
     def create_isql_commandline(server_name, username, password):
@@ -689,6 +681,36 @@ class DatabaseConnector:
             "-w", "999",
             supress_header
         ]
+
+    def isql(self):
+        return DatabaseConnector.create_isql_commandline(
+            server_name=self.backup_configuration.get_CID(),
+            username="sapsa",
+            password=self.get_database_password(
+                sid=self.backup_configuration.get_SID()))
+
+    @staticmethod
+    def ddlgen_path():
+        return "/opt/sap/ASE-16_0/bin/ddlgen"
+
+    @staticmethod
+    def create_ddlgen_commandline(sid, dbname, username, password):
+        # ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F% -TDBD -N%
+        # ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%
+        return [
+            DatabaseConnector.ddlgen_path(),
+            "-U{}".format(username),
+            "-S{}".format(sid),
+            "-D{}".format(dbname),
+            "-P{}".format(password)
+        ]
+
+    def ddlgen(self, dbname):
+        return DatabaseConnector.create_ddlgen_commandline(
+            sid=self.backup_configuration.get_SID(),
+            dbname=dbname,
+            username="sapsa",
+            password=self.get_database_password(sid=self.backup_configuration.get_SID()))
 
     @staticmethod
     def get_ase_environment():
@@ -755,7 +777,7 @@ class DatabaseConnector:
             stderr=subprocess.PIPE,
             env=DatabaseConnector.get_ase_environment()
         )
-        stdout, stderr = p.communicate(stdin + "\n")
+        stdout, stderr = p.communicate(stdin)
         return (stdout, stderr)
 
 class BackupAgent:
