@@ -993,6 +993,19 @@ class BackupAgent:
     def restore(self, restore_point):
         print("restore Not yet impl restore for point {}".format(restore_point))
 
+    def show_configuration(self):
+        print("azure.vm_name:                      {}".format(self.backup_configuration.get_vm_name()))
+        print("azure.resource_group_name:          {}".format(self.backup_configuration.get_resource_group_name()))
+        print("azure.subscription_id:              {}".format(self.backup_configuration.get_subscription_id()))
+        print("sap.SID:                            {}".format(self.backup_configuration.get_SID()))
+        print("sap.CID:                            {}".format(self.backup_configuration.get_CID()))
+        print("skipped databases:                  {}".format(self.backup_configuration.get_databases_to_skip()))
+        print("db_backup_interval_min:             {}".format(self.backup_configuration.get_db_backup_interval_min()))
+        print("db_backup_interval_max:             {}".format(self.backup_configuration.get_db_backup_interval_max()))
+        print("log_backup_interval_min:            {}".format(self.backup_configuration.get_log_backup_interval_min()))
+        print("log_backup_interval_max:            {}".format(self.backup_configuration.get_log_backup_interval_max()))
+        print("azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name()))
+
 class Runner:
     @staticmethod
     def configure_logging():
@@ -1017,6 +1030,7 @@ class Runner:
         parser.add_argument("-r",  "--restore", help="Perform restore for date")
         parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
         parser.add_argument("-u",  "--unit-tests", help="Run unit tests", action="store_true")
+        parser.add_argument("-x",  "--show-configuration", help="Shows the VM's configuration values", action="store_true")
         return parser
 
     @staticmethod
@@ -1055,6 +1069,8 @@ class Runner:
             import doctest
             doctest.testmod()
             # doctest.testmod(verbose=True)
+        elif args.show_configuration:
+            BackupAgent(args.config).show_configuration()
         else:
             parser.print_help()
 
