@@ -897,7 +897,7 @@ class BackupAgent:
         if databases != None:
             databases_to_backup = databases.split(",")
         else:
-            databases_to_backup = database_connector.list_databases(is_full=True)
+            databases_to_backup = database_connector.list_databases(is_full=False)
 
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
