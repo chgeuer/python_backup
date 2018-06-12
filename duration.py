@@ -499,12 +499,11 @@ class DatabaseConnector:
             ])
 
     def list_databases(self, is_full):
-        print("Listing databases CID={cid} SID={sid}".format(
-            cid=self.backup_configuration.get_CID(),
-            sid=self.backup_configuration.get_SID()))
-
-        print("Calling {}".format(" ".join(self.isql())))
-        print(DatabaseConnector.sql_statement_list_databases(is_full=is_full))
+        # print("Listing databases CID={cid} SID={sid}".format(
+        #     cid=self.backup_configuration.get_CID(),
+        #     sid=self.backup_configuration.get_SID()))
+        # print("Calling {}".format(" ".join(self.isql())))
+        # print(DatabaseConnector.sql_statement_list_databases(is_full=is_full))
 
         (stdout, _stderr) = DatabaseConnector.call_process(
             command_line=self.isql(),
