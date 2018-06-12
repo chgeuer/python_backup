@@ -450,10 +450,68 @@ class DatabaseConnector:
         return str(stdout).strip()
 
     def determine_database_backup_stripe_count(self, dbname, is_full):
-        if is_full:
-            return 3
-        else:
-            return 2
+        return "\n".join([
+            "set nocount on",
+            "go",
+            "declare @dbname varchar(30),",
+            "        @dumptype varchar(12),",
+            "        @stripes int,",
+            "        @data_free numeric (10,2),",
+            "        @data_size numeric (10,2),",
+            "        @log_free numeric (10,2),",
+            "        @log_size numeric (10,2),",
+            "        @max_stripe_size_in_GB int",
+            "",
+            "select @dbname = '{dbname}'".format(dbname=dbname),
+            "select @stripes = 0",
+            "select @max_stripe_size_in_GB = 10",
+            "select",
+            "    @data_free = convert(numeric(10,2),sum(curunreservedpgs(dbid, lstart, unreservedpgs)) * (@@maxpagesize / 1024. / 1024)),",
+            "    @data_size = convert(numeric(10,2),sum(u.size * (@@maxpagesize / 1024. / 1024.))),",
+            "    @log_free = convert(numeric(10,2),lct_admin('logsegment_freepages', u.dbid) * (@@maxpagesize / 1024. /1024. ))",
+            "    from master..sysusages u, master..sysdevices d",
+            "    where d.vdevno = u.vdevno",
+            "        and d.status &2 = 2",
+            "        and u.segmap <> 4",
+            "        and u.segmap < 5",
+            "        and db_name(u.dbid) = @dbname",
+            "    group by u.dbid",
+            "select @log_size =  sum(us.size * (@@maxpagesize / 1024. / 1024.))",
+            "    from master..sysdatabases db, master..sysusages us",
+            "    where db.dbid = us.dbid",
+            "        and us.segmap = 4",
+            "        and db_name(db.dbid) = @dbname",
+            "    group by db.dbid",
+            "select @data_free = isnull (@data_free, 0),",
+            "       @data_size = isnull (@data_size ,0),",
+            "       @log_free  = isnull (@log_free, 0),",
+            "       @log_size  = isnull (@log_size, 0)"
+        ]
+        +
+        {
+            True: [
+                "select @stripes = convert (int, ((@data_size - @data_free + @log_size - @log_free) / 1024 + @max_stripe_size_in_GB ) / @max_stripe_size_in_GB)",
+                "if(( @stripes < 2 ) and ( @data_size - @data_free + @log_size - @log_free > 1024 ))"
+                ],
+            False: [
+                "select @stripes = convert (int, ((@log_size - @log_free) / 1024 + @max_stripe_size_in_GB ) / @max_stripe_size_in_GB)",
+                "if(( @stripes < 2 ) and ( @log_size - @log_free > 1024 ))"
+            ]
+        }[is_full]
+        +
+        [
+            "begin",
+            "    select @stripes = 2",
+            "end",
+            "",
+            "if @stripes > 8",
+            "begin",
+            "    select @stripes = 8",
+            "end",
+            "",
+            "select @stripes",
+            "go"
+        ])
 
     @staticmethod
     def sql_statement_list_databases(is_full):
