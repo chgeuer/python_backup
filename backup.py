@@ -984,10 +984,14 @@ class BackupAgent:
                 }, stripes)
 
             group_by_key=lambda x: "Database \"{dbname}\" {type} finished {end}".format(
-                dbname=x["parts"][0], type=Naming.backup_type_str(x["parts"][1]), end=x["parts"][3])
+                dbname=x["parts"][0], 
+                type=Naming.backup_type_str(x["parts"][1]), 
+                end=x["parts"][3])
 
             for group, values in groupby(stripes, key=group_by_key): 
-                print("{backup} {files}".format(backup=group, files=list(map(lambda s: s["parts"][4], values))))
+                print("{backup} {files}".format(
+                    backup=group, 
+                    files=list(map(lambda s: s["parts"][4], values))))
 
     def restore(self, restore_point):
         print("restore Not yet impl restore for point {}".format(restore_point))
