@@ -1107,9 +1107,10 @@ class BackupAgent:
     def restore_single_db(self, dbname, restore_point):
         print("restore point \"{}\" for db {}".format(restore_point, dbname))
         blobs = self.list_restore_blobs(dbname=dbname)
-        for blobname in blobs:
-            f = blobs[blobname]
-            print("blob: {} {}".format(blobname, f))
+        for enddate in blobs:
+            blobnames = blobs[enddate]
+            for blobname in blobnames:
+                print("blob: {} {}".format(enddate, blobname))
 
     def list_restore_blobs(self, dbname):
         existing_blobs_dict = dict()
