@@ -449,7 +449,8 @@ class DatabaseConnector:
         stdout, _stderr = DatabaseConnector.call_process(command_line=[executable, arg], stdin="")
         return str(stdout).strip()
 
-    def determine_database_backup_stripe_count(self, dbname, is_full):
+    @staticmethod
+    def sql_statement_stripe_count(dbname, is_full):
         return "\n".join([
             "set nocount on",
             "go",
@@ -512,6 +513,12 @@ class DatabaseConnector:
             "select @stripes",
             "go"
         ])
+
+    def determine_database_backup_stripe_count(self, dbname, is_full):
+        (stdout, _stderr) = DatabaseConnector.call_process(
+            command_line=self.isql(),
+            stdin=DatabaseConnector.sql_statement_stripe_count(dbname=dbname, is_full=is_full))
+        return int(stdout)
 
     @staticmethod
     def sql_statement_list_databases(is_full):
