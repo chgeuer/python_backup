@@ -185,14 +185,61 @@ class Timing:
         return dt2 - dt1
 
     @staticmethod
-    def sort(times):
+    def __recovery_sample_data():
+        return [
+            {"end_date":"20180101_015000", "is_full":False},
+            {"end_date":"20180101_020000", "is_full":False},
+            {"end_date":"20180101_021000", "is_full":False},
+            {"end_date":"20180101_023000", "is_full":False},
+            {"end_date":"20180101_010000", "is_full":True},
+            {"end_date":"20180101_022000", "is_full":True},
+            {"end_date":"20180101_030000", "is_full":True},
+            {"end_date":"20180101_014000", "is_full":True},
+            {"end_date":"20180101_011000", "is_full":False},
+            {"end_date":"20180101_012000", "is_full":False},
+            {"end_date":"20180101_013000", "is_full":False},
+            {"end_date":"20180101_024000", "is_full":False},
+            {"end_date":"20180101_025000", "is_full":False},
+            {"end_date":"20180101_031000", "is_full":False},
+            {"end_date":"20180101_032000", "is_full":False},
+            {"end_date":"20180101_033000", "is_full":False}
+        ]
+
+    @staticmethod
+    def sort(times, selector=lambda x: x):
         """
             >>> Timing.sort(['20180110_120000', '20180105_120000', '20180101_120000'])
             ['20180101_120000', '20180105_120000', '20180110_120000']
             >>> Timing.sort(['20180105_120000', '20180110_120000', '20180105_120000', '20180101_120000'])
             ['20180101_120000', '20180105_120000', '20180105_120000', '20180110_120000']
+            >>> pick_end_date=lambda x: x["end_date"]
+            >>> Timing.sort(times=Timing._Timing__recovery_sample_data(), selector=pick_end_date)
+            [{'is_full': True, 'end_date': '20180101_010000'}, {'is_full': False, 'end_date': '20180101_011000'}, \
+{'is_full': False, 'end_date': '20180101_012000'}, {'is_full': False, 'end_date': '20180101_013000'}, \
+{'is_full': True, 'end_date': '20180101_014000'}, {'is_full': False, 'end_date': '20180101_015000'}, \
+{'is_full': False, 'end_date': '20180101_020000'}, {'is_full': False, 'end_date': '20180101_021000'}, \
+{'is_full': True, 'end_date': '20180101_022000'}, {'is_full': False, 'end_date': '20180101_023000'}, \
+{'is_full': False, 'end_date': '20180101_024000'}, {'is_full': False, 'end_date': '20180101_025000'}, \
+{'is_full': True, 'end_date': '20180101_030000'}, {'is_full': False, 'end_date': '20180101_031000'}, \
+{'is_full': False, 'end_date': '20180101_032000'}, {'is_full': False, 'end_date': '20180101_033000'}]
+            >>> map(pick_end_date, Timing.sort(times=Timing._Timing__recovery_sample_data(), selector=pick_end_date))
+            ['20180101_010000', '20180101_011000', '20180101_012000', '20180101_013000', \
+'20180101_014000', '20180101_015000', '20180101_020000', '20180101_021000', '20180101_022000', \
+'20180101_023000', '20180101_024000', '20180101_025000', '20180101_030000', '20180101_031000', \
+'20180101_032000', '20180101_033000']
         """
-        return sorted(times, cmp=lambda a, b: Timing.time_diff_in_seconds(b, a))
+        return sorted(times, cmp=lambda a, b: Timing.time_diff_in_seconds(selector(b), selector(a)))
+
+    @staticmethod
+    def date_of_last_full_backup(times, recovery_point, 
+                                 select_end_date=lambda x: x["end_date"], 
+                                 select_is_full=lambda x: x["is_full"]):
+        """
+            >>> Timing.date_of_last_full_backup(times=Timing._Timing__recovery_sample_data(), recovery_point="20180101_024200", select_end_date=lambda x: x["end_date"], select_is_full=lambda x: x["is_full"])
+            '20180101_022000'
+        """
+
+        return 'nope'
 
     @staticmethod
     def time_diff_in_seconds(timestr_1, timestr_2):
@@ -1123,7 +1170,7 @@ class BackupAgent:
         for end_date in end_dates:
             blobnames = blobs[end_date]
             for blobname in blobnames:
-                (_dbname, is_full, start_date, end_date, stripe_index, stripe_count) = Naming.parse_blobname(blobname)
+                (_dbname, is_full, _start_date, end_date, _stripe_index, _stripe_count) = Naming.parse_blobname(blobname)
                 # print("blob: {} {} {} {} {} {}".format(dbname, is_full, start_date, end_date, stripe_index, stripe_count))
                 print("blob: {} {} {}".format(dbname, end_date, is_full))
 
