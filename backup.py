@@ -849,7 +849,7 @@ class BackupAgent:
         existing_blobs_dict = self.existing_backups_for_db(dbname=dbname, is_full=is_full)
         if len(existing_blobs_dict.keys()) == 0:
             return "19000101_000000"
-        return sorted(existing_blobs_dict.keys(), cmp=Timing.sort)[-1:][0]
+        return Timing.sort(existing_blobs_dict.keys())[-1:][0]
 
     def full_backup(self, force=False, skip_upload=False, output_dir=None, databases=None):
         database_connector = DatabaseConnector(self.backup_configuration)
