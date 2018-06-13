@@ -185,6 +185,16 @@ class Timing:
         return dt2 - dt1
 
     @staticmethod
+    def sort(times):
+        """
+            >>> Timing.sort(['20180110_120000', '20180105_120000', '20180101_120000'])
+            ['20180101_120000', '20180105_120000', '20180110_120000']
+            >>> Timing.sort(['20180105_120000', '20180110_120000', '20180105_120000', '20180101_120000'])
+            ['20180101_120000', '20180105_120000', '20180105_120000', '20180110_120000']
+        """
+        return sorted(times, cmp=lambda a, b: Timing.time_diff_in_seconds(b, a))
+
+    @staticmethod
     def time_diff_in_seconds(timestr_1, timestr_2):
         """
             >>> Timing.time_diff_in_seconds("20180106_120000", "20180106_120010")
@@ -839,7 +849,7 @@ class BackupAgent:
         existing_blobs_dict = self.existing_backups_for_db(dbname=dbname, is_full=is_full)
         if len(existing_blobs_dict.keys()) == 0:
             return "19000101_000000"
-        return sorted(existing_blobs_dict.keys(), cmp=lambda a,b: Timing.time_diff_in_seconds(b, a))[-1:][0]
+        return sorted(existing_blobs_dict.keys(), cmp=Timing.sort)[-1:][0]
 
     def full_backup(self, force=False, skip_upload=False, output_dir=None, databases=None):
         database_connector = DatabaseConnector(self.backup_configuration)
@@ -1109,10 +1119,7 @@ class BackupAgent:
 
     def restore_single_db(self, dbname, restore_point):
         blobs = self.list_restore_blobs(dbname=dbname)
-        end_dates = blobs.keys()
-        print(end_dates)
-
-        # end_dates  sorted(existing_blobs_dict.keys(), cmp=lambda a,b: Timing.time_diff_in_seconds(b, a))[-1:][0]
+        end_dates = Timing.sort(blobs.keys())
         for end_date in end_dates:
             blobnames = blobs[end_date]
             for blobname in blobnames:
