@@ -1124,7 +1124,8 @@ class BackupAgent:
             blobnames = blobs[end_date]
             for blobname in blobnames:
                 (_dbname, is_full, start_date, end_date, stripe_index, stripe_count) = Naming.parse_blobname(blobname)
-                print("blob: {} {} {} {} {} {}".format(dbname, is_full, start_date, end_date, stripe_index, stripe_count))
+                # print("blob: {} {} {} {} {} {}".format(dbname, is_full, start_date, end_date, stripe_index, stripe_count))
+                print("blob: {} {} {}".format(dbname, end_date, is_full))
 
     def list_restore_blobs(self, dbname):
         existing_blobs_dict = dict()
