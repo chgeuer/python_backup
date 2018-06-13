@@ -231,17 +231,6 @@ class Timing:
         return sorted(times, cmp=lambda a, b: Timing.time_diff_in_seconds(selector(b), selector(a)))
 
     @staticmethod
-    def date_of_last_full_backup(times, recovery_point, 
-                                 select_end_date=lambda x: x["end_date"], 
-                                 select_is_full=lambda x: x["is_full"]):
-        """
-            >>> Timing.date_of_last_full_backup(times=Timing._Timing__recovery_sample_data(), recovery_point="20180101_024200", select_end_date=lambda x: x["end_date"], select_is_full=lambda x: x["is_full"])
-            '20180101_022000'
-        """
-
-        return 'nope'
-
-    @staticmethod
     def time_diff_in_seconds(timestr_1, timestr_2):
         """
             >>> Timing.time_diff_in_seconds("20180106_120000", "20180106_120010")
@@ -250,6 +239,32 @@ class Timing:
             3610
         """
         return int(Timing.time_diff(timestr_1, timestr_2).total_seconds())
+
+    @staticmethod
+    def files_needed_for_revobery(times, recovery_point, 
+                                 select_end_date=lambda x: x["end_date"], 
+                                 select_is_full=lambda x: x["is_full"]):
+        """
+            >>> times=Timing._Timing__recovery_sample_data()
+            >>> Timing.files_needed_for_revobery(times=times, recovery_point="20180101_023200")
+            [{'is_full': True, 'end_date': '20180101_022000'}, {'is_full': False, 'end_date': '20180101_023000'}, {'is_full': False, 'end_date': '20180101_024000'}]
+            >>> Timing.files_needed_for_revobery(times=times, recovery_point="20180101_014001")
+            [{'is_full': True, 'end_date': '20180101_014000'}, {'is_full': False, 'end_date': '20180101_015000'}]
+        """
+        files_to_download = []
+
+        for e in Timing.sort(times=times, selector=select_end_date):
+            e_is_full = select_is_full(e)
+            e_end_date = select_end_date(e)
+            e_is_before = Timing.time_diff_in_seconds(recovery_point, e_end_date) <= 0
+
+            if e_is_full and e_is_before:
+                files_to_download = []
+            files_to_download.append(e)
+            if not e_is_before:
+                break
+
+        return files_to_download
 
 class Naming:
     @staticmethod
