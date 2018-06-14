@@ -1232,7 +1232,7 @@ class BackupAgent:
             print("blob: {} {} {} {} {} {}".format(dbname, is_full, start_date, end_date, stripe_index, stripe_count))
 
     def list_restore_blobs(self, dbname):
-        existing_blobs_dict = dict()
+        existing_blobs = []
         marker = None
         while True:
             results = self.backup_configuration.storage_client.list_blobs(
@@ -1240,17 +1240,12 @@ class BackupAgent:
                 prefix="{dbname}_".format(dbname=dbname), 
                 marker=marker)
             for blob in results:
-                blob_name=blob.name
-                parts = Naming.parse_blobname(blob_name)
-                end_time_of_existing_blob = parts[3]
-                if not existing_blobs_dict.has_key(end_time_of_existing_blob):
-                    existing_blobs_dict[end_time_of_existing_blob] = []
-                existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
+                existing_blobs.append(blob.name)
             if results.next_marker:
                 marker = results.next_marker
             else:
                 break
-        return existing_blobs_dict
+        return existing_blobs
 
     def show_configuration(self):
         if DevelopmentSettings.is_christians_developer_box():
