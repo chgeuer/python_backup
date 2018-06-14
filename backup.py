@@ -185,24 +185,65 @@ class Timing:
         return dt2 - dt1
 
     @staticmethod
+    def __recovery_sample_data_sorted():
+        return [
+            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
+            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
+            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
+            {'end_date':'20180101_011000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_012000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_013000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
+            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
+            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
+            {'end_date':'20180101_015000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_020000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_021000', 'is_full':False, 'stripe_index':1, 'stripe_count':2},
+            {'end_date':'20180101_021000', 'is_full':False, 'stripe_index':2, 'stripe_count':2},
+            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
+            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
+            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
+            {'end_date':'20180101_023000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_024000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_025000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
+            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
+            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
+            {'end_date':'20180101_031000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_032000', 'is_full':False, 'stripe_index':1, 'stripe_count':2},
+            {'end_date':'20180101_032000', 'is_full':False, 'stripe_index':2, 'stripe_count':2},
+            {'end_date':'20180101_033000', 'is_full':False, 'stripe_index':1, 'stripe_count':1}
+        ]
+
+    @staticmethod
     def __recovery_sample_data():
         return [
-            {"end_date":"20180101_015000", "is_full":False},
-            {"end_date":"20180101_020000", "is_full":False},
-            {"end_date":"20180101_021000", "is_full":False},
-            {"end_date":"20180101_023000", "is_full":False},
-            {"end_date":"20180101_010000", "is_full":True},
-            {"end_date":"20180101_022000", "is_full":True},
-            {"end_date":"20180101_030000", "is_full":True},
-            {"end_date":"20180101_014000", "is_full":True},
-            {"end_date":"20180101_011000", "is_full":False},
-            {"end_date":"20180101_012000", "is_full":False},
-            {"end_date":"20180101_013000", "is_full":False},
-            {"end_date":"20180101_024000", "is_full":False},
-            {"end_date":"20180101_025000", "is_full":False},
-            {"end_date":"20180101_031000", "is_full":False},
-            {"end_date":"20180101_032000", "is_full":False},
-            {"end_date":"20180101_033000", "is_full":False}
+            {'end_date':'20180101_011000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_012000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_015000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_023000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_024000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_025000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_031000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_032000', 'is_full':False, 'stripe_index':1, 'stripe_count':2},
+            {'end_date':'20180101_032000', 'is_full':False, 'stripe_index':2, 'stripe_count':2},
+            {'end_date':'20180101_020000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_021000', 'is_full':False, 'stripe_index':1, 'stripe_count':2},
+            {'end_date':'20180101_021000', 'is_full':False, 'stripe_index':2, 'stripe_count':2},
+            {'end_date':'20180101_013000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_033000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
+            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
+            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
+            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
+            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
+            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
+            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
+            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
+            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
+            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
+            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
+            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':3, 'stripe_count':3}
         ]
 
     @staticmethod
@@ -213,20 +254,11 @@ class Timing:
             >>> Timing.sort(['20180105_120000', '20180110_120000', '20180105_120000', '20180101_120000'])
             ['20180101_120000', '20180105_120000', '20180105_120000', '20180110_120000']
             >>> pick_end_date=lambda x: x["end_date"]
-            >>> Timing.sort(times=Timing._Timing__recovery_sample_data(), selector=pick_end_date)
-            [{'is_full': True, 'end_date': '20180101_010000'}, {'is_full': False, 'end_date': '20180101_011000'}, \
-{'is_full': False, 'end_date': '20180101_012000'}, {'is_full': False, 'end_date': '20180101_013000'}, \
-{'is_full': True, 'end_date': '20180101_014000'}, {'is_full': False, 'end_date': '20180101_015000'}, \
-{'is_full': False, 'end_date': '20180101_020000'}, {'is_full': False, 'end_date': '20180101_021000'}, \
-{'is_full': True, 'end_date': '20180101_022000'}, {'is_full': False, 'end_date': '20180101_023000'}, \
-{'is_full': False, 'end_date': '20180101_024000'}, {'is_full': False, 'end_date': '20180101_025000'}, \
-{'is_full': True, 'end_date': '20180101_030000'}, {'is_full': False, 'end_date': '20180101_031000'}, \
-{'is_full': False, 'end_date': '20180101_032000'}, {'is_full': False, 'end_date': '20180101_033000'}]
+            >>> Timing.sort(times=Timing._Timing__recovery_sample_data(), selector=pick_end_date)==[{'is_full': True, 'stripe_index': 1, 'end_date': '20180101_010000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_010000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_010000', 'stripe_count': 3}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_011000', 'stripe_count': 1}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_012000', 'stripe_count': 1}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_013000', 'stripe_count': 1}, {'is_full': True, 'stripe_index': 1, 'end_date': '20180101_014000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_014000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_014000', 'stripe_count': 3}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_015000', 'stripe_count': 1}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_020000', 'stripe_count': 1}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_021000', 'stripe_count': 2}, {'is_full': False, 'stripe_index': 2, 'end_date': '20180101_021000', 'stripe_count': 2}, {'is_full': True, 'stripe_index': 1, 'end_date': '20180101_022000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_022000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_022000', 'stripe_count': 3}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_023000', 'stripe_count': 1}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_024000', 'stripe_count': 1}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_025000', 'stripe_count': 1}, {'is_full': True, 'stripe_index': 1, 'end_date': '20180101_030000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_030000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_030000', 'stripe_count': 3}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_031000', 'stripe_count': 1}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_032000', 'stripe_count': 2}, {'is_full': False, 'stripe_index': 2, 'end_date': '20180101_032000', 'stripe_count': 2}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_033000', 'stripe_count': 1}]
+            True
+            >>> 
             >>> map(pick_end_date, Timing.sort(times=Timing._Timing__recovery_sample_data(), selector=pick_end_date))
-            ['20180101_010000', '20180101_011000', '20180101_012000', '20180101_013000', \
-'20180101_014000', '20180101_015000', '20180101_020000', '20180101_021000', '20180101_022000', \
-'20180101_023000', '20180101_024000', '20180101_025000', '20180101_030000', '20180101_031000', \
-'20180101_032000', '20180101_033000']
+            ['20180101_010000', '20180101_010000', '20180101_010000', '20180101_011000', '20180101_012000', '20180101_013000', '20180101_014000', '20180101_014000', '20180101_014000', '20180101_015000', '20180101_020000', '20180101_021000', '20180101_021000', '20180101_022000', '20180101_022000', '20180101_022000', '20180101_023000', '20180101_024000', '20180101_025000', '20180101_030000', '20180101_030000', '20180101_030000', '20180101_031000', '20180101_032000', '20180101_032000', '20180101_033000']
         """
         return sorted(times, cmp=lambda a, b: Timing.time_diff_in_seconds(selector(b), selector(a)))
 
@@ -241,28 +273,34 @@ class Timing:
         return int(Timing.time_diff(timestr_1, timestr_2).total_seconds())
 
     @staticmethod
-    def files_needed_for_revobery(times, recovery_point, 
+    def files_needed_for_recovery(times, recovery_point, 
                                  select_end_date=lambda x: x["end_date"], 
                                  select_is_full=lambda x: x["is_full"]):
         """
             >>> times=Timing._Timing__recovery_sample_data()
-            >>> Timing.files_needed_for_revobery(times=times, recovery_point="20180101_023200")
-            [{'is_full': True, 'end_date': '20180101_022000'}, {'is_full': False, 'end_date': '20180101_023000'}, {'is_full': False, 'end_date': '20180101_024000'}]
-            >>> Timing.files_needed_for_revobery(times=times, recovery_point="20180101_014001")
-            [{'is_full': True, 'end_date': '20180101_014000'}, {'is_full': False, 'end_date': '20180101_015000'}]
+            >>> Timing.files_needed_for_recovery(times=times, recovery_point='20180101_023200')
+            [{'is_full': False, 'stripe_index': 1, 'end_date': '20180101_023000', 'stripe_count': 1}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_024000', 'stripe_count': 1}, {'is_full': True, 'stripe_index': 1, 'end_date': '20180101_022000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_022000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_022000', 'stripe_count': 3}]
         """
-        files_to_download = []
+            # >>> Timing.files_needed_for_recovery(times=times, recovery_point="20180101_014001")
+            # True
 
-        for e in Timing.sort(times=times, selector=select_end_date):
-            e_is_full = select_is_full(e)
-            e_end_date = select_end_date(e)
-            e_is_before = Timing.time_diff_in_seconds(recovery_point, e_end_date) <= 0
-
-            if e_is_full and e_is_before:
-                files_to_download = []
-            files_to_download.append(e)
-            if not e_is_before:
+        create_tuple=lambda x: (select_end_date(x), select_is_full(x))
+        end_date_from_tuple=lambda x: x[0]
+        index_of_files_to_download = set()
+        for x in Timing.sort(list(set(map(create_tuple, times))), end_date_from_tuple):
+            x_end_date = end_date_from_tuple(x)
+            x_is_full = x[1]
+            x_is_before = Timing.time_diff_in_seconds(recovery_point, x_end_date) <= 0
+            if x_is_full and x_is_before:
+                index_of_files_to_download = set()
+            index_of_files_to_download.add(x)
+            if not x_is_before:
                 break
+
+        files_to_download = []
+        for x in times:
+            if create_tuple(x) in index_of_files_to_download:
+                files_to_download.append(x)
 
         return files_to_download
 
