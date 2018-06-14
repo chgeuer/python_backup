@@ -676,6 +676,12 @@ class DatabaseConnector:
                 "go"
             ])
 
+    def determine_databases(self, database_str, is_full):
+        if database_str != None:
+            return database_str.split(",")
+        else:
+            return self.list_databases(is_full=is_full)
+
     def list_databases(self, is_full):
         # print("Listing databases CID={cid} SID={sid}".format(
         #     cid=self.backup_configuration.get_CID(),
@@ -954,10 +960,7 @@ class BackupAgent:
 
     def full_backup(self, output_dir, force=False, skip_upload=False, databases=None):
         database_connector = DatabaseConnector(self.backup_configuration)
-        if databases != None:
-            databases_to_backup = databases.split(",")
-        else:
-            databases_to_backup = database_connector.list_databases(is_full=True)
+        databases_to_backup = database_connector.determine_databases(databases, is_full=True)
 
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
@@ -1090,11 +1093,7 @@ class BackupAgent:
 
     def transaction_backup(self, output_dir, force=False, skip_upload=False, databases=None):
         database_connector = DatabaseConnector(self.backup_configuration)
-        if databases != None:
-            databases_to_backup = databases.split(",")
-        else:
-            databases_to_backup = database_connector.list_databases(is_full=False)
-
+        databases_to_backup = database_connector.determine_databases(databases, is_full=False)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
 
@@ -1201,8 +1200,7 @@ class BackupAgent:
 
     def restore(self, restore_point, output_dir, databases):
         database_connector = DatabaseConnector(self.backup_configuration)
-        if len(databases) == 0:
-            databases = database_connector.list_databases(is_full=True)
+        databases = database_connector.determine_databases(databases, is_full=True)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases = filter(lambda db: not (db in skip_dbs), databases)
         for dbname in databases:
@@ -1293,13 +1291,6 @@ class Runner:
         return parser
 
     @staticmethod
-    def get_databases(args):
-        if None == args.databases or len(args.databases) == 0:
-            return []
-        else:
-            return str(args.databases).split(",")
-
-    @staticmethod
     def get_output_dir(args, backup_configuration):
         if args.output_dir:
             return args.output_dir
@@ -1313,8 +1304,6 @@ class Runner:
         args = parser.parse_args()
 
         backup_configuration = BackupConfiguration(args.config)
-
-        databases = Runner.get_databases(args)
         output_dir = Runner.get_output_dir(args, backup_configuration)
 
         if args.full_backup or args.full_backup_force:
@@ -1324,7 +1313,7 @@ class Runner:
                         force=args.full_backup_force, 
                         skip_upload=args.skip_upload,
                         output_dir=output_dir,
-                        databases=databases)
+                        databases=args.databases)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
                 printe("Skipping full backup, there is a full-backup in flight currently")
@@ -1335,16 +1324,20 @@ class Runner:
                         force=args.transaction_backup_force,
                         skip_upload=args.skip_upload,
                         output_dir=output_dir,
-                        databases=databases
-                        )
+                        databases=args.databases)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip transaction log backup, already running")
         elif args.restore:
             BackupAgent(backup_configuration).restore(
                 restore_point=args.restore, 
                 output_dir=output_dir, 
-                databases=databases)
+                databases=args.databases)
         elif args.list_backups:
+            if args.databases:
+                databases = args.databases.split(",")
+            else:
+                databases = []
+
             BackupAgent(backup_configuration).list_backups(
                 databases=databases)
         elif args.unit_tests:
