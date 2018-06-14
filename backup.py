@@ -390,9 +390,9 @@ class Naming:
         """
         m=re.search(r'(?P<dbname>\S+?)_(?P<type>full|tran)_(?P<start>\d{8}_\d{6})--(?P<end>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
 
-        (dbname, is_full, start_date, end_date, stripe_index, stripe_count) = (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), m.group('end'), int(m.group('idx')), int(m.group('cnt')))
+        (dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) = (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), m.group('end'), int(m.group('idx')), int(m.group('cnt')))
 
-        return dbname, is_full, start_date, end_date, stripe_index, stripe_count
+        return dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count
 
     @staticmethod
     def blobname_to_filename(blobname):
@@ -1220,8 +1220,10 @@ class BackupAgent:
         restore_files = Timing.files_needed_for_recovery(times, restore_point, 
             select_end_date=lambda x: x[3], select_is_full=lambda x: x[1])
 
-        for (dbname, is_full, start_date, end_date, stripe_index, stripe_count) in restore_files:
-            print("blob: {} {} {} {} {} {}".format(dbname, is_full, start_date, end_date, stripe_index, stripe_count))
+        for (dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) in restore_files:
+            blob_name = Naming.construct_blobname(dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count)
+            file_name = Naming.construct_filename(dbname, is_full, start_timestamp, stripe_index, stripe_count)
+            print("Download {} to {}".format(blob_name, file_name))
 
     def list_restore_blobs(self, dbname):
         existing_blobs = []
