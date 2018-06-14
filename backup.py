@@ -1088,7 +1088,7 @@ class BackupAgent:
                     max_connections=4)
                 os.remove(file_path)
 
-    def transaction_backup(self, output_dir, databases=None, force=False):
+    def transaction_backup(self, output_dir, force=False, skip_upload=False, databases=None):
         database_connector = DatabaseConnector(self.backup_configuration)
         if databases != None:
             databases_to_backup = databases.split(",")
@@ -1102,7 +1102,8 @@ class BackupAgent:
             self.tran_backup_single_db(
                 dbname=dbname, 
                 output_dir=output_dir, 
-                force=force)
+                force=force,
+                skip_upload=skip_upload)
 
     @staticmethod
     def should_run_tran_backup(now_time, force, latest_tran_backup_timestamp, log_backup_interval_min):
@@ -1114,7 +1115,7 @@ class BackupAgent:
         perform_tran_backup = min_interval_allows_backup
         return perform_tran_backup 
 
-    def tran_backup_single_db(self, dbname, output_dir, force):
+    def tran_backup_single_db(self, dbname, output_dir, force, skip_upload):
         if not BackupAgent.should_run_tran_backup(
                 now_time=Timing.now_localtime(), 
                 force=force,
@@ -1144,33 +1145,32 @@ class BackupAgent:
 
         logging.info(stdout)
         logging.warning(stderr)
-        # print(stdout)
-        # printe(stderr)
 
-        for stripe_index in range(1, stripe_count + 1):
-            file_name = Naming.construct_filename(
-                dbname=dbname, 
-                is_full=False, 
-                start_timestamp=start_timestamp,
-                stripe_index=stripe_index, 
-                stripe_count=stripe_count)
-            blob_name = Naming.construct_blobname(
-                dbname=dbname, 
-                is_full=False, 
-                start_timestamp=start_timestamp, 
-                end_timestamp=end_timestamp, 
-                stripe_index=stripe_index, 
-                stripe_count=stripe_count)
+        if not skip_upload:
+            for stripe_index in range(1, stripe_count + 1):
+                file_name = Naming.construct_filename(
+                    dbname=dbname, 
+                    is_full=False, 
+                    start_timestamp=start_timestamp,
+                    stripe_index=stripe_index, 
+                    stripe_count=stripe_count)
+                blob_name = Naming.construct_blobname(
+                    dbname=dbname, 
+                    is_full=False, 
+                    start_timestamp=start_timestamp, 
+                    end_timestamp=end_timestamp, 
+                    stripe_index=stripe_index, 
+                    stripe_count=stripe_count)
 
-            file_path = os.path.join(output_dir, file_name)
-            print("Upload {f} to {b}".format(f=file_path, b=blob_name))
-            self.backup_configuration.storage_client.create_blob_from_path(
-                container_name=self.backup_configuration.azure_storage_container_name, 
-                file_path=file_path,
-                blob_name=blob_name, 
-                validate_content=True, 
-                max_connections=4)
-            os.remove(file_path)
+                file_path = os.path.join(output_dir, file_name)
+                print("Upload {f} to {b}".format(f=file_path, b=blob_name))
+                self.backup_configuration.storage_client.create_blob_from_path(
+                    container_name=self.backup_configuration.azure_storage_container_name, 
+                    file_path=file_path,
+                    blob_name=blob_name, 
+                    validate_content=True, 
+                    max_connections=4)
+                os.remove(file_path)
 
     def list_backups(self, databases = []):
         baks_dict = self.existing_backups(databases=databases)
@@ -1293,6 +1293,20 @@ class Runner:
         return parser
 
     @staticmethod
+    def get_databases(args):
+        if args.databases:
+            return args.databases.split(",")
+        else:
+            return []
+
+    @staticmethod
+    def get_output_dir(args, backup_configuration):
+        if args.output_dir:
+            return args.output_dir
+        else:
+            return backup_configuration.get_standard_local_directory()
+
+    @staticmethod
     def main():
         Runner.configure_logging()
         parser = Runner.arg_parser() 
@@ -1300,15 +1314,8 @@ class Runner:
 
         backup_configuration = BackupConfiguration(args.config)
 
-        if args.databases:
-            databases =  args.databases.split(",")
-        else:
-            databases = []
-
-        if args.output_dir:
-            output_dir = args.output_dir
-        else:
-            output_dir = backup_configuration.get_standard_local_directory()
+        databases = Runner.get_databases(args)
+        output_dir = Runner.get_output_dir(args, backup_configuration)
 
         if args.full_backup or args.full_backup_force:
             try:
@@ -1317,7 +1324,7 @@ class Runner:
                         force=args.full_backup_force, 
                         skip_upload=args.skip_upload,
                         output_dir=output_dir,
-                        databases=args.databases)
+                        databases=databases)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
                 printe("Skipping full backup, there is a full-backup in flight currently")
@@ -1325,8 +1332,11 @@ class Runner:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
                     BackupAgent(backup_configuration).transaction_backup(
+                        force=args.transaction_backup_force,
+                        skip_upload=args.skip_upload,
                         output_dir=output_dir,
-                        force=args.transaction_backup_force)
+                        databases=databases
+                        )
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip transaction log backup, already running")
         elif args.restore:
@@ -1335,7 +1345,8 @@ class Runner:
                 output_dir=output_dir, 
                 databases=databases)
         elif args.list_backups:
-            BackupAgent(backup_configuration).list_backups(databases=databases)
+            BackupAgent(backup_configuration).list_backups(
+                databases=databases)
         elif args.unit_tests:
             import doctest
             doctest.testmod()
