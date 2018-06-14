@@ -1220,6 +1220,7 @@ class BackupAgent:
         restore_files = Timing.files_needed_for_recovery(times, restore_point, 
             select_end_date=lambda x: x[3], select_is_full=lambda x: x[1])
 
+        storage_client = self.backup_configuration.storage_client
         for (dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) in restore_files:
             blob_name = "{dbname}_{type}_{start}--{end}_S{idx:03d}-{cnt:03d}.cdmp".format(
                 dbname=dbname, type=Naming.backup_type_str(is_full), 
@@ -1229,7 +1230,12 @@ class BackupAgent:
                 dbname=dbname, type=Naming.backup_type_str(is_full), 
                 start=start_timestamp, idx=stripe_index, cnt=stripe_count)
 
-            print("Download {} to {}".format(blob_name, file_name))
+            file_path = os.path.join(".", file_name)
+            storage_client.get_blob_to_path(
+                container_name=self.backup_configuration.azure_storage_container_name,
+                blob_name=blob_name,
+                file_path=file_path)
+            print("Downloaded {} to {}".format(blob_name, file_path))
 
     def list_restore_blobs(self, dbname):
         existing_blobs = []
