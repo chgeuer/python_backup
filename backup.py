@@ -517,7 +517,6 @@ class BackupConfiguration:
             "db_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db_backup_interval_min"]),
             "db_backup_interval_max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db_backup_interval_max"]),
             "log_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["log_backup_interval_min"]),
-            "log_backup_interval_max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["log_backup_interval_max"]),
             "backup.businesshours": lambda: BusinessHours(self.instance_metadata.get_tags())
         }
 
@@ -530,7 +529,6 @@ class BackupConfiguration:
     def get_db_backup_interval_min(self): return self.get_value("db_backup_interval_min")
     def get_db_backup_interval_max(self): return self.get_value("db_backup_interval_max")
     def get_log_backup_interval_min(self): return self.get_value("log_backup_interval_min")
-    def get_log_backup_interval_max(self): return self.get_value("log_backup_interval_max")
     def get_business_hours(self): return self.get_value("backup.businesshours")
     def get_databases_to_skip(self): return [ "dbccdb" ]
 
@@ -1257,7 +1255,6 @@ class BackupAgent:
         print("db_backup_interval_min:             {}".format(self.backup_configuration.get_db_backup_interval_min()))
         print("db_backup_interval_max:             {}".format(self.backup_configuration.get_db_backup_interval_max()))
         print("log_backup_interval_min:            {}".format(self.backup_configuration.get_log_backup_interval_min()))
-        print("log_backup_interval_max:            {}".format(self.backup_configuration.get_log_backup_interval_max()))
         print("azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name))
         print("azure_storage_account_name:         {}".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_name()))
         print("azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10]))
