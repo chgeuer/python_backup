@@ -952,7 +952,7 @@ class BackupAgent:
             return "19000101_000000"
         return Timing.sort(existing_blobs_dict.keys())[-1:][0]
 
-    def full_backup(self, force=False, skip_upload=False, output_dir=None, databases=None):
+    def full_backup(self, force=False, skip_upload=False, output_dir, databases=None):
         database_connector = DatabaseConnector(self.backup_configuration)
         if databases != None:
             databases_to_backup = databases.split(",")
@@ -961,9 +961,6 @@ class BackupAgent:
 
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
-
-        if output_dir == None:
-            output_dir = self.backup_configuration.get_standard_local_directory()
 
         for dbname in databases_to_backup:
             self.full_backup_single_db(
@@ -1205,16 +1202,16 @@ class BackupAgent:
                 files = list(map(lambda s: s["stripe_index"], values))
                 print("{backup} {files}".format(backup=group, files=files))
 
-    def restore(self, restore_point, databases):
+    def restore(self, restore_point, output_dir, databases):
         database_connector = DatabaseConnector(self.backup_configuration)
         if len(databases) == 0:
             databases = database_connector.list_databases(is_full=True)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases = filter(lambda db: not (db in skip_dbs), databases)
         for dbname in databases:
-            self.restore_single_db(dbname=dbname, restore_point=restore_point)
+            self.restore_single_db(dbname=dbname, output_dir=output_dir, restore_point=restore_point)
 
-    def restore_single_db(self, dbname, restore_point):
+    def restore_single_db(self, dbname, restore_point, output_dir):
         blobs = self.list_restore_blobs(dbname=dbname)
         times = map(Naming.parse_blobname, blobs)
         restore_files = Timing.files_needed_for_recovery(times, restore_point, 
@@ -1230,7 +1227,7 @@ class BackupAgent:
                 dbname=dbname, type=Naming.backup_type_str(is_full), 
                 start=start_timestamp, idx=stripe_index, cnt=stripe_count)
 
-            file_path = os.path.join(".", file_name)
+            file_path = os.path.join(output_dir, file_name)
             storage_client.get_blob_to_path(
                 container_name=self.backup_configuration.azure_storage_container_name,
                 blob_name=blob_name,
@@ -1309,13 +1306,17 @@ class Runner:
         else:
             databases = []
 
+        output_dir = args.output_dir
+        if output_dir == None:
+            output_dir = self.backup_configuration.get_standard_local_directory()
+
         if args.full_backup or args.full_backup_force:
             try:
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
                     BackupAgent(args.config).full_backup(
                         force=args.full_backup_force, 
                         skip_upload=args.skip_upload,
-                        output_dir=args.output_dir,
+                        output_dir=output_dir,
                         databases=args.databases)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
@@ -1328,7 +1329,10 @@ class Runner:
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip transaction log backup, already running")
         elif args.restore:
-            BackupAgent(args.config).restore(restore_point=args.restore, databases=databases)
+            BackupAgent(args.config).restore(
+                restore_point=args.restore, 
+                output_dir=output_dir, 
+                databases=databases)
         elif args.list_backups:
             BackupAgent(args.config).list_backups(databases=databases)
         elif args.unit_tests:
