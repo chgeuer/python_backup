@@ -898,8 +898,8 @@ class BackupAgent:
     """
         The concrete backup business logic
     """
-    def __init__(self, config_filename):
-        self.backup_configuration = BackupConfiguration(config_filename)
+    def __init__(self, backup_configuration):
+        self.backup_configuration = backup_configuration
 
     def existing_backups_for_db(self, dbname, is_full):
         existing_blobs_dict = dict()
@@ -952,7 +952,7 @@ class BackupAgent:
             return "19000101_000000"
         return Timing.sort(existing_blobs_dict.keys())[-1:][0]
 
-    def full_backup(self, force=False, skip_upload=False, output_dir, databases=None):
+    def full_backup(self, output_dir, force=False, skip_upload=False, databases=None):
         database_connector = DatabaseConnector(self.backup_configuration)
         if databases != None:
             databases_to_backup = databases.split(",")
@@ -1088,7 +1088,7 @@ class BackupAgent:
                     max_connections=4)
                 os.remove(file_path)
 
-    def transaction_backup(self, output_dir=None, databases=None, force=False):
+    def transaction_backup(self, output_dir, databases=None, force=False):
         database_connector = DatabaseConnector(self.backup_configuration)
         if databases != None:
             databases_to_backup = databases.split(",")
@@ -1097,9 +1097,6 @@ class BackupAgent:
 
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
-
-        if output_dir == None:
-            output_dir = self.backup_configuration.get_standard_local_directory()
 
         for dbname in databases_to_backup:
             self.tran_backup_single_db(
@@ -1301,19 +1298,22 @@ class Runner:
         parser = Runner.arg_parser() 
         args = parser.parse_args()
 
+        backup_configuration = BackupConfiguration(args.config)
+
         if args.databases:
             databases =  args.databases.split(",")
         else:
             databases = []
 
-        output_dir = args.output_dir
-        if output_dir == None:
-            output_dir = self.backup_configuration.get_standard_local_directory()
+        if args.output_dir:
+            output_dir = args.output_dir
+        else:
+            output_dir = backup_configuration.get_standard_local_directory()
 
         if args.full_backup or args.full_backup_force:
             try:
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
-                    BackupAgent(args.config).full_backup(
+                    BackupAgent(backup_configuration).full_backup(
                         force=args.full_backup_force, 
                         skip_upload=args.skip_upload,
                         output_dir=output_dir,
@@ -1324,23 +1324,24 @@ class Runner:
         elif args.transaction_backup or args.transaction_backup_force:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
-                    BackupAgent(args.config).transaction_backup(
+                    BackupAgent(backup_configuration).transaction_backup(
+                        output_dir=output_dir,
                         force=args.transaction_backup_force)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip transaction log backup, already running")
         elif args.restore:
-            BackupAgent(args.config).restore(
+            BackupAgent(backup_configuration).restore(
                 restore_point=args.restore, 
                 output_dir=output_dir, 
                 databases=databases)
         elif args.list_backups:
-            BackupAgent(args.config).list_backups(databases=databases)
+            BackupAgent(backup_configuration).list_backups(databases=databases)
         elif args.unit_tests:
             import doctest
             doctest.testmod()
             # doctest.testmod(verbose=True)
         elif args.show_configuration:
-            BackupAgent(args.config).show_configuration()
+            BackupAgent(backup_configuration).show_configuration()
         else:
             parser.print_help()
 
