@@ -1221,8 +1221,8 @@ class BackupAgent:
             select_end_date=lambda x: x[3], select_is_full=lambda x: x[1])
 
         for (dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) in restore_files:
-            blob_name = Naming.construct_blobname(dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count)
-            file_name = Naming.construct_filename(dbname, is_full, start_timestamp, stripe_index, stripe_count)
+            blob_name = (dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count)
+            file_name = (dbname, is_full, start_timestamp, stripe_index, stripe_count)
             print("Download {} to {}".format(blob_name, file_name))
 
     def list_restore_blobs(self, dbname):
