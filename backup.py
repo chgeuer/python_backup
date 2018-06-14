@@ -1294,10 +1294,10 @@ class Runner:
 
     @staticmethod
     def get_databases(args):
-        if args.databases:
-            return args.databases.split(",")
-        else:
+        if not args.databases or len(args.databases) == 0:
             return []
+        else:
+            return args.databases.split(",")
 
     @staticmethod
     def get_output_dir(args, backup_configuration):
