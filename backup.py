@@ -1277,17 +1277,18 @@ class Runner:
     def arg_parser():
         parser = argparse.ArgumentParser()
         parser.add_argument("-c",  "--config", help="the path to the config file")
+        parser.add_argument("-x",  "--show-configuration", help="Shows the VM's configuration values", action="store_true")
+        parser.add_argument("-u",  "--unit-tests", help="Run unit tests", action="store_true")
+
         parser.add_argument("-f",  "--full-backup", help="Perform full backup", action="store_true")
-        parser.add_argument("-ff", "--full-backup-force", help="Perform forceful full backup (ignores business hours or age of last backup)", action="store_true")
+        parser.add_argument("-t",  "--transaction-backup", help="Perform transactions backup", action="store_true")
+        parser.add_argument("-r",  "--restore", help="Perform restore for date")
+        parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
+
+        parser.add_argument("-y",  "--force", help="Perform forceful backup (ignores age of last backup or business hours)", action="store_true")
         parser.add_argument("-s",  "--skip-upload", help="Skip uploads of backup files", action="store_true")
         parser.add_argument("-o",  "--output-dir", help="Specify target folder for backup files")
         parser.add_argument("-db", "--databases", help="Select databases to backup or restore ('--databases A,B,C')")
-        parser.add_argument("-t",  "--transaction-backup", help="Perform transactions backup", action="store_true")
-        parser.add_argument("-tf", "--transaction-backup-force", help="Perform forceful transactions backup (ignores age of last backup)", action="store_true")
-        parser.add_argument("-r",  "--restore", help="Perform restore for date")
-        parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
-        parser.add_argument("-u",  "--unit-tests", help="Run unit tests", action="store_true")
-        parser.add_argument("-x",  "--show-configuration", help="Shows the VM's configuration values", action="store_true")
         return parser
 
     @staticmethod
@@ -1306,22 +1307,22 @@ class Runner:
         backup_configuration = BackupConfiguration(args.config)
         output_dir = Runner.get_output_dir(args, backup_configuration)
 
-        if args.full_backup or args.full_backup_force:
+        if args.full_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
                     BackupAgent(backup_configuration).full_backup(
-                        force=args.full_backup_force, 
+                        force=args.force, 
                         skip_upload=args.skip_upload,
                         output_dir=output_dir,
                         databases=args.databases)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
                 printe("Skipping full backup, there is a full-backup in flight currently")
-        elif args.transaction_backup or args.transaction_backup_force:
+        elif args.transaction_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
                     BackupAgent(backup_configuration).transaction_backup(
-                        force=args.transaction_backup_force,
+                        force=args.force,
                         skip_upload=args.skip_upload,
                         output_dir=output_dir,
                         databases=args.databases)
