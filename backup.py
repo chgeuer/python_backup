@@ -1194,16 +1194,12 @@ class BackupAgent:
                     "parts": x["parts"],
                     "dbname": x["parts"][0],
                     "is_full": x["parts"][1],
-                    #"start": x["parts"][2],
                     "end": x["parts"][3],
                     "stripe_index": x["parts"][4],
-                    #"stripe_count": x["parts"][5]
                 }, stripes)
 
-            group_by_key=lambda x: "Database \"{dbname}\" {type} finished {end}".format(
-                dbname=x["dbname"], 
-                type=Naming.backup_type_str(x["is_full"]), 
-                end=x["end"])
+            group_by_key=lambda x: "Database \"{dbname}\" ended {end} - {type} ".format(
+                dbname=x["dbname"], end=x["end"], type=Naming.backup_type_str(x["is_full"]))
 
             for group, values in groupby(stripes, key=group_by_key): 
                 files = list(map(lambda s: s["stripe_index"], values))
