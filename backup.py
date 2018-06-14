@@ -219,6 +219,7 @@ class Timing:
     def __recovery_sample_data():
         return [
             {'end_date':'20180101_011000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
+            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
             {'end_date':'20180101_012000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
             {'end_date':'20180101_015000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
             {'end_date':'20180101_023000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
@@ -227,14 +228,13 @@ class Timing:
             {'end_date':'20180101_031000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
             {'end_date':'20180101_032000', 'is_full':False, 'stripe_index':1, 'stripe_count':2},
             {'end_date':'20180101_032000', 'is_full':False, 'stripe_index':2, 'stripe_count':2},
+            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
             {'end_date':'20180101_020000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
             {'end_date':'20180101_021000', 'is_full':False, 'stripe_index':1, 'stripe_count':2},
             {'end_date':'20180101_021000', 'is_full':False, 'stripe_index':2, 'stripe_count':2},
             {'end_date':'20180101_013000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
             {'end_date':'20180101_033000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
             {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
-            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
-            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
             {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
             {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
             {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
@@ -272,17 +272,18 @@ class Timing:
         """
         return int(Timing.time_diff(timestr_1, timestr_2).total_seconds())
 
+    # @staticmethod
+    # def sort_by_end_date_and_stripe_index()
+
     @staticmethod
-    def files_needed_for_recovery(times, recovery_point, 
+    def files_needed_for_recovery(times, restore_point, 
                                  select_end_date=lambda x: x["end_date"], 
                                  select_is_full=lambda x: x["is_full"]):
         """
             >>> times=Timing._Timing__recovery_sample_data()
-            >>> Timing.files_needed_for_recovery(times=times, recovery_point='20180101_023200')
+            >>> Timing.files_needed_for_recovery(times=times, restore_point='20180101_023200')
             [{'is_full': False, 'stripe_index': 1, 'end_date': '20180101_023000', 'stripe_count': 1}, {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_024000', 'stripe_count': 1}, {'is_full': True, 'stripe_index': 1, 'end_date': '20180101_022000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_022000', 'stripe_count': 3}, {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_022000', 'stripe_count': 3}]
         """
-            # >>> Timing.files_needed_for_recovery(times=times, recovery_point="20180101_014001")
-            # True
 
         create_tuple=lambda x: (select_end_date(x), select_is_full(x))
         end_date_from_tuple=lambda x: x[0]
@@ -290,7 +291,7 @@ class Timing:
         for x in Timing.sort(list(set(map(create_tuple, times))), end_date_from_tuple):
             x_end_date = end_date_from_tuple(x)
             x_is_full = x[1]
-            x_is_before = Timing.time_diff_in_seconds(recovery_point, x_end_date) <= 0
+            x_is_before = Timing.time_diff_in_seconds(restore_point, x_end_date) <= 0
             if x_is_full and x_is_before:
                 index_of_files_to_download = set()
             index_of_files_to_download.add(x)
@@ -298,11 +299,11 @@ class Timing:
                 break
 
         files_to_download = []
-        for x in times:
+        for x in Timing.sort(times, select_end_date):
             if create_tuple(x) in index_of_files_to_download:
                 files_to_download.append(x)
 
-        return files_to_download
+        return Timing.sort(files_to_download, select_end_date)
 
 class Naming:
     @staticmethod
@@ -1219,13 +1220,10 @@ class BackupAgent:
 
     def restore_single_db(self, dbname, restore_point):
         blobs = self.list_restore_blobs(dbname=dbname)
-        end_dates = Timing.sort(blobs.keys())
-        for end_date in end_dates:
-            blobnames = blobs[end_date]
-            for blobname in blobnames:
-                (_dbname, is_full, _start_date, end_date, _stripe_index, _stripe_count) = Naming.parse_blobname(blobname)
-                # print("blob: {} {} {} {} {} {}".format(dbname, is_full, start_date, end_date, stripe_index, stripe_count))
-                print("blob: {} {} {}".format(dbname, end_date, is_full))
+        times = map(Naming.parse_blobname, blobs)
+        restore_files = Timing.files_needed_for_recovery(times, restore_point)
+        for (_dbname, is_full, _start_date, end_date, _stripe_index, _stripe_count) in restore_files:
+            print("blob: {} {} {} {} {} {}".format(dbname, is_full, start_date, end_date, stripe_index, stripe_count))
 
     def list_restore_blobs(self, dbname):
         existing_blobs_dict = dict()
