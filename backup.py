@@ -1220,14 +1220,10 @@ class BackupAgent:
 
     def restore_single_db(self, dbname, restore_point):
         blobs = self.list_restore_blobs(dbname=dbname)
-        print("################ blobs #######################")
-        print(blobs)
         times = map(Naming.parse_blobname, blobs)
-        print("################ times #######################")
-        print(times)
-        restore_files = Timing.files_needed_for_recovery(times, restore_point)
-        print("################ restore_files #######################")
-        print(restore_files)
+        restore_files = Timing.files_needed_for_recovery(times, restore_point, 
+            select_end_date=lambda x: x[3], select_is_full=lambda x: x[1])
+
         for (dbname, is_full, start_date, end_date, stripe_index, stripe_count) in restore_files:
             print("blob: {} {} {} {} {} {}".format(dbname, is_full, start_date, end_date, stripe_index, stripe_count))
 
