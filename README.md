@@ -104,6 +104,16 @@ Database "AZU" ended 20180612_181831 - tran  [1]
 curl -sH Metadata:true "http://169.254.169.254/metadata/instance?api-version=2017-12-01" | jq
 ```
 
+### Config file contents
+
+```
+sap.SID:                       JLD
+sap.CID:                       ABC
+azure.storage.account_name:    erlang
+azure.storage.account_key:     UqhiqGVB...
+azure.storage.container_name:  foo
+```
+
 ### Show consolidated config from config file and instance metadata
 
 ```bash
