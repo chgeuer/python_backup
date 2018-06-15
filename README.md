@@ -117,20 +117,29 @@ azure.storage.container_name:  foo
 ### Show consolidated config from config file and instance metadata
 
 ```bash
-chgeuer@db:~/python_backup> sudo ./backup.py --config config.txt --show-configuration
+chgeuer@saphec2:~/python_backup> ./backup.py -c config.txt -x
 
-azure.vm_name:                      db
-azure.resource_group_name:          backuptest
-azure.subscription_id:              deadbeef-bee4-484b-bf13-d6a5505d2b51
-sap.SID:                            JLD
-sap.CID:                            AZU
-skipped databases:                  ['dbccdb']
-db_backup_interval_min:             1 day, 0:00:00
-db_backup_interval_max:             3 days, 0:00:00
-log_backup_interval_min:            0:00:15
-azure_storage_container_name:       foo
-azure_storage_account_name:         erlang
-azure_storage_account_key:          UqhiqGVBWN...
+    azure.vm_name:                      saphec2
+    azure.resource_group_name:          backuptest
+    azure.subscription_id:              deadbeef-bee4-484b-bf13-d6a5505d2b51
+    sap.SID:                            JLD
+    sap.CID:                            AZU
+    skipped databases:                  ['dbccdb']
+    db_backup_interval_min:             1 day, 0:00:00
+    db_backup_interval_max:             3 days, 0:00:00
+    log_backup_interval_min:            0:00:15
+    business_hours_Mon:                 111111111000000000011111
+    business_hours_Tue:                 111111111000000000011111
+    business_hours_Wed:                 111111111000000000011111
+    business_hours_Thu:                 111111111000000000011111
+    business_hours_Fri:                 111111111000000000011111
+    business_hours_Sat:                 111111111111111111111111
+    business_hours_Sun:                 111111111111111111111111
+    azure_storage_container_name:       foo
+    azure_storage_account_name:         erlang
+    azure_storage_account_key:          UqhiqGVBWN...
+
+chgeuer@saphec2:~/python_backup>
 ```
 
 In that output, the displayed values come from different locations: 
