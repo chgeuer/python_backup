@@ -111,7 +111,16 @@ chgeuer@saphec2:~/python_backup> curl -sH Metadata:true "http://169.254.169.254/
     "resourceGroupName": "backuptest",
     "name": "saphec2",
     "location": "westeurope",
-    "tags": "db.backup.window.1:111111 111000 000000 011111;db_backup_interval_max:3d;db_backup_interval_min:1d;db_backup_window_1:111111 111000 000000 011111;db_backup_window_2:111111 111000 000000 011111;db_backup_window_3:111111 111000 000000 011111;db_backup_window_4:111111 111000 000000 011111;db_backup_window_5:111111 111000 000000 011111;db_backup_window_6:111111 111111 111111 111111;db_backup_window_7:111111 111111 111111 111111;log_backup_interval_min:15s",
+    "tags": "db_backup_window_1:111111 111000 000000 011111;
+             db_backup_window_2:111111 111000 000000 011111;
+             db_backup_window_3:111111 111000 000000 011111;
+             db_backup_window_4:111111 111000 000000 011111;
+             db_backup_window_5:111111 111000 000000 011111;
+             db_backup_window_6:111111 111111 111111 111111;
+             db_backup_window_7:111111 111111 111111 111111;
+             db_backup_interval_max:3d;
+             db_backup_interval_min:1d;
+             log_backup_interval_min:15s",
     "offer": "openSUSE-Leap",
     "sku": "42.3",
     ...
