@@ -118,6 +118,7 @@ azure.storage.container_name:  foo
 
 ```bash
 chgeuer@db:~/python_backup> sudo ./backup.py --config config.txt --show-configuration
+
 azure.vm_name:                      db
 azure.resource_group_name:          backuptest
 azure.subscription_id:              deadbeef-bee4-484b-bf13-d6a5505d2b51
@@ -127,9 +128,15 @@ skipped databases:                  ['dbccdb']
 db_backup_interval_min:             1 day, 0:00:00
 db_backup_interval_max:             3 days, 0:00:00
 log_backup_interval_min:            0:00:15
-log_backup_interval_max:            0:30:00
 azure_storage_container_name:       foo
 azure_storage_account_name:         erlang
 azure_storage_account_key:          UqhiqGVBWN...
 ```
+
+In that output, the displayed values come from different locations: 
+
+- The Azure VM instance metadata endpoint results in these values:
+  - `azure.vm_name`, `azure.resource_group_name` and `azure.subscription_id`
+  - The VM tags (via instance metadata) provide the following information: 
+    - `db_backup_interval_min`, `db_backup_interval_max`, `log_backup_interval_min` and the business hours
 

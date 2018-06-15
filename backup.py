@@ -1255,6 +1255,9 @@ class BackupAgent:
         print("db_backup_interval_min:             {}".format(self.backup_configuration.get_db_backup_interval_min()))
         print("db_backup_interval_max:             {}".format(self.backup_configuration.get_db_backup_interval_max()))
         print("log_backup_interval_min:            {}".format(self.backup_configuration.get_log_backup_interval_min()))
+        business_hours = self.backup_configuration.get_business_hours()
+        for day in range(1, 8):
+            print("business hours {} {}".format(day, business_hours.hours[day]))
         print("azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name))
         print("azure_storage_account_name:         {}".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_name()))
         print("azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10]))
