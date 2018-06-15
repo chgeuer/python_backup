@@ -48,6 +48,23 @@ chgeuer@saphec2:~/python_backup> sudo ./backup.py -c config.txt --full-backup
 chgeuer@saphec2:~/python_backup>
 ```
 
+### Download restore files for a certain database
+
+```bash
+chgeuer@saphec2:~/python_backup> mkdir ./1
+
+chgeuer@saphec2:~/python_backup> sudo ./backup.py -c config.txt -o ./1 -r 20180614_190056 -db AZU
+
+Downloaded AZU_full_20180614_175508--20180614_175512_S001-001.cdmp to 1/AZU_full_20180614_175508_S001-001.cdmp
+Downloaded AZU_tran_20180614_175516--20180614_175516_S001-001.cdmp to 1/AZU_tran_20180614_175516_S001-001.cdmp
+Downloaded AZU_tran_20180614_175521--20180614_175521_S001-001.cdmp to 1/AZU_tran_20180614_175521_S001-001.cdmp
+Downloaded AZU_tran_20180614_175523--20180614_175523_S001-001.cdmp to 1/AZU_tran_20180614_175523_S001-001.cdmp
+Downloaded AZU_tran_20180614_175527--20180614_175527_S001-001.cdmp to 1/AZU_tran_20180614_175527_S001-001.cdmp
+Downloaded AZU_tran_20180614_175529--20180614_175529_S001-001.cdmp to 1/AZU_tran_20180614_175529_S001-001.cdmp
+Downloaded AZU_tran_20180614_190055--20180614_190055_S001-001.cdmp to 1/AZU_tran_20180614_190055_S001-001.cdmp
+Downloaded AZU_tran_20180614_190100--20180614_190100_S001-001.cdmp to 1/AZU_tran_20180614_190100_S001-001.cdmp
+```
+
 ### List backup files in storage
 
 #### List all backup files in storage
