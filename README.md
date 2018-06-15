@@ -98,6 +98,8 @@ Database "AZU" ended 20180612_181831 - tran  [1]
 
 ## Inspect the machine's configuration
 
+![tags in the portal][tags]
+
 ### Live view on raw instance metadata
 
 ```bash
