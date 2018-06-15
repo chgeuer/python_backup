@@ -101,7 +101,22 @@ Database "AZU" ended 20180612_181831 - tran  [1]
 ### Live view on raw instance metadata
 
 ```bash
-curl -sH Metadata:true "http://169.254.169.254/metadata/instance?api-version=2017-12-01" | jq
+chgeuer@saphec2:~/python_backup> curl -sH Metadata:true "http://169.254.169.254/metadata/instance?api-version=2017-12-01" | jq
+
+{
+  "compute": {
+    "subscriptionId": "deadbeef-bee4-484b-bf13-d6a5505d2b51",
+    "resourceGroupName": "backuptest",
+    "name": "saphec2",
+    "location": "westeurope",
+    "tags": "db.backup.window.1:111111 111000 000000 011111;db_backup_interval_max:3d;db_backup_interval_min:1d;db_backup_window_1:111111 111000 000000 011111;db_backup_window_2:111111 111000 000000 011111;db_backup_window_3:111111 111000 000000 011111;db_backup_window_4:111111 111000 000000 011111;db_backup_window_5:111111 111000 000000 011111;db_backup_window_6:111111 111111 111111 111111;db_backup_window_7:111111 111111 111111 111111;log_backup_interval_min:15s",
+    "offer": "openSUSE-Leap",
+    "sku": "42.3",
+    ...
+  },
+  "network": {
+     ...
+
 ```
 
 ### Config file contents
