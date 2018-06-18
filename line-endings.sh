@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for file in $(ls *)
+for file in $(ls *.sh)
 do 
   vi +':w ++ff=unix' +':q' ${file}
 done
