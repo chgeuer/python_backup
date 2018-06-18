@@ -1,17 +1,5 @@
 #!/bin/bash
 
-# Source: https://www.sap.com/cmp/syb/crm-xu15-int-asexprdm/index.html
-wget http://d1cuw2q49dpd0p.cloudfront.net/ASE16/Linux16SP03/ASE_Suite.linuxamd64.tgz
-mkdir ase_setup_src && cd ase_setup_src && tar xvfz ../ASE_Suite.linuxamd64.tgz
-
-echo "Make the folloging choices during installation:" 
-echo "Default Install Folder:             /opt/sap"
-echo "Choose Install Set:                 1- Typical"
-echo "Software License Type Selection:    2- Install Express Edition of SAP Adaptive Server Enterprise"
-
-sudo ./setup.bin
-cd ..
-
 # Customer ID
 export CID="AZU"
 # System ID
@@ -178,12 +166,10 @@ dump transaction ${CID} to './test1db_tran_20180606_120000-S01_01.cdmp' with com
 go
 EOF
 
-
-############
+########################
 
 source /opt/sap/SYBASE.sh
 unset LANG
-
 
 # /opt/sap/ASE-16_0/install/RUN_AZU
 # /opt/sap/ASE-16_0/install/RUN_AZU_BS
