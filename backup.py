@@ -972,7 +972,7 @@ class BackupAgent:
 
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
         print("Upload files from previous runs")
-        for file in os.listdir(path=output_dir):
+        for file in os.listdir(output_dir):
             print("Would upload {}".format(file))
 
 
