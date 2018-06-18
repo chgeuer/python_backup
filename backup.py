@@ -1098,8 +1098,8 @@ class BackupAgent:
                 start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
                 stripe_index=stripe_index, stripe_count=stripe_count)
             os.rename(
-                old=os.path.join(output_dir, file_name), 
-                new=os.path.join(output_dir, blob_name))
+                os.path.join(output_dir, file_name), 
+                os.path.join(output_dir, blob_name))
 
         logging.info(stdout)
         logging.warning(stderr)
@@ -1195,8 +1195,8 @@ class BackupAgent:
                 start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
                 stripe_index=stripe_index, stripe_count=stripe_count)
             os.rename(
-                old=os.path.join(output_dir, file_name), 
-                new=os.path.join(output_dir, blob_name))
+                os.path.join(output_dir, file_name), 
+                os.path.join(output_dir, blob_name))
 
         if not skip_upload:
             for stripe_index in range(1, stripe_count + 1):
