@@ -29,6 +29,10 @@ def printe(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 class ScheduleParser:
+    """
+        Parse time duration statements such as `7d` for 7 days or `1h 30m` for 90 minutes. 
+    """
+
     @staticmethod
     def __from_atom(time):
         """
@@ -71,6 +75,10 @@ class ScheduleParser:
         return reduce(lambda x, y: x + y, durations)
 
 class BusinessHours:
+    """
+        Process business hour statements, such as determine wheter a certain point in time is within or outside business hours.
+    """
+
     standard_prefix="db_backup_window"
 
     @staticmethod
@@ -900,7 +908,7 @@ class DatabaseConnector:
 
 class BackupAgent:
     """
-        The concrete backup business logic
+        The backup business logic implementation.
     """
     def __init__(self, backup_configuration):
         self.backup_configuration = backup_configuration
@@ -956,6 +964,12 @@ class BackupAgent:
             return "19000101_000000"
         return Timing.sort(existing_blobs_dict.keys())[-1:][0]
 
+    def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
+        print("Upload files from previous runs")
+        for file in os.listdir(path=output_dir):
+            print("Would upload {}".format(file))
+
+
     def full_backup(self, output_dir, force=False, skip_upload=False, databases=None):
         database_connector = DatabaseConnector(self.backup_configuration)
         databases_to_backup = database_connector.determine_databases(databases, is_full=True)
@@ -969,6 +983,9 @@ class BackupAgent:
                 force=force, 
                 skip_upload=skip_upload, 
                 output_dir=output_dir)
+        
+        if not skip_upload:
+            self.upload_local_backup_files_from_previous_operations(is_full=True, output_dir=output_dir)
 
     @staticmethod
     def should_run_full_backup(now_time, force, latest_full_backup_timestamp, business_hours, db_backup_interval_min, db_backup_interval_max):
@@ -1101,6 +1118,9 @@ class BackupAgent:
                 output_dir=output_dir, 
                 force=force,
                 skip_upload=skip_upload)
+
+        if not skip_upload:
+            self.upload_local_backup_files_from_previous_operations(is_full=False, output_dir=output_dir)
 
     @staticmethod
     def should_run_tran_backup(now_time, force, latest_tran_backup_timestamp, log_backup_interval_min):
