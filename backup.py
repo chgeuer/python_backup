@@ -1,5 +1,11 @@
 #!/usr/bin/env python2.7
 
+# - Rename to blob naming schema after SQL
+# - Upload remanining files with blob names
+# - Prune blob storage for retention
+# - Messaging to queue missing
+# - Debug level command line switch
+
 from __future__ import print_function
 import sys
 import os
@@ -983,7 +989,7 @@ class BackupAgent:
                 force=force, 
                 skip_upload=skip_upload, 
                 output_dir=output_dir)
-        
+
         if not skip_upload:
             self.upload_local_backup_files_from_previous_operations(is_full=True, output_dir=output_dir)
 
@@ -1060,6 +1066,7 @@ class BackupAgent:
                 db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max()):
             logging.info("Skipping backup of database {dbname}".format(dbname=dbname))
             print("Skipping backup of database {dbname}".format(dbname=dbname))
+
             return
 
         db_connector = DatabaseConnector(self.backup_configuration)
@@ -1075,19 +1082,30 @@ class BackupAgent:
             output_dir=output_dir)
         end_timestamp = Timing.now_localtime()
 
+        #
+        # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
+        #
+        # If the machine reboots during an isql run, then that rename doesn't happen, and we do 
+        # not upload these potentially corrupt dump files
+        #
+        for stripe_index in range(1, stripe_count + 1):
+            file_name = Naming.construct_filename(
+                dbname=dbname, is_full=True, 
+                start_timestamp=start_timestamp,
+                stripe_index=stripe_index, stripe_count=stripe_count)
+            blob_name = Naming.construct_blobname(
+                dbname=dbname, is_full=True, 
+                start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
+                stripe_index=stripe_index, stripe_count=stripe_count)
+            os.rename(
+                old=os.path.join(output_dir, file_name), 
+                new=os.path.join(output_dir, blob_name))
+
         logging.info(stdout)
         logging.warning(stderr)
-        # print(stdout)
-        # printe(stderr)
 
         if not skip_upload:
             for stripe_index in range(1, stripe_count + 1):
-                file_name = Naming.construct_filename(
-                    dbname=dbname, 
-                    is_full=True, 
-                    start_timestamp=start_timestamp,
-                    stripe_index=stripe_index, 
-                    stripe_count=stripe_count)
                 blob_name = Naming.construct_blobname(
                     dbname=dbname, 
                     is_full=True, 
@@ -1095,16 +1113,14 @@ class BackupAgent:
                     end_timestamp=end_timestamp, 
                     stripe_index=stripe_index, 
                     stripe_count=stripe_count)
+                blob_path = os.path.join(output_dir, blob_name)
 
-                file_path = os.path.join(output_dir, file_name)
-                print("Upload {f} to {b}".format(f=file_path, b=blob_name))
+                print("Upload {f}".format(f=blob_path))
                 self.backup_configuration.storage_client.create_blob_from_path(
                     container_name=self.backup_configuration.azure_storage_container_name, 
-                    file_path=file_path,
-                    blob_name=blob_name, 
-                    validate_content=True, 
-                    max_connections=4)
-                os.remove(file_path)
+                    file_path=blob_path, blob_name=blob_name, 
+                    validate_content=True, max_connections=4)
+                os.remove(blob_path)
 
     def transaction_backup(self, output_dir, force=False, skip_upload=False, databases=None):
         database_connector = DatabaseConnector(self.backup_configuration)
@@ -1163,14 +1179,27 @@ class BackupAgent:
         logging.info(stdout)
         logging.warning(stderr)
 
+        #
+        # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
+        #
+        # If the machine reboots during an isql run, then that rename doesn't happen, and we do 
+        # not upload these potentially corrupt dump files
+        #
+        for stripe_index in range(1, stripe_count + 1):
+            file_name = Naming.construct_filename(
+                dbname=dbname, is_full=False, 
+                start_timestamp=start_timestamp,
+                stripe_index=stripe_index, stripe_count=stripe_count)
+            blob_name = Naming.construct_blobname(
+                dbname=dbname, is_full=False, 
+                start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
+                stripe_index=stripe_index, stripe_count=stripe_count)
+            os.rename(
+                old=os.path.join(output_dir, file_name), 
+                new=os.path.join(output_dir, blob_name))
+
         if not skip_upload:
             for stripe_index in range(1, stripe_count + 1):
-                file_name = Naming.construct_filename(
-                    dbname=dbname, 
-                    is_full=False, 
-                    start_timestamp=start_timestamp,
-                    stripe_index=stripe_index, 
-                    stripe_count=stripe_count)
                 blob_name = Naming.construct_blobname(
                     dbname=dbname, 
                     is_full=False, 
@@ -1178,16 +1207,14 @@ class BackupAgent:
                     end_timestamp=end_timestamp, 
                     stripe_index=stripe_index, 
                     stripe_count=stripe_count)
+                blob_path = os.path.join(output_dir, blob_name)
 
-                file_path = os.path.join(output_dir, file_name)
-                print("Upload {f} to {b}".format(f=file_path, b=blob_name))
+                print("Upload {f}".format(f=blob_path))
                 self.backup_configuration.storage_client.create_blob_from_path(
                     container_name=self.backup_configuration.azure_storage_container_name, 
-                    file_path=file_path,
-                    blob_name=blob_name, 
-                    validate_content=True, 
-                    max_connections=4)
-                os.remove(file_path)
+                    file_path=blob_path, blob_name=blob_name, 
+                    validate_content=True, max_connections=4)
+                os.remove(blob_path)
 
     def list_backups(self, databases = []):
         baks_dict = self.existing_backups(databases=databases)
