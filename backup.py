@@ -1,7 +1,5 @@
 #!/usr/bin/env python2.7
 
-# - Rename to blob naming schema after SQL
-# - Upload remanining files with blob names
 # - Prune blob storage for retention
 # - Messaging to queue missing
 # - Debug level command line switch
@@ -397,7 +395,9 @@ class Naming:
         if (m == None):
             return None
 
-        return (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), int(m.group('idx')), int(m.group('cnt')))
+        (dbname, is_full, start_timestamp, stripe_index, stripe_count) = (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), int(m.group('idx')), int(m.group('cnt')))
+
+        return dbname, is_full, start_timestamp, stripe_index, stripe_count
 
     @staticmethod
     def parse_blobname(filename):
@@ -1266,6 +1266,40 @@ class BackupAgent:
                 files = list(map(lambda s: s["stripe_index"], values))
                 print("{backup} {files}".format(backup=group, files=files))
 
+    def prune_old_backups(self, older_than):
+        minimum_deletable_age = datetime.timedelta(7, 0)
+        print("Deleting files older than {}".format(older_than))
+        if (older_than < minimum_deletable_age):
+            printe("This script does not delete files younger than {}, ignoring this order".format(minimum_deletable_age))
+            return
+
+        marker = None
+        while True:
+            results = self.backup_configuration.storage_client.list_blobs(
+                container_name=self.backup_configuration.azure_storage_container_name,
+                marker=marker)
+            for blob in results:
+                parts = Naming.parse_blobname(blob.name)
+                if (parts == None):
+                    continue
+
+                (_dbname, _is_full, _start_timestamp, end_timestamp, _stripe_index, _stripe_count) = parts
+                diff = Timing.time_diff(end_timestamp, Timing.now_localtime_string())
+                delete = diff > older_than
+
+                if delete:
+                    logging.warn("Deleting {}".format(blob.name))
+                    self.backup_configuration.storage_client.delete_blob(
+                        container_name=self.backup_configuration.azure_storage_container_name,
+                        blob_name=blob.name)
+                else:
+                    logging.warn("Keeping {}".format(blob.name))
+
+            if results.next_marker:
+                marker = results.next_marker
+            else:
+                break
+
     def restore(self, restore_point, output_dir, databases):
         database_connector = DatabaseConnector(self.backup_configuration)
         databases = database_connector.determine_databases(databases, is_full=True)
@@ -1356,6 +1390,8 @@ class Runner:
         parser.add_argument("-r",  "--restore", help="Perform restore for date")
         parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
 
+        parser.add_argument("-p",  "--prune-old-backups", help="Removes old backups from Azure storage ('--prune-old-backups 30d' removes files older 30 days)")
+
         parser.add_argument("-y",  "--force", help="Perform forceful backup (ignores age of last backup or business hours)", action="store_true")
         parser.add_argument("-s",  "--skip-upload", help="Skip uploads of backup files", action="store_true")
         parser.add_argument("-o",  "--output-dir", help="Specify target folder for backup files")
@@ -1412,6 +1448,10 @@ class Runner:
 
             BackupAgent(backup_configuration).list_backups(
                 databases=databases)
+        elif args.prune_old_backups:
+            age = ScheduleParser.parse_timedelta(args.prune_old_backups)
+
+            BackupAgent(backup_configuration).prune_old_backups(older_than=age)
         elif args.unit_tests:
             import doctest
             doctest.testmod()
