@@ -1,6 +1,5 @@
 #!/usr/bin/env python2.7
 
-# - Prune blob storage for retention
 # - Messaging to queue missing
 # - Debug level command line switch
 
