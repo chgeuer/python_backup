@@ -9,20 +9,19 @@ echo "Default Install Folder:             /opt/sap"
 echo "Choose Install Set:                 1- Typical"
 echo "Software License Type Selection:    2- Install Express Edition of SAP Adaptive Server Enterprise"
 
-./setup.bin
+sudo ./setup.bin
 cd ..
-
-
 
 # Customer ID
 export CID="AZU"
 # System ID
-export SID="AZU"
+export SID="JLD"
 
 export PASSWD_SA="Sybase123"
 export PASSWD_SAPSA="Test123.-"
 
 source /opt/sap/SYBASE.sh
+unset LANG
 
 #
 # Setup ASE instance

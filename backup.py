@@ -1273,10 +1273,10 @@ class BackupAgent:
         logging.warn("Deleting files older than {}".format(older_than))
         if (older_than < minimum_deletable_age):
             msg="This script does not delete files younger than {}, ignoring this order".format(minimum_deletable_age)
-            
+
             logging.warn(msg)
             printe(msg)
-            
+
             return
 
         marker = None
