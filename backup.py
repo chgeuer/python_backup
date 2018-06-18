@@ -406,8 +406,12 @@ class Naming:
             ('test1db', True, '20180601_112429', '20180601_131234', 2, 101)
             >>> Naming.parse_blobname('test1db_tran_20180601_112429--20180601_131234_S2-008.cdmp')
             ('test1db', False, '20180601_112429', '20180601_131234', 2, 8)
+            >>> Naming.parse_filename('bad_input') == None
+            True
         """
         m=re.search(r'(?P<dbname>\S+?)_(?P<type>full|tran)_(?P<start>\d{8}_\d{6})--(?P<end>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
+        if (m == None):
+            return None
 
         (dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) = (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), m.group('end'), int(m.group('idx')), int(m.group('cnt')))
 
