@@ -390,8 +390,13 @@ class Naming:
             ('test1db', True, '20180601_112429', 2, 101)
             >>> Naming.parse_filename('test1db_tran_20180601_112429_S02-08.cdmp')
             ('test1db', False, '20180601_112429', 2, 8)
+            >>> Naming.parse_filename('bad_input') == None
+            True
         """
         m=re.search(r'(?P<dbname>\S+?)_(?P<type>full|tran)_(?P<start>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
+        if (m == None):
+            return None
+
         return (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), int(m.group('idx')), int(m.group('cnt')))
 
     @staticmethod
@@ -973,8 +978,22 @@ class BackupAgent:
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
         print("Upload files from previous runs")
         for file in os.listdir(output_dir):
-            print("Would upload {}".format(file))
+            parts = Naming.parse_blobname(file)
+            if parts == None:
+                continue
+            (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
+            if (is_full != is_full_file):
+                continue
 
+            blob_name = file
+            blob_path = os.path.join(output_dir, blob_name)
+
+            print("Upload {f}".format(f=blob_path))
+            self.backup_configuration.storage_client.create_blob_from_path(
+                container_name=self.backup_configuration.azure_storage_container_name, 
+                file_path=blob_path, blob_name=blob_name, 
+                validate_content=True, max_connections=4)
+            os.remove(blob_path)
 
     def full_backup(self, output_dir, force=False, skip_upload=False, databases=None):
         database_connector = DatabaseConnector(self.backup_configuration)
