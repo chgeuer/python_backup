@@ -1265,11 +1265,18 @@ class BackupAgent:
                 files = list(map(lambda s: s["stripe_index"], values))
                 print("{backup} {files}".format(backup=group, files=files))
 
-    def prune_old_backups(self, older_than):
+    def prune_old_backups(self, older_than, databases):
+        """
+            Delete (prune) old backups from Azure storage. 
+        """
         minimum_deletable_age = datetime.timedelta(7, 0)
-        print("Deleting files older than {}".format(older_than))
+        logging.warn("Deleting files older than {}".format(older_than))
         if (older_than < minimum_deletable_age):
-            printe("This script does not delete files younger than {}, ignoring this order".format(minimum_deletable_age))
+            msg="This script does not delete files younger than {}, ignoring this order".format(minimum_deletable_age)
+            
+            logging.warn(msg)
+            printe(msg)
+            
             return
 
         marker = None
@@ -1282,7 +1289,10 @@ class BackupAgent:
                 if (parts == None):
                     continue
 
-                (_dbname, _is_full, _start_timestamp, end_timestamp, _stripe_index, _stripe_count) = parts
+                (dbname, _is_full, _start_timestamp, end_timestamp, _stripe_index, _stripe_count) = parts
+                if (databases != None) and not (dbname in databases):
+                    continue
+
                 diff = Timing.time_diff(end_timestamp, Timing.now_localtime_string())
                 delete = diff > older_than
 
@@ -1388,7 +1398,6 @@ class Runner:
         parser.add_argument("-t",  "--transaction-backup", help="Perform transactions backup", action="store_true")
         parser.add_argument("-r",  "--restore", help="Perform restore for date")
         parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
-
         parser.add_argument("-p",  "--prune-old-backups", help="Removes old backups from Azure storage ('--prune-old-backups 30d' removes files older 30 days)")
 
         parser.add_argument("-y",  "--force", help="Perform forceful backup (ignores age of last backup or business hours)", action="store_true")
@@ -1448,9 +1457,14 @@ class Runner:
             BackupAgent(backup_configuration).list_backups(
                 databases=databases)
         elif args.prune_old_backups:
+            if args.databases:
+                databases = args.databases.split(",")
+            else:
+                databases = None
+
             age = ScheduleParser.parse_timedelta(args.prune_old_backups)
 
-            BackupAgent(backup_configuration).prune_old_backups(older_than=age)
+            BackupAgent(backup_configuration).prune_old_backups(older_than=age, databases=databases)
         elif args.unit_tests:
             import doctest
             doctest.testmod()
