@@ -438,11 +438,6 @@ class BackupBlobName:
         self.stripe_index = parts[4]
         self.stripe_count = parts[5]
 
-class DevelopmentSettings:
-    @staticmethod
-    def is_christians_developer_box():
-        return socket.gethostname() == "erlang"
-
 class AzureVMInstanceMetadata:
     @staticmethod
     def request_metadata(api_version="2017-12-01"):
@@ -458,16 +453,7 @@ class AzureVMInstanceMetadata:
             >>> meta.vm_name
             'somevm'
         """
-        if DevelopmentSettings.is_christians_developer_box():
-            return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(AzureVMInstanceMetadata.__get_test_data("meta.json")))
-        else:
-            return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata())
-
-    @staticmethod
-    def __get_test_data(filename):
-        with open(filename, mode='rt') as file:
-            content = file.read()
-        return content
+        return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata())
 
     def __init__(self, req):
         self.req = req
@@ -1357,8 +1343,6 @@ class BackupAgent:
         return existing_blobs
 
     def show_configuration(self):
-        if DevelopmentSettings.is_christians_developer_box():
-            print("WARNING!!! This seems to be Christian's Developer Box")
         print("azure.vm_name:                      {}".format(self.backup_configuration.get_vm_name()))
         print("azure.resource_group_name:          {}".format(self.backup_configuration.get_resource_group_name()))
         print("azure.subscription_id:              {}".format(self.backup_configuration.get_subscription_id()))
