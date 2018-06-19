@@ -4,8 +4,14 @@ setup(
     name = 'asebackupcli',
     version = '0.1.0',
     packages = ['asebackupcli'],
+    description="A backup utility for Sybase ASE databases into Azure blob storage",
+    author="Dr. Christian Geuer-Pollmann",
     entry_points = {
         'console_scripts': [
             'asebackupcli = asebackupcli.__main__:main'
         ]
-    })
+    },
+    install_requires=[
+        'pid>=2.2.0',
+        'azure-storage-blob>=1.1.0'
+    ])
