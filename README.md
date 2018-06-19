@@ -192,4 +192,10 @@ In that output, the displayed values come from different locations:
   - The VM tags (via instance metadata) provide the following information: 
     - `db_backup_interval_min`, `db_backup_interval_max`, `log_backup_interval_min` and the business hours
 
+
+
+`virtualenv --python=python2.7 ~/py`
+
+
 [tags]: docs/tags.png "tags in the portal"
+
