@@ -1,6 +1,10 @@
 # Some comment
+
+sap.ase.version:               16_0
+
 sap.SID:                       JLD
 sap.CID:                       AZU
+
 azure.storage.account_name:    erlang
 azure.storage.account_key:     hkfhsdkjfhkshsfhkjshkjfd/Yn8k85MQ==
 azure.storage.container_name:  foo

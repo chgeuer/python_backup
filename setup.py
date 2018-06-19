@@ -6,6 +6,7 @@ setup(
     packages = ['asebackupcli'],
     description="A backup utility for Sybase ASE databases into Azure blob storage",
     author="Dr. Christian Geuer-Pollmann",
+    author_email='chgeuer@microsoft.com',
     entry_points = {
         'console_scripts': [
             'asebackupcli = asebackupcli.__main__:main'

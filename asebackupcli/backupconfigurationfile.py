@@ -4,9 +4,9 @@ class BackupConfigurationFile:
     @staticmethod
     def read_key_value_file(filename):
         """
-            >>> values = BackupConfigurationFile.read_key_value_file(filename="config.txt")
+            >>> values = BackupConfigurationFile.read_key_value_file(filename="config.txt.template")
             >>> values["sap.CID"]
-            'ABC'
+            'AZU'
         """
         with open(filename, mode='rt') as file:
             lines = file.readlines()

@@ -4,22 +4,27 @@ import os
 from .naming import Naming
 
 class DatabaseConnector:
-    @staticmethod
-    def isql_path():
-        return "/opt/sap/OCS-16_0/bin/isql"
+    def get_ase_base_directory(self):
+        return "/sybase/{}".format(self.backup_configuration.get_SID())
 
-    @staticmethod
-    def ddlgen_path():
-        return "/opt/sap/ASE-16_0/bin/ddlgen"
+    def isql_path(self):
+        return os.path.join(
+            self.get_ase_base_directory(), 
+            "OCS-{}/bin/isql".format(self.backup_configuration.get_ase_version()))
+
+    def ddlgen_path(self):
+        return os.path.join(
+            self.get_ase_base_directory(), 
+            "ASE-{}/bin/ddlgen".format(self.backup_configuration.get_ase_version()))
 
     def __init__(self, backup_configuration):
         self.backup_configuration = backup_configuration
 
     def get_database_password(self, sid):
         sid = self.backup_configuration.get_SID()
-        executable = "/sybase/{sid}/dba/bin/dbsp".format(sid=sid)
+        executable = os.path.join(self.get_ase_base_directory(), "dba/bin/dbsp")
         arg = "***REMOVED***"
-        stdout, _stderr = DatabaseConnector.call_process(command_line=[executable, arg], stdin="")
+        stdout, _stderr = self.call_process(command_line=[executable, arg], stdin="")
         return str(stdout).strip()
 
     @staticmethod
@@ -208,7 +213,7 @@ class DatabaseConnector:
         )
 
     def determine_database_backup_stripe_count(self, dbname, is_full):
-        (stdout, _stderr) = DatabaseConnector.call_process(
+        (stdout, _stderr) = self.call_process(
             command_line=self.isql(),
             stdin=DatabaseConnector.sql_statement_stripe_count(dbname=dbname, is_full=is_full))
         return int(stdout)
@@ -220,7 +225,7 @@ class DatabaseConnector:
             return self.list_databases(is_full=is_full)
 
     def list_databases(self, is_full):
-        (stdout, _stderr) = DatabaseConnector.call_process(
+        (stdout, _stderr) = self.call_process(
             command_line=self.isql(),
             stdin=DatabaseConnector.sql_statement_list_databases(is_full=is_full))
 
@@ -235,13 +240,12 @@ class DatabaseConnector:
                 stripe_count=stripe_count,
                 output_dir=output_dir)
 
-        return DatabaseConnector.call_process(command_line=self.isql(), stdin=sql)
+        return self.call_process(command_line=self.isql(), stdin=sql)
 
-    @staticmethod
-    def create_isql_commandline(server_name, username, password):
+    def create_isql_commandline(self, server_name, username, password):
         supress_header = "-b"
         return [
-            DatabaseConnector.isql_path(),
+            self.isql_path(),
             "-S", server_name,
             "-U", username,
             "-P", password,
@@ -256,32 +260,29 @@ class DatabaseConnector:
             password=self.get_database_password(
                 sid=self.backup_configuration.get_SID()))
 
-    @staticmethod
-    def create_ddlgen_commandline(sid, dbname, username, password):
+    def create_ddlgen_commandline(self, dbname, username, password):
         # ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F% -TDBD -N%
         # ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%
         return [
-            DatabaseConnector.ddlgen_path(),
+            self.ddlgen_path(),
             "-U{}".format(username),
-            "-S{}".format(sid),
             "-D{}".format(dbname),
-            "-P{}".format(password)
+            "-P{}".format(password),
+            "-S{}".format(self.backup_configuration.get_SID())
         ]
 
     def ddlgen(self, dbname):
-        return DatabaseConnector.create_ddlgen_commandline(
-            sid=self.backup_configuration.get_SID(),
+        return self.create_ddlgen_commandline(
             dbname=dbname,
             username="sapsa",
             password=self.get_database_password(sid=self.backup_configuration.get_SID()))
 
-    @staticmethod
-    def get_ase_environment():
+    def get_ase_environment(self):
         ase_env = os.environ.copy()
 
-        p=lambda path: os.path.join("/opt/sap", path)
+        p=lambda path: os.path.join(self.get_ase_base_directory(), path)
         val=lambda name: ase_env.get(name, "")
-
+        
         jre7=p("shared/SAPJRE-7_1_049_64BIT")
         jre8=p("shared/SAPJRE-8_1_029_64BIT")
 
@@ -293,35 +294,35 @@ class DatabaseConnector:
         ase_env["COCKPIT_JAVA_HOME"]=jre8
         ase_env["SYBASE"]=p("")
         ase_env["SYBROOT"]=p("")
-        ase_env["SYBASE_OCS"]="OCS-16_0"
-        ase_env["SYBASE_ASE"]="ASE-16_0"
-        ase_env["SYBASE_WS"]="WS-16_0"
+        ase_env["SYBASE_OCS"]="OCS-{}".format(self.backup_configuration.get_ase_version())
+        ase_env["SYBASE_ASE"]="ASE-{}".format(self.backup_configuration.get_ase_version())
+        ase_env["SYBASE_WS"]="WS-{}".format(self.backup_configuration.get_ase_version())
 
         ase_env["INCLUDE"] = os.pathsep.join([
-            p("OCS-16_0/include"),
+            p("OCS-{}/include".format(self.backup_configuration.get_ase_version())),
             val("INCLUDE")
         ])
 
         ase_env["LIB"] = os.pathsep.join([
-            p("OCS-16_0/lib"),
+            p("OCS-{}/lib".format(self.backup_configuration.get_ase_version())),
             val("LIB")
         ])
 
         ase_env["LD_LIBRARY_PATH"] = os.pathsep.join([
-            p("ASE-16_0/lib"),
-            p("OCS-16_0/lib"),
-            p("OCS-16_0/lib3p"),
-            p("OCS-16_0/lib3p64"),
+            p("ASE-{}/lib".format(self.backup_configuration.get_ase_version())),
+            p("OCS-{}/lib".format(self.backup_configuration.get_ase_version())),
+            p("OCS-{}/lib3p".format(self.backup_configuration.get_ase_version())),
+            p("OCS-{}/lib3p64".format(self.backup_configuration.get_ase_version())),
             p("DataAccess/ODBC/lib"),
             p("DataAccess64/ODBC/lib"),
             val("LD_LIBRARY_PATH")
         ])
 
         ase_env["PATH"] = os.pathsep.join([
-            p("ASE-16_0/bin"),
-            p("ASE-16_0/install"),
-            p("ASE-16_0/jobscheduler/bin"),
-            p("OCS-16_0/bin"),
+            p("ASE-{}/bin".format(self.backup_configuration.get_ase_version())),
+            p("ASE-{}/install".format(self.backup_configuration.get_ase_version())),
+            p("ASE-{}/jobscheduler/bin".format(self.backup_configuration.get_ase_version())),
+            p("OCS-{}/bin".format(self.backup_configuration.get_ase_version())),
             p("COCKPIT-4/bin"),
             val("PATH")
          ])
@@ -331,14 +332,13 @@ class DatabaseConnector:
 
         return ase_env
 
-    @staticmethod
-    def call_process(command_line, stdin):
+    def call_process(self, command_line, stdin):
         p = subprocess.Popen(
             command_line,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=DatabaseConnector.get_ase_environment()
+            env=self.get_ase_environment()
         )
         stdout, stderr = p.communicate(stdin)
         return (stdout, stderr)

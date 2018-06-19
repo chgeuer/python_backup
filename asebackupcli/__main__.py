@@ -3,7 +3,6 @@
 from .runner import Runner
 
 def main():
-    print('in main')
     Runner.main()
 
 if __name__ == '__main__':

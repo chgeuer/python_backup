@@ -27,6 +27,7 @@ class BackupConfiguration:
         self.data = {
             "sap.CID": lambda: self.cfg_file.get_value("sap.CID"),
             "sap.SID": lambda: self.cfg_file.get_value("sap.SID"),
+            "sap.ase.version": lambda: self.cfg_file.get_value("sap.ase.version"),
 
             "vm_name": lambda: self.instance_metadata.vm_name,
             "subscription_id": lambda: self.instance_metadata.subscription_id,
@@ -48,6 +49,7 @@ class BackupConfiguration:
     def get_resource_group_name(self): return self.get_value("resource_group_name")
     def get_CID(self): return self.get_value("sap.CID")
     def get_SID(self): return self.get_value("sap.SID")
+    def get_ase_version(self): return self.get_value("sap.ase.version")
     def get_db_backup_interval_min(self): return self.get_value("db_backup_interval_min")
     def get_db_backup_interval_max(self): return self.get_value("db_backup_interval_max")
     def get_log_backup_interval_min(self): return self.get_value("log_backup_interval_min")
