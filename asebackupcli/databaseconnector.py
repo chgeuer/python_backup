@@ -4,28 +4,57 @@ import os
 from .naming import Naming
 
 class DatabaseConnector:
-    def get_ase_base_directory(self):
-        return "/sybase/{}".format(self.backup_configuration.get_SID())
-
-    def isql_path(self):
-        return os.path.join(
-            self.get_ase_base_directory(), 
-            "OCS-{}/bin/isql".format(self.backup_configuration.get_ase_version()))
-
-    def ddlgen_path(self):
-        return os.path.join(
-            self.get_ase_base_directory(), 
-            "ASE-{}/bin/ddlgen".format(self.backup_configuration.get_ase_version()))
-
     def __init__(self, backup_configuration):
         self.backup_configuration = backup_configuration
 
+    def get_ase_base_directory(self):
+        return "/sybase/{}".format(self.backup_configuration.get_SID())
+
     def get_database_password(self, sid):
-        sid = self.backup_configuration.get_SID()
         executable = os.path.join(self.get_ase_base_directory(), "dba/bin/dbsp")
         arg = "***REMOVED***"
         stdout, _stderr = self.call_process(command_line=[executable, arg], stdin="")
         return str(stdout).strip()
+
+    def isql(self):
+        isql_path = os.path.join(
+            self.get_ase_base_directory(), 
+            "OCS-{}/bin/isql".format(self.backup_configuration.get_ase_version()))
+
+        server_name=self.backup_configuration.get_CID()
+        username="sapsa"
+        sid = self.backup_configuration.get_SID()
+        password=self.get_database_password(sid=sid)
+
+        supress_header = "-b"
+        return [
+            isql_path,
+            "-S", server_name,
+            "-U", username,
+            "-P", password,
+            "-w", "999",
+            supress_header
+        ]
+
+    def ddlgen(self, dbname):
+        # ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F% -TDBD -N%
+        # ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%
+
+        ddlgen_path = os.path.join(
+            self.get_ase_base_directory(), 
+            "ASE-{}/bin/ddlgen".format(self.backup_configuration.get_ase_version()))
+
+        username = "sapsa"
+        sid = self.backup_configuration.get_SID()
+        password = self.get_database_password(sid=sid)
+
+        return [
+            ddlgen_path,
+            "-S{}".format(sid),
+            "-D{}".format(dbname),
+            "-U{}".format(username),
+            "-P{}".format(password)
+        ]
 
     @staticmethod
     def sql_statement_stripe_count(dbname, is_full):
@@ -234,48 +263,13 @@ class DatabaseConnector:
             map(lambda s: s.strip(), stdout.split("\n")))
 
     def create_backup(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
-        sql = DatabaseConnector.sql_statement_create_backup(
+        return self.call_process(
+            command_line=self.isql(), 
+            stdin=DatabaseConnector.sql_statement_create_backup(
                 dbname=dbname, is_full=is_full, 
                 start_timestamp=start_timestamp, 
                 stripe_count=stripe_count,
-                output_dir=output_dir)
-
-        return self.call_process(command_line=self.isql(), stdin=sql)
-
-    def create_isql_commandline(self, server_name, username, password):
-        supress_header = "-b"
-        return [
-            self.isql_path(),
-            "-S", server_name,
-            "-U", username,
-            "-P", password,
-            "-w", "999",
-            supress_header
-        ]
-
-    def isql(self):
-        return DatabaseConnector.create_isql_commandline(
-            server_name=self.backup_configuration.get_CID(),
-            username="sapsa",
-            password=self.get_database_password(
-                sid=self.backup_configuration.get_SID()))
-
-    def create_ddlgen_commandline(self, dbname, username, password):
-        # ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F% -TDBD -N%
-        # ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%
-        return [
-            self.ddlgen_path(),
-            "-U{}".format(username),
-            "-D{}".format(dbname),
-            "-P{}".format(password),
-            "-S{}".format(self.backup_configuration.get_SID())
-        ]
-
-    def ddlgen(self, dbname):
-        return self.create_ddlgen_commandline(
-            dbname=dbname,
-            username="sapsa",
-            password=self.get_database_password(sid=self.backup_configuration.get_SID()))
+                output_dir=output_dir))
 
     def get_ase_environment(self):
         ase_env = os.environ.copy()

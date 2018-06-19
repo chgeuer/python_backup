@@ -1,7 +1,7 @@
 # Some comment
 
-sap.ase.version:               16_0
-
+local_temp_directory:          /tmp
+sap.ASE.version:               16_0
 sap.SID:                       JLD
 sap.CID:                       AZU
 

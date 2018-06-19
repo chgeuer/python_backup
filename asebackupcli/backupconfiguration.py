@@ -1,4 +1,5 @@
-from azure.storage.blob import BlockBlobService, PublicAccess
+
+from azure.storage.blob import BlockBlobService
 
 from .azurevminstancemetadata import AzureVMInstanceMetadata
 from .backupconfigurationfile import BackupConfigurationFile
@@ -28,18 +29,19 @@ class BackupConfiguration:
             "sap.CID": lambda: self.cfg_file.get_value("sap.CID"),
             "sap.SID": lambda: self.cfg_file.get_value("sap.SID"),
             "sap.ase.version": lambda: self.cfg_file.get_value("sap.ase.version"),
+            "local_temp_directory": lambda: self.cfg_file.get_value("local_temp_directory"),
+            "azure.storage.account_name": lambda: self.cfg_file.get_value("azure.storage.account_name"),
+            "azure.storage.account_key": lambda: self.cfg_file.get_value("azure.storage.account_key"),
+            "azure.storage.container_name": lambda: self.cfg_file.get_value("azure.storage.container_name"),
 
             "vm_name": lambda: self.instance_metadata.vm_name,
             "subscription_id": lambda: self.instance_metadata.subscription_id,
             "resource_group_name": lambda: self.instance_metadata.resource_group_name,
 
-            "azure.storage.account_name": lambda: self.cfg_file.get_value("azure.storage.account_name"),
-            "azure.storage.account_key": lambda: self.cfg_file.get_value("azure.storage.account_key"),
-            "azure.storage.container_name": lambda: self.cfg_file.get_value("azure.storage.container_name"),
-
             "db_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db_backup_interval_min"]),
             "db_backup_interval_max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db_backup_interval_max"]),
             "log_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["log_backup_interval_min"]),
+
             "backup.businesshours": lambda: BusinessHours(self.instance_metadata.get_tags())
         }
 
@@ -54,6 +56,8 @@ class BackupConfiguration:
     def get_db_backup_interval_max(self): return self.get_value("db_backup_interval_max")
     def get_log_backup_interval_min(self): return self.get_value("log_backup_interval_min")
     def get_business_hours(self): return self.get_value("backup.businesshours")
+    def get_standard_local_directory(self): return self.get_value("local_temp_directory")
+
     def get_databases_to_skip(self): return [ "dbccdb" ]
 
     def __get_azure_storage_account_name(self): return self.get_value("azure.storage.account_name")
@@ -71,5 +75,3 @@ class BackupConfiguration:
             _created = self._block_blob_service.create_container(container_name=self.azure_storage_container_name)
         return self._block_blob_service
 
-    def get_standard_local_directory(self):
-        return "/tmp"
