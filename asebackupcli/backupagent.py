@@ -461,3 +461,5 @@ class BackupAgent:
         print("azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name))
         print("azure_storage_account_name:         {}".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_name()))
         print("azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10]))
+        print("ASE Version:                        {}".format(self.backup_configuration.get_ase_version()))
+        print("ASE Directory:                      {}".format(DatabaseConnector(self.backup_configuration).get_ase_base_directory()))
