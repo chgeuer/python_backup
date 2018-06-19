@@ -193,8 +193,18 @@ In that output, the displayed values come from different locations:
     - `db_backup_interval_min`, `db_backup_interval_max`, `log_backup_interval_min` and the business hours
 
 
+## Use `virtualenv`
 
-`virtualenv --python=python2.7 ~/py`
+`
+virtualenv --python=python2.7 ~/backup
+source ~/backup/bin/activate
+cd ~/backup
+git clone https://github.com/chgeuer/python_backup/
+cd python_backup
+./install.sh
+
+asebackupcli -c ~/ase/config.txt -l
+`
 
 
 [tags]: docs/tags.png "tags in the portal"
