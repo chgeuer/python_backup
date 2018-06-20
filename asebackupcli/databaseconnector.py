@@ -176,7 +176,7 @@ class DatabaseConnector:
     @staticmethod
     def sql_statement_create_backup(dbname, is_full, start_timestamp, stripe_count, output_dir):
         """
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=True, start_timestamp="20180629_124500", stripe_count=1))
             use master
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
@@ -185,7 +185,7 @@ class DatabaseConnector:
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=True, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=True, start_timestamp="20180629_124500", stripe_count=4))
             use master
             go
             sp_dboption AZU, 'trunc log on chkpt', 'false'
@@ -197,14 +197,14 @@ class DatabaseConnector:
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=1))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=False, start_timestamp="20180629_124500", stripe_count=1))
             use master
             go
             dump transaction AZU to '/tmp/AZU_tran_20180629_124500_S001-001.cdmp'
             with compression = '101'
             go
 
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=False, start_timestamp=Timing.parse("20180629_124500"), stripe_count=4))
+            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=False, start_timestamp="20180629_124500", stripe_count=4))
             use master
             go
             dump transaction AZU to '/tmp/AZU_tran_20180629_124500_S001-004.cdmp'

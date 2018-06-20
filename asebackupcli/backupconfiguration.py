@@ -14,7 +14,7 @@ class BackupConfiguration:
             'ABC'
             >>> cfg.get_db_backup_interval_min()
             datetime.timedelta(1)
-            >>> some_tuesday_evening = Timing.parse("20180605_215959")
+            >>> some_tuesday_evening = "20180605_215959"
             >>> cfg.get_business_hours().is_backup_allowed_time(some_tuesday_evening)
             True
         """

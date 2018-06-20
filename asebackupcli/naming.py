@@ -27,15 +27,15 @@ class Naming:
     @staticmethod
     def construct_filename(dbname, is_full, start_timestamp, stripe_index, stripe_count):
         """
-            >>> Naming.construct_filename(dbname="test1db", is_full=True, start_timestamp=Timing.parse("20180601_112429"), stripe_index=2, stripe_count=101)
+            >>> Naming.construct_filename(dbname="test1db", is_full=True, start_timestamp="20180601_112429", stripe_index=2, stripe_count=101)
             'test1db_full_20180601_112429_S002-101.cdmp'
-            >>> Naming.construct_filename(dbname="test1db", is_full=False, start_timestamp=Timing.parse("20180601_112429"), stripe_index=2, stripe_count=101)
+            >>> Naming.construct_filename(dbname="test1db", is_full=False, start_timestamp="20180601_112429", stripe_index=2, stripe_count=101)
             'test1db_tran_20180601_112429_S002-101.cdmp'
         """
         return "{dbname}_{type}_{start_timestamp}_S{idx:03d}-{cnt:03d}.cdmp".format(
             dbname=dbname, 
             type=Naming.backup_type_str(is_full), 
-            start_timestamp=Timing.datetime_to_timestr(start_timestamp),
+            start_timestamp=start_timestamp,
             idx=int(stripe_index), 
             cnt=int(stripe_count))
 
@@ -56,16 +56,14 @@ class Naming:
     @staticmethod
     def construct_blobname(dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count):
         """
-            >>> Naming.construct_blobname(dbname="test1db", is_full=True, start_timestamp=Timing.parse("20180601_112429"), end_timestamp=Timing.parse("20180601_131234"), stripe_index=2, stripe_count=101)
+            >>> Naming.construct_blobname(dbname="test1db", is_full=True, start_timestamp="20180601_112429", end_timestamp="20180601_131234", stripe_index=2, stripe_count=101)
             'test1db_full_20180601_112429--20180601_131234_S002-101.cdmp'
         """
         return "{dbname}_{type}_{start}--{end}_S{idx:03d}-{cnt:03d}.cdmp".format(
             dbname=dbname, 
             type=Naming.backup_type_str(is_full), 
-            start=Timing.datetime_to_timestr(start_timestamp),
-            end=Timing.datetime_to_timestr(end_timestamp),
-            idx=int(stripe_index), 
-            cnt=int(stripe_count))
+            start=start_timestamp, end=end_timestamp,
+            idx=int(stripe_index), cnt=int(stripe_count))
 
     @staticmethod
     def construct_ddlgen_name(dbname, start_timestamp, end_timestamp):
@@ -114,7 +112,7 @@ class Naming:
         return Naming.construct_filename(
                     dbname=parts[0],
                     is_full=parts[1],
-                    start_timestamp=Timing.parse(parts[2]),
+                    start_timestamp=parts[2],
                     # skip parts[3] which is end-timestamp
                     stripe_index=parts[4],
                     stripe_count=parts[5])

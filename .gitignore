@@ -1,6 +1,6 @@
 /scripts/
 /.vscode/
-/config.json
 /backup.log
 /*.cdmp
 /config.txt
+/asebackupcli/*.pyc

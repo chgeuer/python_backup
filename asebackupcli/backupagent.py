@@ -117,11 +117,11 @@ class BackupAgent:
             >>> business_hours=BusinessHours.parse_tag_str(BusinessHours._BusinessHours__sample_data())
             >>> db_backup_interval_min=ScheduleParser.parse_timedelta("24h")
             >>> db_backup_interval_max=ScheduleParser.parse_timedelta("3d")
-            >>> five_day_backup =                     "20180601_010000"
-            >>> two_day_backup =                      "20180604_010000"
-            >>> same_day_backup =                     "20180606_010000"
-            >>> during_business_hours  = Timing.parse("20180606_150000")
-            >>> outside_business_hours = Timing.parse("20180606_220000")
+            >>> five_day_backup =        "20180601_010000"
+            >>> two_day_backup =         "20180604_010000"
+            >>> same_day_backup =        "20180606_010000"
+            >>> during_business_hours  = "20180606_150000"
+            >>> outside_business_hours = "20180606_220000"
             >>> 
             >>> # Forced
             >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=same_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
@@ -161,12 +161,12 @@ class BackupAgent:
             True
         """
         allowed_by_business = business_hours.is_backup_allowed_time(now_time)
-        age_of_latest_backup_in_storage = Timing.time_diff(latest_full_backup_timestamp, Timing.datetime_to_timestr(now_time))
+        age_of_latest_backup_in_storage = Timing.time_diff(latest_full_backup_timestamp, now_time)
         min_interval_allows_backup = age_of_latest_backup_in_storage > db_backup_interval_min
         max_interval_requires_backup = age_of_latest_backup_in_storage > db_backup_interval_max
         perform_full_backup = (allowed_by_business and min_interval_allows_backup or max_interval_requires_backup or force)
 
-        # logging.info("Full backup requested. Current time: {now}. Last backup in storage: {last}. Age of backup {age}".format(now=Timing.datetime_to_timestr(now_time), last=latest_full_backup_timestamp, age=age_of_latest_backup_in_storage))
+        # logging.info("Full backup requested. Current time: {now}. Last backup in storage: {last}. Age of backup {age}".format(now=now_time, last=latest_full_backup_timestamp, age=age_of_latest_backup_in_storage))
         # logging.info("Backup requirements: min=\"{min}\" max=\"{max}\"".format(min=db_backup_interval_min,max=db_backup_interval_max))
         # logging.info("Forced by user: {force}. Backup allowed by business hours: {allowed_by_business}. min_interval_allows_backup={min_interval_allows_backup}. max_interval_requires_backup={max_interval_requires_backup}".format(force=force, allowed_by_business=allowed_by_business, min_interval_allows_backup=min_interval_allows_backup, max_interval_requires_backup=max_interval_requires_backup))
         # logging.info("Decision to backup: {perform_full_backup}.".format(perform_full_backup=perform_full_backup))
@@ -206,8 +206,8 @@ class BackupAgent:
         with open(ddlgen_file_path, mode='wt') as file:
             ddl_gen_sql = db_connector.create_ddlgen(
                 dbname=dbname, 
-                start_timestamp=Timing.datetime_to_timestr(start_timestamp),
-                end_timestamp=Timing.datetime_to_timestr(end_timestamp))
+                start_timestamp=start_timestamp,
+                end_timestamp=end_timestamp)
             file.write(ddl_gen_sql)
 
         #
@@ -276,15 +276,16 @@ class BackupAgent:
         if force:
             return True
 
-        age_of_latest_backup_in_storage = Timing.time_diff(latest_tran_backup_timestamp, Timing.datetime_to_timestr(now_time))
+        age_of_latest_backup_in_storage = Timing.time_diff(latest_tran_backup_timestamp, now_time)
         min_interval_allows_backup = age_of_latest_backup_in_storage > log_backup_interval_min
         perform_tran_backup = min_interval_allows_backup
         return perform_tran_backup 
 
     def tran_backup_single_db(self, dbname, output_dir, force, skip_upload):
         is_full=False
+        start_timestamp = Timing.now_localtime()
         if not BackupAgent.should_run_tran_backup(
-                now_time=Timing.now_localtime(), 
+                now_time=start_timestamp, 
                 force=force,
                 latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
                 log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min()):
@@ -292,7 +293,7 @@ class BackupAgent:
             log_msg="Skipping backup of transactions for {dbname}. (min='{min}' latest='{latest}' now='{now}'".format(dbname=dbname,
                 min=self.backup_configuration.get_log_backup_interval_min(),
                 latest=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
-                now=Timing.now_localtime_string())
+                now=Timing.now_localtime())
             logging.info(log_msg)
             return
 
@@ -300,7 +301,6 @@ class BackupAgent:
         stripe_count = db_connector.determine_database_backup_stripe_count(
             dbname=dbname, is_full=is_full)
 
-        start_timestamp = Timing.now_localtime()
         stdout, stderr = db_connector.create_backup(
             dbname=dbname, 
             is_full=is_full,
@@ -400,7 +400,7 @@ class BackupAgent:
                 if (databases != None) and not (dbname in databases):
                     continue
 
-                diff = Timing.time_diff(end_timestamp, Timing.now_localtime_string())
+                diff = Timing.time_diff(end_timestamp, Timing.now_localtime())
                 delete = diff > older_than
 
                 if delete:

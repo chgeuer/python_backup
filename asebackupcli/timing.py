@@ -5,13 +5,7 @@ class Timing:
     time_format="%Y%m%d_%H%M%S"
 
     @staticmethod
-    def now_localtime(): return time.localtime()
-
-    @staticmethod
-    def now_localtime_string(): return Timing.datetime_to_timestr(time.localtime())
-
-    @staticmethod
-    def datetime_to_timestr(t): return time.strftime(Timing.time_format, t)
+    def now_localtime(): return time.strftime(Timing.time_format, time.localtime())
 
     @staticmethod 
     def parse(time_str):
@@ -22,16 +16,16 @@ class Timing:
         return time.strptime(time_str, Timing.time_format)
 
     @staticmethod
-    def time_diff(time_1_str, time_2_str):
+    def time_diff(str1, str2):
         """
             >>> Timing.time_diff("20180106_120000", "20180106_120010")
             datetime.timedelta(0, 10)
             >>> Timing.time_diff("20180106_110000", "20180106_120010")
             datetime.timedelta(0, 3610)
         """
-        t1 = Timing.parse(time_1_str)
+        t1 = Timing.parse(str1)
         dt1 = datetime.datetime(year=t1.tm_year, month=t1.tm_mon, day=t1.tm_mday, hour=t1.tm_hour, minute=t1.tm_min, second=t1.tm_sec)
-        t2 = Timing.parse(time_2_str)
+        t2 = Timing.parse(str2)
         dt2 = datetime.datetime(year=t2.tm_year, month=t2.tm_mon, day=t2.tm_mday, hour=t2.tm_hour, minute=t2.tm_min, second=t2.tm_sec)
         return dt2 - dt1
 
@@ -122,9 +116,6 @@ class Timing:
             3610
         """
         return int(Timing.time_diff(timestr_1, timestr_2).total_seconds())
-
-    # @staticmethod
-    # def sort_by_end_date_and_stripe_index()
 
     @staticmethod
     def files_needed_for_recovery(times, restore_point, 

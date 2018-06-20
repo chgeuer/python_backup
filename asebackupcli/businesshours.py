@@ -70,18 +70,19 @@ class BusinessHours:
         """
             >>> sample_data = BusinessHours._BusinessHours__sample_data()
             >>> sample_hours = BusinessHours.parse_tag_str(sample_data)
-            >>> some_tuesday_evening = Timing.parse("20180605_215959")
+            >>> some_tuesday_evening = "20180605_215959"
             >>> sample_hours.is_backup_allowed_time(some_tuesday_evening)
             True
-            >>> some_tuesday_noon = Timing.parse("20180605_115500")
+            >>> some_tuesday_noon = "20180605_115500"
             >>> sample_hours.is_backup_allowed_time(some_tuesday_noon)
             False
-            >>> some_sunday_noon = Timing.parse("20180610_115500")
+            >>> some_sunday_noon = "20180610_115500"
             >>> sample_hours.is_backup_allowed_time(some_sunday_noon)
             True
         """
         # time.struct_time.tm_wday is range [0, 6], Monday is 0
-        return self.is_backup_allowed_dh(day=1 + time.tm_wday, hour=time.tm_hour)
+        t = Timing.parse(time)
+        return self.is_backup_allowed_dh(day=1 + t.tm_wday, hour=t.tm_hour)
 
     def is_backup_allowed_now_localtime(self):
         return self.is_backup_allowed_time(time=Timing.now_localtime())
