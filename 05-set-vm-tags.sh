@@ -1,7 +1,7 @@
 #!/bin/bash
 
 rg=backuptest
-vm_name=saphec4
+vm_name=saphec5
 
 az vm update --resource-group "${rg}" --name "${vm_name}" --set \
     tags.db_backup_interval_min=1d \

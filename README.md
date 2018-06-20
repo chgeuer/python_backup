@@ -1,10 +1,29 @@
-
 # ASE Backup
 
-## Install the script's dependencies in production environment
+## Install the executable in a user account using `virtualenv`
 
-```
-./install_runtime_dependencies.sh
+```bash
+pip install --user virtualenv
+~/.local/bin/virtualenv --python=python2.7 ~/backup
+source ~/backup/bin/activate
+pip install git+https://github.com/chgeuer/python_backup.git#egg=asebackupcli
+mkdir ~/ase
+
+cat > ~/aseconfig.txt <<- EOF
+	# System ID
+	sap.SID:                       JLD
+	# Customer ID
+	sap.CID:                       AZU
+	sap.ase.version:               16_0
+	# The standard directory where dump files are created
+	local_temp_directory:          /mnt/resource
+	
+	azure.storage.account_name:    backupstorage123
+	azure.storage.account_key:     MvZFghjghjasgdhjagshjdgahjgdjhajhdghajgdjhgahjgdhjasgjhdgajhdghjasgjdhgahjgdjhagjhdgaj==
+	azure.storage.container_name:  backup
+EOF
+
+"$(which asebackupcli)" -c ~/aseconfig.txt -x
 ```
 
 ## Install the mocks fora demo environment
@@ -193,27 +212,5 @@ In that output, the displayed values come from different locations:
     - `db_backup_interval_min`, `db_backup_interval_max`, `log_backup_interval_min` and the business hours
 
 
-## Use `virtualenv`
-
-`
-virtualenv --python=python2.7 ~/backup
-source ~/backup/bin/activate
-cd ~/backup
-git clone https://github.com/chgeuer/python_backup/
-cd python_backup
-./install.sh
-
-asebackupcli -c ~/ase/config.txt -l
-
-
-
-pip install git+https://github.com/chgeuer/python_backup.git#egg=asebackupcli
-sudo "$(which asebackupcli)" -c config.txt -f --force
-
-`
-
-https://packaging.python.org/guides/installing-using-pip-and-virtualenv/
-
-
-[tags]: docs/tags.png "tags in the portal"
-
+[tags]:       docs/tags.png "tags in the portal"
+[virtualenv]: https://packaging.python.org/guides/installing-using-pip-and-virtualenv/
