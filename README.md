@@ -204,6 +204,12 @@ cd python_backup
 ./install.sh
 
 asebackupcli -c ~/ase/config.txt -l
+
+
+https://packaging.python.org/guides/installing-using-pip-and-virtualenv/
+
+pip install git+https://github.com/chgeuer/python_backup.git#egg=asebackupcli
+
 `
 
 

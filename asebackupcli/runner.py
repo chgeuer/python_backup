@@ -38,11 +38,13 @@ class Runner:
         return parser
 
     @staticmethod
-    def get_output_dir(args, backup_configuration):
+    def get_output_dir(args):
         if args.output_dir:
             return args.output_dir
+        elif args.config:
+            return BackupConfiguration(args.config).get_standard_local_directory()
         else:
-            return backup_configuration.get_standard_local_directory()
+            return "/tmp"
 
     @staticmethod
     def main():
@@ -51,7 +53,7 @@ class Runner:
         args = parser.parse_args()
 
         backup_configuration = BackupConfiguration(args.config)
-        output_dir = Runner.get_output_dir(args, backup_configuration)
+        output_dir = Runner.get_output_dir(args)
 
         if args.full_backup:
             try:
