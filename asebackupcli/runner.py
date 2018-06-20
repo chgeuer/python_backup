@@ -2,7 +2,6 @@ import logging
 import argparse
 import pid
 
-from .funcmodule import printe
 from .backupagent import BackupAgent
 from .backupconfiguration import BackupConfiguration
 from .scheduleparser import ScheduleParser
@@ -65,7 +64,6 @@ class Runner:
                         databases=args.databases)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
-                printe("Skipping full backup, there is a full-backup in flight currently")
         elif args.transaction_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:

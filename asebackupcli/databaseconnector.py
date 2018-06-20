@@ -264,8 +264,6 @@ class DatabaseConnector:
             return self.list_databases(is_full=is_full)
 
     def list_databases(self, is_full):
-        print(self.isql())
-
         (stdout, _stderr) = self.call_process(
             command_line=self.isql(),
             stdin=DatabaseConnector.sql_statement_list_databases(is_full=is_full))

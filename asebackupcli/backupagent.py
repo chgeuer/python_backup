@@ -73,7 +73,6 @@ class BackupAgent:
         return Timing.sort(existing_blobs_dict.keys())[-1:][0]
 
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
-        print("Upload files from previous runs")
         for file in os.listdir(output_dir):
             parts = Naming.parse_blobname(file)
             if parts == None:
@@ -183,8 +182,6 @@ class BackupAgent:
                 db_backup_interval_min=self.backup_configuration.get_db_backup_interval_min(),
                 db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max()):
             logging.info("Skipping backup of database {dbname}".format(dbname=dbname))
-            print("Skipping backup of database {dbname}".format(dbname=dbname))
-
             return
 
         db_connector = DatabaseConnector(self.backup_configuration)
@@ -295,7 +292,6 @@ class BackupAgent:
                 latest=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
                 now=Timing.now_localtime_string())
             logging.info(log_msg)
-            print(log_msg)
             return
 
         db_connector = DatabaseConnector(self.backup_configuration)
@@ -385,10 +381,7 @@ class BackupAgent:
         logging.warn("Deleting files older than {}".format(older_than))
         if (older_than < minimum_deletable_age):
             msg="This script does not delete files younger than {}, ignoring this order".format(minimum_deletable_age)
-
             logging.warn(msg)
-            printe(msg)
-
             return
 
         marker = None
@@ -460,7 +453,6 @@ class BackupAgent:
                 container_name=self.backup_configuration.azure_storage_container_name,
                 blob_name=blob_name,
                 file_path=file_path)
-            print("Downloaded {} to {}".format(blob_name, file_path))
 
     def list_restore_blobs(self, dbname):
         existing_blobs = []
