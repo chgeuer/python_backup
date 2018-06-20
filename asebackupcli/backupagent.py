@@ -69,11 +69,13 @@ class BackupAgent:
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
         print("Upload files from previous runs")
         for file in os.listdir(output_dir):
+            print("Checking {}".format(file))
             parts = Naming.parse_blobname(file)
             if parts == None:
                 continue
             (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
             if (is_full != is_full_file):
+                print("Not same backup type {}".format(file))
                 continue
 
             blob_name = file

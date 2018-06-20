@@ -5,7 +5,7 @@
 
 curl https://raw.githubusercontent.com/chgeuer/python_backup/master/install_userspace.sh | bash
 
-
+sudo $HOME/bin/asebackupcli -c $HOME/aseconfig.txt -f --force
 
 
 ```bash
@@ -21,7 +21,7 @@ pip install git+https://github.com/chgeuer/python_backup.git#egg=asebackupcli
 ln -s ~/${envname}/bin/asebackupcli ~/bin
 
 
-cat > ~/aseconfig.txt <<- EOF
+cat > $HOME/aseconfig.txt <<- EOF
 	# Customer ID
 	sap.CID:                       AZU
 	# System ID
