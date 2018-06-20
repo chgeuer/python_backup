@@ -13,3 +13,6 @@ echo "$(tput setaf 1)Software License Type Selection:    $(tput setab 7)2 - Inst
 
 sudo ./setup.bin
 cd ..
+
+# For color output:
+# https://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux

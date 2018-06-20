@@ -3,11 +3,17 @@
 ## Install the executable in a user account using `virtualenv`
 
 ```bash
+#!/bin/bash
+
+envname=backup
+
 pip install --user virtualenv
-~/.local/bin/virtualenv --python=python2.7 ~/backup
-source ~/backup/bin/activate
+~/.local/bin/virtualenv --python=python2.7 ~/${envname}
+source ~/${envname}/bin/activate
 pip install git+https://github.com/chgeuer/python_backup.git#egg=asebackupcli
-mkdir ~/ase
+
+ln -s ~/${envname}/bin/asebackupcli ~/bin
+
 
 cat > ~/aseconfig.txt <<- EOF
 	# System ID
