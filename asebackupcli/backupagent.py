@@ -48,8 +48,11 @@ class BackupAgent:
             for blob in results:
                 blob_name=blob.name
                 parts = Naming.parse_blobname(blob_name)
-                end_time_of_existing_blob = parts[3]
-                if len(databases) == 0 or parts[0] in databases:
+                if parts == None:
+                    continue
+
+                (dbname_of_existing_blob, _is_full, _start_timestamp, end_time_of_existing_blob, _stripe_index, _stripe_count) = parts
+                if len(databases) == 0 or dbname_of_existing_blob in databases:
                     if not existing_blobs_dict.has_key(end_time_of_existing_blob):
                         existing_blobs_dict[end_time_of_existing_blob] = []
                     existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
