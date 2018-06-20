@@ -26,6 +26,9 @@ class BackupAgent:
             for blob in results:
                 blob_name=blob.name
                 parts = Naming.parse_blobname(blob_name)
+                if parts == None:
+                    continue
+
                 end_time_of_existing_blob = parts[3]
                 if not existing_blobs_dict.has_key(end_time_of_existing_blob):
                     existing_blobs_dict[end_time_of_existing_blob] = []
@@ -468,6 +471,9 @@ class BackupAgent:
                 prefix="{dbname}_".format(dbname=dbname), 
                 marker=marker)
             for blob in results:
+                if not blob.name.endswith(".cdmp"):
+                    continue
+
                 existing_blobs.append(blob.name)
             if results.next_marker:
                 marker = results.next_marker
