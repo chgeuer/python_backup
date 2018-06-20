@@ -37,8 +37,8 @@ class DatabaseConnector:
         ]
 
     def ddlgen(self, dbname):
-        # ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F% -TDBD -N%
-        # ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%
+        # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F% -TDBD -N%)" >  20180678.sql
+        # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%)"           >> 20180678.sql
 
         ddlgen_path = os.path.join(
             self.get_ase_base_directory(), 

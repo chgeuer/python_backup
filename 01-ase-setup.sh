@@ -8,7 +8,7 @@ export SID="JLD"
 export PASSWD_SA="Sybase123"
 export PASSWD_SAPSA="Test123.-"
 
-source /opt/sap/SYBASE.sh
+source /sybase/${SID}/SYBASE.sh
 unset LANG
 
 #
@@ -19,14 +19,14 @@ sqlsrv.server_name:                             ${CID}
 sqlsrv.default_backup_server:                   ${CID}_BS
 sqlsrv.sa_login:                                sa
 sqlsrv.sa_password:                             ${PASSWD_SA}
-sybinit.boot_directory:                         /opt/sap/
-sybinit.release_directory:                      /opt/sap/
-sqlsrv.master_device_physical_name:             /opt/sap/data/master.dat
-sqlsrv.sybpcidb_device_physical_name:           /opt/sap/data/sybpcidbdev_data.dat 
-sqlsrv.sybsystemprocs_device_physical_name:     /opt/sap/data/sysprocs.dat
-sqlsrv.sybsystemdb_db_device_physical_name:     /opt/sap/data/sybsysdb.dat
-sqlsrv.tempdb_device_physical_name:             /opt/sap/saptemp_1/tempdb.dat
-sqlsrv.errorlog:                                /opt/sap/ASE-16_0/install/sap_ase.log
+sybinit.boot_directory:                         /sybase/${SID}/
+sybinit.release_directory:                      /sybase/${SID}/
+sqlsrv.master_device_physical_name:             /sybase/${SID}/data/master.dat
+sqlsrv.sybpcidb_device_physical_name:           /sybase/${SID}/data/sybpcidbdev_data.dat 
+sqlsrv.sybsystemprocs_device_physical_name:     /sybase/${SID}/data/sysprocs.dat
+sqlsrv.sybsystemdb_db_device_physical_name:     /sybase/${SID}/data/sybsysdb.dat
+sqlsrv.tempdb_device_physical_name:             /sybase/${SID}/saptemp_1/tempdb.dat
+sqlsrv.errorlog:                                /sybase/${SID}/ASE-16_0/install/sap_ase.log
 
 sqlsrv.addl_cmdline_parameters:
 sqlsrv.application_type:                        MIXED
@@ -86,7 +86,7 @@ sybinit.product:                                sqlsrv
 sybinit.resource_file:
 EOF
 
-/opt/sap/ASE-16_0/bin/srvbuildres -r "${CID}.RS"
+/sybase/${SID}/ASE-16_0/bin/srvbuildres -r "${CID}.RS"
 
 #
 # Setup ASE Backup instance
@@ -97,9 +97,9 @@ sqlsrv.server_name:                             ${CID}_BS
 bsrv.server_name:                               ${CID}_BS
 sqlsrv.sa_login:                                sa
 sqlsrv.sa_password:                             ${PASSWD_SA}
-sybinit.boot_directory:                         /opt/sap
-sybinit.release_directory:                      /opt/sap
-bsrv.errorlog:                                  /opt/sap/ASE-16_0/install/${CID}_BS.log
+sybinit.boot_directory:                         /sybase/${SID}
+sybinit.release_directory:                      /sybase/${SID}
+bsrv.errorlog:                                  /sybase/${SID}/ASE-16_0/install/${CID}_BS.log
 sybinit.product:                                bsrv
 bsrv.do_add_backup_server:                      yes
 bsrv.network_port_list:                         4902
@@ -117,20 +117,20 @@ bsrv.network_name_alias_list:
 bsrv.notes:
 EOF
 
-/opt/sap/ASE-16_0/bin/srvbuildres -r "${CID}_BS.RS"
+/sybase/${SID}/ASE-16_0/bin/srvbuildres -r "${CID}_BS.RS"
 
 unset LANG
 
-mkdir /opt/sap/sapdata_1
+mkdir /sybase/${SID}/sapdata_1
 
-/opt/sap/OCS-16_0/bin/isql -U sa -S "${CID}" -w 999 -P "${PASSWD_SA}" <<-EOF
+/sybase/${SID}/OCS-16_0/bin/isql -U sa -S "${CID}" -w 999 -P "${PASSWD_SA}" <<-EOF
 use master
 go
 
-disk init name = "${CID}_data_01", size = "256M", physname = "/opt/sap/sapdata_1/${CID}_data_01.dat"
+disk init name = "${CID}_data_01", size = "256M", physname = "/sybase/${SID}/sapdata_1/${CID}_data_01.dat"
 go
 
-disk init name = "${CID}_log_01", size = "128M", physname = "/opt/sap/sapdata_1/${CID}_log_01.dat"
+disk init name = "${CID}_log_01", size = "128M", physname = "/sybase/${SID}/sapdata_1/${CID}_log_01.dat"
 go
 
 create database ${CID} on ${CID}_data_01 = 256 log on ${CID}_log_01 = 128
@@ -150,7 +150,7 @@ EOF
 #
 # list databases
 #
-/opt/sap/OCS-16_0/bin/isql -S "${CID}" -U sapsa -P "${PASSWD_SAPSA}" -w 999 -b <<-EOF
+/sybase/${SID}/OCS-16_0/bin/isql -S "${CID}" -U sapsa -P "${PASSWD_SAPSA}" -w 999 -b <<-EOF
 sp_helpdb
 go
 EOF
@@ -158,7 +158,7 @@ EOF
 #
 # dump database and tx log
 #
-/opt/sap/OCS-16_0/bin/isql -S "${CID}" -U sapsa -P "${PASSWD_SAPSA}" -w 999 <<-EOF
+/sybase/${SID}/OCS-16_0/bin/isql -S "${CID}" -U sapsa -P "${PASSWD_SAPSA}" -w 999 <<-EOF
 dump database ${CID} to './test1db_full_20180606_120000-S01_01.cdmp' with compression = '101'
 go
 
@@ -168,8 +168,8 @@ EOF
 
 ########################
 
-source /opt/sap/SYBASE.sh
+source /sybase/${SID}/SYBASE.sh
 unset LANG
 
-# /opt/sap/ASE-16_0/install/RUN_AZU
-# /opt/sap/ASE-16_0/install/RUN_AZU_BS
+# /sybase/${SID}/ASE-16_0/install/RUN_${CID}
+# /sybase/${SID}/ASE-16_0/install/RUN_${CID}_BS

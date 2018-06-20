@@ -2,6 +2,12 @@
 
 ## Install the executable in a user account using `virtualenv`
 
+
+curl https://raw.githubusercontent.com/chgeuer/python_backup/master/install_userspace.sh | bash
+
+
+
+
 ```bash
 #!/bin/bash
 
@@ -16,13 +22,14 @@ ln -s ~/${envname}/bin/asebackupcli ~/bin
 
 
 cat > ~/aseconfig.txt <<- EOF
-	# System ID
-	sap.SID:                       JLD
 	# Customer ID
 	sap.CID:                       AZU
+	# System ID
+	sap.SID:                       JLD
+	local_temp_directory:          /sybase/JLD/saparch_1
+	# local_temp_directory:        /mnt/resource
+	
 	sap.ase.version:               16_0
-	# The standard directory where dump files are created
-	local_temp_directory:          /mnt/resource
 	
 	azure.storage.account_name:    backupstorage123
 	azure.storage.account_key:     MvZFghjghjasgdhjagshjdgahjgdjhajhdghajgdjhgahjgdhjasgjhdgajhdghjasgjdhgahjgdjhagjhdgaj==
