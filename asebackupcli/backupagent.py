@@ -199,13 +199,15 @@ class BackupAgent:
         logging.info(stdout)
         logging.warning(stderr)
 
-        ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+        ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, 
+            start_timestamp=start_timestamp, 
+            end_timestamp=end_timestamp)
         ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
         with open(ddlgen_file_path, mode='wt') as file:
             ddl_gen_sql = db_connector.create_ddlgen(
                 dbname=dbname, 
-                start_timestamp=start_timestamp,
-                end_timestamp=end_timestamp)
+                start_timestamp=Timing.datetime_to_timestr(start_timestamp),
+                end_timestamp=Timing.datetime_to_timestr(end_timestamp))
             file.write(ddl_gen_sql)
 
         #

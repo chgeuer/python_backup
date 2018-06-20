@@ -69,9 +69,8 @@ class Naming:
 
     @staticmethod
     def construct_ddlgen_name(dbname, start_timestamp, end_timestamp):
-        return "{dbname}_{start}--{end}.sql".format(dbname=dbname, 
-            start=Timing.datetime_to_timestr(start_timestamp),
-            end=Timing.datetime_to_timestr(end_timestamp))
+        return "{dbname}_{start}--{end}.sql".format(
+            dbname=dbname, start=start_timestamp, end=end_timestamp)
 
     @staticmethod
     def parse_filename(filename):
