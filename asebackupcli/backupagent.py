@@ -261,15 +261,16 @@ class BackupAgent:
         return perform_tran_backup 
 
     def tran_backup_single_db(self, dbname, output_dir, force, skip_upload):
+        is_full = False
         if not BackupAgent.should_run_tran_backup(
                 now_time=Timing.now_localtime(), 
                 force=force,
-                latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=False),
+                latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
                 log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min()):
 
             log_msg="Skipping backup of transactions for {dbname}. (min='{min}' latest='{latest}' now='{now}'".format(dbname=dbname,
                 min=self.backup_configuration.get_log_backup_interval_min(),
-                latest=self.latest_backup_timestamp(dbname=dbname, is_full=False),
+                latest=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
                 now=Timing.now_localtime_string())
             logging.info(log_msg)
             print(log_msg)
@@ -277,12 +278,12 @@ class BackupAgent:
 
         db_connector = DatabaseConnector(self.backup_configuration)
         stripe_count = db_connector.determine_database_backup_stripe_count(
-            dbname=dbname, is_full=False)
+            dbname=dbname, is_full=is_full)
 
         start_timestamp = Timing.now_localtime()
         stdout, stderr = db_connector.create_backup(
             dbname=dbname, 
-            is_full=False,
+            is_full=is_full,
             start_timestamp=start_timestamp, 
             stripe_count=stripe_count, 
             output_dir=output_dir)
@@ -299,13 +300,14 @@ class BackupAgent:
         #
         for stripe_index in range(1, stripe_count + 1):
             file_name = Naming.construct_filename(
-                dbname=dbname, is_full=False, 
+                dbname=dbname, is_full=is_full, 
                 start_timestamp=start_timestamp,
                 stripe_index=stripe_index, stripe_count=stripe_count)
             blob_name = Naming.construct_blobname(
-                dbname=dbname, is_full=False, 
+                dbname=dbname, is_full=is_full, 
                 start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
                 stripe_index=stripe_index, stripe_count=stripe_count)
+            print("Renaming {} to {}", file_name, blob_name)
             os.rename(
                 os.path.join(output_dir, file_name), 
                 os.path.join(output_dir, blob_name))
@@ -314,7 +316,7 @@ class BackupAgent:
             for stripe_index in range(1, stripe_count + 1):
                 blob_name = Naming.construct_blobname(
                     dbname=dbname, 
-                    is_full=False, 
+                    is_full=is_full, 
                     start_timestamp=start_timestamp, 
                     end_timestamp=end_timestamp, 
                     stripe_index=stripe_index, 
