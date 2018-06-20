@@ -465,15 +465,15 @@ class BackupAgent:
                 prefix="{dbname}_".format(dbname=dbname), 
                 marker=marker)
             for blob in results:
-                if not blob.name.endswith(".cdmp"):
-                    continue
-
                 existing_blobs.append(blob.name)
             if results.next_marker:
                 marker = results.next_marker
             else:
                 break
-        return existing_blobs
+        #
+        # restrict to dump files
+        #
+        return filter(lambda x: x.endswith(".cdmp"), existing_blobs)
 
     def show_configuration(self, output_dir):
         print("azure.vm_name:                      {}".format(self.backup_configuration.get_vm_name()))

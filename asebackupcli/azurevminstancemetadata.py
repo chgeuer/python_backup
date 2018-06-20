@@ -19,10 +19,6 @@ class AzureVMInstanceMetadata:
 
     def __init__(self, req):
         self.req = req
-        first_json = self.req()
-        self.subscription_id = str(first_json["compute"]["subscriptionId"])
-        self.resource_group_name = str(first_json["compute"]["resourceGroupName"])
-        self.vm_name = str(first_json["compute"]["name"])
 
     def json(self):
         return self.req()
@@ -32,3 +28,15 @@ class AzureVMInstanceMetadata:
         if tags_value == None:
             return dict()
         return dict(kvp.split(":", 1) for kvp in (tags_value.split(";")))
+
+    @staticmethod
+    @property
+    def subscription_id(self): return str(self.req()["compute"]["subscriptionId"])
+
+    @staticmethod
+    @property
+    def resource_group_name(self): return str(self.req()["compute"]["resourceGroupName"])
+
+    @staticmethod
+    @property
+    def vm_name(self): return str(self.req()["compute"]["name"])
