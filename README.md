@@ -206,11 +206,13 @@ cd python_backup
 asebackupcli -c ~/ase/config.txt -l
 
 
-https://packaging.python.org/guides/installing-using-pip-and-virtualenv/
 
 pip install git+https://github.com/chgeuer/python_backup.git#egg=asebackupcli
+sudo "$(which asebackupcli)" -c config.txt -f --force
 
 `
+
+https://packaging.python.org/guides/installing-using-pip-and-virtualenv/
 
 
 [tags]: docs/tags.png "tags in the portal"
