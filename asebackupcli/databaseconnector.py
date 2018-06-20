@@ -11,7 +11,9 @@ class DatabaseConnector:
         return "/sybase/{}".format(self.backup_configuration.get_SID())
 
     def get_database_password(self, sid):
-        executable = os.path.join(self.get_ase_base_directory(), "dba/bin/dbsp")
+        executable = os.path.join(
+            self.get_ase_base_directory(), 
+            "dba/bin/dbsp")
         arg = "***REMOVED***"
         stdout, _stderr = self.call_process(command_line=[executable, arg], stdin="")
         return str(stdout).strip()
@@ -36,7 +38,7 @@ class DatabaseConnector:
             supress_header
         ]
 
-    def ddlgen(self, dbname):
+    def ddlgen(self, dbname, args=[]):
         # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F% -TDBD -N%)" >  20180678.sql
         # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%)"           >> 20180678.sql
 
@@ -54,7 +56,15 @@ class DatabaseConnector:
             "-D{}".format(dbname),
             "-U{}".format(username),
             "-P{}".format(password)
-        ]
+        ] + args
+
+    def create_ddlgen(self, dbname, start_timestamp, end_timestamp):
+        """
+            Create a SQL sidecar file with the database schema.
+        """
+        stdout1, _stderr = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
+        stdout2, _stderr = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%"]))
+        return "\n".join([stdout1, "", stdout2])
 
     @staticmethod
     def sql_statement_stripe_count(dbname, is_full):
@@ -328,7 +338,7 @@ class DatabaseConnector:
 
         return ase_env
 
-    def call_process(self, command_line, stdin):
+    def call_process(self, command_line, stdin=None):
         p = subprocess.Popen(
             command_line,
             stdin=subprocess.PIPE,

@@ -82,6 +82,7 @@ class BackupAgent:
             self.backup_configuration.storage_client.create_blob_from_path(
                 container_name=self.backup_configuration.azure_storage_container_name, 
                 file_path=blob_path, blob_name=blob_name, 
+
                 validate_content=True, max_connections=4)
             os.remove(blob_path)
 
@@ -192,6 +193,18 @@ class BackupAgent:
             output_dir=output_dir)
         end_timestamp = Timing.now_localtime()
 
+        logging.info(stdout)
+        logging.warning(stderr)
+
+        ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+        ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
+        with open(ddlgen_file_path, mode='wt') as file:
+            ddl_gen_sql = db_connector.create_ddlgen(
+                dbname=dbname, 
+                start_timestamp=start_timestamp,
+                end_timestamp=end_timestamp)
+            file.write(ddl_gen_sql)
+
         #
         # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
         #
@@ -211,10 +224,15 @@ class BackupAgent:
                 os.path.join(output_dir, file_name), 
                 os.path.join(output_dir, blob_name))
 
-        logging.info(stdout)
-        logging.warning(stderr)
-
         if not skip_upload:
+            # Upload & delete the SQL description
+            self.backup_configuration.storage_client.create_blob_from_path(
+                container_name=self.backup_configuration.azure_storage_container_name, 
+                file_path=ddlgen_file_path, blob_name=ddlgen_file_name, 
+                validate_content=True, max_connections=4)
+            os.remove(ddlgen_file_path)
+
+            # Upload & delete all stripes
             for stripe_index in range(1, stripe_count + 1):
                 blob_name = Naming.construct_blobname(
                     dbname=dbname, 
@@ -225,7 +243,6 @@ class BackupAgent:
                     stripe_count=stripe_count)
                 blob_path = os.path.join(output_dir, blob_name)
 
-                print("Upload {f}".format(f=blob_path))
                 self.backup_configuration.storage_client.create_blob_from_path(
                     container_name=self.backup_configuration.azure_storage_container_name, 
                     file_path=blob_path, blob_name=blob_name, 
@@ -414,6 +431,16 @@ class BackupAgent:
 
         storage_client = self.backup_configuration.storage_client
         for (dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) in restore_files:
+            if is_full:
+                # For full database files, download the SQL description
+                ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+                ddlgen_file_path=os.path.join(output_dir, ddlgen_file_name)
+                if storage_client.exists(container_name=self.backup_configuration.azure_storage_container_name, blob_name=ddlgen_file_name):
+                    storage_client.get_blob_to_path(
+                        container_name=self.backup_configuration.azure_storage_container_name,
+                        blob_name=ddlgen_file_name,
+                        file_path=ddlgen_file_path)
+
             blob_name = "{dbname}_{type}_{start}--{end}_S{idx:03d}-{cnt:03d}.cdmp".format(
                 dbname=dbname, type=Naming.backup_type_str(is_full), 
                 start=start_timestamp, end=end_timestamp,
@@ -445,7 +472,7 @@ class BackupAgent:
                 break
         return existing_blobs
 
-    def show_configuration(self):
+    def show_configuration(self, output_dir):
         print("azure.vm_name:                      {}".format(self.backup_configuration.get_vm_name()))
         print("azure.resource_group_name:          {}".format(self.backup_configuration.get_resource_group_name()))
         print("azure.subscription_id:              {}".format(self.backup_configuration.get_subscription_id()))
@@ -464,3 +491,4 @@ class BackupAgent:
         print("azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10]))
         print("ASE Version:                        {}".format(self.backup_configuration.get_ase_version()))
         print("ASE Directory:                      {}".format(DatabaseConnector(self.backup_configuration).get_ase_base_directory()))
+        print("working directory:                  {}".format(output_dir))

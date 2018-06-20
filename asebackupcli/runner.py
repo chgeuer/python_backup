@@ -103,6 +103,6 @@ class Runner:
             doctest.testmod()
             # doctest.testmod(verbose=True)
         elif args.show_configuration:
-            BackupAgent(backup_configuration).show_configuration()
+            BackupAgent(backup_configuration).show_configuration(output_dir=output_dir)
         else:
             parser.print_help()

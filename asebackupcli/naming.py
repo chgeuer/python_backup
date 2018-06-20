@@ -68,6 +68,12 @@ class Naming:
             cnt=int(stripe_count))
 
     @staticmethod
+    def construct_ddlgen_name(dbname, start_timestamp, end_timestamp):
+        return "{dbname}_{start}--{end}.sql".format(dbname=dbname, 
+            start=Timing.datetime_to_timestr(start_timestamp),
+            end=Timing.datetime_to_timestr(end_timestamp))
+
+    @staticmethod
     def parse_filename(filename):
         """
             >>> Naming.parse_filename('test1db_full_20180601_112429_S002-101.cdmp')
