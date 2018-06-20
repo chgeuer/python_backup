@@ -14,9 +14,9 @@ unset LANG
 #
 # Setup ASE instance
 #
-cat > "${CID}.RS" <<-EOF
-sqlsrv.server_name:                             ${CID}
-sqlsrv.default_backup_server:                   ${CID}_BS
+cat > "${SID}.RS" <<-EOF
+sqlsrv.server_name:                             ${SID}
+sqlsrv.default_backup_server:                   ${SID}_BS
 sqlsrv.sa_login:                                sa
 sqlsrv.sa_password:                             ${PASSWD_SA}
 sybinit.boot_directory:                         /sybase/${SID}/
@@ -86,20 +86,20 @@ sybinit.product:                                sqlsrv
 sybinit.resource_file:
 EOF
 
-/sybase/${SID}/ASE-16_0/bin/srvbuildres -r "${CID}.RS"
+/sybase/${SID}/ASE-16_0/bin/srvbuildres -r "${SID}.RS"
 
 #
 # Setup ASE Backup instance
 #
 
-cat > "${CID}_BS.RS" <<-EOF
-sqlsrv.server_name:                             ${CID}_BS
-bsrv.server_name:                               ${CID}_BS
+cat > "${SID}_BS.RS" <<-EOF
+sqlsrv.server_name:                             ${SID}_BS
+bsrv.server_name:                               ${SID}_BS
 sqlsrv.sa_login:                                sa
 sqlsrv.sa_password:                             ${PASSWD_SA}
 sybinit.boot_directory:                         /sybase/${SID}
 sybinit.release_directory:                      /sybase/${SID}
-bsrv.errorlog:                                  /sybase/${SID}/ASE-16_0/install/${CID}_BS.log
+bsrv.errorlog:                                  /sybase/${SID}/ASE-16_0/install/${SID}_BS.log
 sybinit.product:                                bsrv
 bsrv.do_add_backup_server:                      yes
 bsrv.network_port_list:                         4902
@@ -117,13 +117,13 @@ bsrv.network_name_alias_list:
 bsrv.notes:
 EOF
 
-/sybase/${SID}/ASE-16_0/bin/srvbuildres -r "${CID}_BS.RS"
+/sybase/${SID}/ASE-16_0/bin/srvbuildres -r "${SID}_BS.RS"
 
 unset LANG
 
 mkdir /sybase/${SID}/sapdata_1
 
-/sybase/${SID}/OCS-16_0/bin/isql -U sa -S "${CID}" -w 999 -P "${PASSWD_SA}" <<-EOF
+/sybase/${SID}/OCS-16_0/bin/isql -U sa -S "${SID}" -w 999 -P "${PASSWD_SA}" <<-EOF
 use master
 go
 
@@ -150,7 +150,7 @@ EOF
 #
 # list databases
 #
-/sybase/${SID}/OCS-16_0/bin/isql -S "${CID}" -U sapsa -P "${PASSWD_SAPSA}" -w 999 -b <<-EOF
+/sybase/${SID}/OCS-16_0/bin/isql -S "${SID}" -U sapsa -P "${PASSWD_SAPSA}" -w 999 -b <<-EOF
 sp_helpdb
 go
 EOF
@@ -158,7 +158,7 @@ EOF
 #
 # dump database and tx log
 #
-/sybase/${SID}/OCS-16_0/bin/isql -S "${CID}" -U sapsa -P "${PASSWD_SAPSA}" -w 999 <<-EOF
+/sybase/${SID}/OCS-16_0/bin/isql -S "${SID}" -U sapsa -P "${PASSWD_SAPSA}" -w 999 <<-EOF
 dump database ${CID} to './test1db_full_20180606_120000-S01_01.cdmp' with compression = '101'
 go
 
@@ -171,5 +171,5 @@ EOF
 source /sybase/${SID}/SYBASE.sh
 unset LANG
 
-# /sybase/${SID}/ASE-16_0/install/RUN_${CID}
-# /sybase/${SID}/ASE-16_0/install/RUN_${CID}_BS
+# /sybase/${SID}/ASE-16_0/install/RUN_${SID}
+# /sybase/${SID}/ASE-16_0/install/RUN_${SID}_BS
