@@ -87,7 +87,6 @@ class BackupAgent:
             self.backup_configuration.storage_client.create_blob_from_path(
                 container_name=self.backup_configuration.azure_storage_container_name, 
                 file_path=blob_path, blob_name=blob_name, 
-
                 validate_content=True, max_connections=4)
             os.remove(blob_path)
 
@@ -200,14 +199,10 @@ class BackupAgent:
         logging.warning(stderr)
 
         ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, 
-            start_timestamp=start_timestamp, 
-            end_timestamp=end_timestamp)
+            start_timestamp=start_timestamp)
         ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
         with open(ddlgen_file_path, mode='wt') as file:
-            ddl_gen_sql = db_connector.create_ddlgen(
-                dbname=dbname, 
-                start_timestamp=start_timestamp,
-                end_timestamp=end_timestamp)
+            ddl_gen_sql = db_connector.create_ddlgen(dbname=dbname)
             file.write(ddl_gen_sql)
 
         #
@@ -434,7 +429,7 @@ class BackupAgent:
         for (dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) in restore_files:
             if is_full:
                 # For full database files, download the SQL description
-                ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+                ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
                 ddlgen_file_path=os.path.join(output_dir, ddlgen_file_name)
                 if storage_client.exists(container_name=self.backup_configuration.azure_storage_container_name, blob_name=ddlgen_file_name):
                     storage_client.get_blob_to_path(

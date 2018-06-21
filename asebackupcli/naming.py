@@ -36,8 +36,7 @@ class Naming:
             dbname=dbname, 
             type=Naming.backup_type_str(is_full), 
             start_timestamp=start_timestamp,
-            idx=int(stripe_index), 
-            cnt=int(stripe_count))
+            idx=int(stripe_index), cnt=int(stripe_count))
 
     @staticmethod
     def local_filesystem_name(directory, dbname, is_full, start_timestamp, stripe_index, stripe_count):
@@ -66,9 +65,9 @@ class Naming:
             idx=int(stripe_index), cnt=int(stripe_count))
 
     @staticmethod
-    def construct_ddlgen_name(dbname, start_timestamp, end_timestamp):
-        return "{dbname}_{start}--{end}.sql".format(
-            dbname=dbname, start=start_timestamp, end=end_timestamp)
+    def construct_ddlgen_name(dbname, start_timestamp):
+        return "{dbname}_ddlgen_{start}.sql".format(
+            dbname=dbname, start=start_timestamp)
 
     @staticmethod
     def parse_filename(filename):

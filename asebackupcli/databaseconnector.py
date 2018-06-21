@@ -58,7 +58,7 @@ class DatabaseConnector:
             "-P{}".format(password)
         ] + args
 
-    def create_ddlgen(self, dbname, start_timestamp, end_timestamp):
+    def create_ddlgen(self, dbname):
         """
             Create a SQL sidecar file with the database schema.
         """
