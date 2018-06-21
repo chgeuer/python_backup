@@ -396,6 +396,7 @@ class BackupAgent:
                 break
 
     def restore(self, restore_point, output_dir, databases):
+        print("Restore for databases {}".format(str(databases)))
         databases = self.database_connector.determine_databases(user_selected_databases=databases, is_full=True)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases = filter(lambda db: not (db in skip_dbs), databases)
