@@ -338,7 +338,10 @@ class DatabaseConnector:
         for key in ["INCLUDE", "LIB", "LD_LIBRARY_PATH", "PATH", "LANG", "COCKPIT_JAVA_HOME",
                     "SAP_JRE7", "SAP_JRE7_64", "SYBASE_JRE_RTDS", "SAP_JRE8", "SAP_JRE8_64", 
                     "SYBASE", "SYBROOT", "SYBASE_OCS", "SYBASE_ASE", "SYBASE_WS"]:
-            logging.debug("Environment {}={}".format(key, ase_env[key]))
+            if ase_env.has_key(key):
+                logging.debug("Environment {}={}".format(key, ase_env[key]))
+            else:
+                logging.debug("Environment {}=".format(key))
 
         return ase_env
 
