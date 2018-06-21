@@ -1,5 +1,6 @@
 import subprocess
 import os
+import logging
 
 from .naming import Naming
 
@@ -257,9 +258,9 @@ class DatabaseConnector:
             stdin=DatabaseConnector.sql_statement_stripe_count(dbname=dbname, is_full=is_full))
         return int(stdout)
 
-    def determine_databases(self, database_str, is_full):
-        if database_str != None:
-            return database_str.split(",")
+    def determine_databases(self, user_selected_databases, is_full):
+        if len(user_selected_databases) > 0:
+            return user_selected_databases
         else:
             return self.list_databases(is_full=is_full)
 
@@ -333,6 +334,11 @@ class DatabaseConnector:
 
         if ase_env.has_key("LANG"):
             del(ase_env["LANG"])
+
+        for key in ["INCLUDE", "LIB", "LD_LIBRARY_PATH", "PATH", "LANG", "COCKPIT_JAVA_HOME",
+                    "SAP_JRE7", "SAP_JRE7_64", "SYBASE_JRE_RTDS", "SAP_JRE8", "SAP_JRE8_64", 
+                    "SYBASE", "SYBROOT", "SYBASE_OCS", "SYBASE_ASE", "SYBASE_WS"]:
+            logging.debug("Environment {}={}".format(key, ase_env[key]))
 
         return ase_env
 

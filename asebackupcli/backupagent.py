@@ -14,6 +14,7 @@ class BackupAgent:
     """
     def __init__(self, backup_configuration):
         self.backup_configuration = backup_configuration
+        self.database_connector = DatabaseConnector(self.backup_configuration)
 
     def existing_backups_for_db(self, dbname, is_full):
         existing_blobs_dict = dict()
@@ -90,11 +91,9 @@ class BackupAgent:
                 validate_content=True, max_connections=4)
             os.remove(blob_path)
 
-    def full_backup(self, output_dir, force=False, skip_upload=False, databases=None):
+    def full_backup(self, output_dir, databases, force=False, skip_upload=False):
         is_full=True
-        database_connector = DatabaseConnector(self.backup_configuration)
-        databases_to_backup = database_connector.determine_databases(databases, is_full=is_full)
-
+        databases_to_backup = self.database_connector.determine_databases(user_selected_databases=databases, is_full=is_full)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
 
@@ -183,12 +182,10 @@ class BackupAgent:
             logging.info("Skipping backup of database {dbname}".format(dbname=dbname))
             return
 
-        db_connector = DatabaseConnector(self.backup_configuration)
-        stripe_count = db_connector.determine_database_backup_stripe_count(
-            dbname=dbname, is_full=is_full)
+        stripe_count = self.database_connector.determine_database_backup_stripe_count(dbname=dbname, is_full=is_full)
 
         start_timestamp = Timing.now_localtime()
-        stdout, stderr = db_connector.create_backup(
+        stdout, stderr = self.database_connector.create_backup(
             dbname=dbname, is_full=is_full,
             start_timestamp=start_timestamp,
             stripe_count=stripe_count,
@@ -202,7 +199,7 @@ class BackupAgent:
             start_timestamp=start_timestamp)
         ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
         with open(ddlgen_file_path, mode='wt') as file:
-            ddl_gen_sql = db_connector.create_ddlgen(dbname=dbname)
+            ddl_gen_sql = self.database_connector.create_ddlgen(dbname=dbname)
             file.write(ddl_gen_sql)
 
         #
@@ -214,15 +211,13 @@ class BackupAgent:
         for stripe_index in range(1, stripe_count + 1):
             file_name = Naming.construct_filename(
                 dbname=dbname, is_full=is_full, 
-                start_timestamp=start_timestamp,
+                start_timestamp=start_timestamp, 
                 stripe_index=stripe_index, stripe_count=stripe_count)
             blob_name = Naming.construct_blobname(
                 dbname=dbname, is_full=is_full, 
                 start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
                 stripe_index=stripe_index, stripe_count=stripe_count)
-            os.rename(
-                os.path.join(output_dir, file_name), 
-                os.path.join(output_dir, blob_name))
+            os.rename(os.path.join(output_dir, file_name), os.path.join(output_dir, blob_name))
 
         if not skip_upload:
             # Upload & delete the SQL description
@@ -235,33 +230,24 @@ class BackupAgent:
             # Upload & delete all stripes
             for stripe_index in range(1, stripe_count + 1):
                 blob_name = Naming.construct_blobname(
-                    dbname=dbname, 
-                    is_full=is_full, 
-                    start_timestamp=start_timestamp, 
-                    end_timestamp=end_timestamp, 
-                    stripe_index=stripe_index, 
-                    stripe_count=stripe_count)
+                    dbname=dbname, is_full=is_full, 
+                    start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
+                    stripe_index=stripe_index, stripe_count=stripe_count)
                 blob_path = os.path.join(output_dir, blob_name)
-
                 self.backup_configuration.storage_client.create_blob_from_path(
                     container_name=self.backup_configuration.azure_storage_container_name, 
                     file_path=blob_path, blob_name=blob_name, 
                     validate_content=True, max_connections=4)
                 os.remove(blob_path)
 
-    def transaction_backup(self, output_dir, force=False, skip_upload=False, databases=None):
+    def transaction_backup(self, output_dir, databases, force=False, skip_upload=False):
         is_full=False
-        database_connector = DatabaseConnector(self.backup_configuration)
-        databases_to_backup = database_connector.determine_databases(databases, is_full=is_full)
+        databases_to_backup = self.database_connector.determine_databases(user_selected_databases=databases, is_full=is_full)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
 
         for dbname in databases_to_backup:
-            self.tran_backup_single_db(
-                dbname=dbname, 
-                output_dir=output_dir, 
-                force=force,
-                skip_upload=skip_upload)
+            self.tran_backup_single_db(dbname=dbname, output_dir=output_dir, force=force, skip_upload=skip_upload)
 
         if not skip_upload:
             self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
@@ -280,10 +266,9 @@ class BackupAgent:
         is_full=False
         start_timestamp = Timing.now_localtime()
         if not BackupAgent.should_run_tran_backup(
-                now_time=start_timestamp, 
-                force=force,
-                latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
-                log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min()):
+            now_time=start_timestamp, force=force,
+            latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
+            log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min()):
 
             log_msg="Skipping backup of transactions for {dbname}. (min='{min}' latest='{latest}' now='{now}'".format(dbname=dbname,
                 min=self.backup_configuration.get_log_backup_interval_min(),
@@ -292,16 +277,12 @@ class BackupAgent:
             logging.info(log_msg)
             return
 
-        db_connector = DatabaseConnector(self.backup_configuration)
-        stripe_count = db_connector.determine_database_backup_stripe_count(
+        stripe_count = self.database_connector.determine_database_backup_stripe_count(
             dbname=dbname, is_full=is_full)
-
-        stdout, stderr = db_connector.create_backup(
-            dbname=dbname, 
-            is_full=is_full,
+        stdout, stderr = self.database_connector.create_backup(
+            dbname=dbname, is_full=is_full, 
             start_timestamp=start_timestamp, 
-            stripe_count=stripe_count, 
-            output_dir=output_dir)
+            stripe_count=stripe_count, output_dir=output_dir)
         end_timestamp = Timing.now_localtime()
 
         logging.info(stdout)
@@ -315,28 +296,24 @@ class BackupAgent:
         #
         for stripe_index in range(1, stripe_count + 1):
             file_name = Naming.construct_filename(
-                dbname=dbname, is_full=is_full,
-                start_timestamp=start_timestamp,
+                dbname=dbname, is_full=is_full, 
+                start_timestamp=start_timestamp, 
                 stripe_index=stripe_index, stripe_count=stripe_count)
             blob_name = Naming.construct_blobname(
-                dbname=dbname, is_full=is_full,
+                dbname=dbname, is_full=is_full, 
                 start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
                 stripe_index=stripe_index, stripe_count=stripe_count)
             os.rename(
-                os.path.join(output_dir, file_name),
+                os.path.join(output_dir, file_name), 
                 os.path.join(output_dir, blob_name))
 
         if not skip_upload:
             for stripe_index in range(1, stripe_count + 1):
                 blob_name = Naming.construct_blobname(
-                    dbname=dbname,
-                    is_full=is_full,
-                    start_timestamp=start_timestamp, 
-                    end_timestamp=end_timestamp, 
-                    stripe_index=stripe_index, 
-                    stripe_count=stripe_count)
+                    dbname=dbname, is_full=is_full, 
+                    start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
+                    stripe_index=stripe_index, stripe_count=stripe_count)
                 blob_path = os.path.join(output_dir, blob_name)
-
                 self.backup_configuration.storage_client.create_blob_from_path(
                     container_name=self.backup_configuration.azure_storage_container_name, 
                     file_path=blob_path, blob_name=blob_name, 
@@ -412,8 +389,7 @@ class BackupAgent:
                 break
 
     def restore(self, restore_point, output_dir, databases):
-        database_connector = DatabaseConnector(self.backup_configuration)
-        databases = database_connector.determine_databases(databases, is_full=True)
+        databases = self.database_connector.determine_databases(user_selected_databases=databases, is_full=True)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases = filter(lambda db: not (db in skip_dbs), databases)
         for dbname in databases:
@@ -434,8 +410,7 @@ class BackupAgent:
                 if storage_client.exists(container_name=self.backup_configuration.azure_storage_container_name, blob_name=ddlgen_file_name):
                     storage_client.get_blob_to_path(
                         container_name=self.backup_configuration.azure_storage_container_name,
-                        blob_name=ddlgen_file_name,
-                        file_path=ddlgen_file_path)
+                        blob_name=ddlgen_file_name, file_path=ddlgen_file_path)
 
             blob_name = "{dbname}_{type}_{start}--{end}_S{idx:03d}-{cnt:03d}.cdmp".format(
                 dbname=dbname, type=Naming.backup_type_str(is_full), 
@@ -471,22 +446,33 @@ class BackupAgent:
         return filter(lambda x: x.endswith(".cdmp"), existing_blobs)
 
     def show_configuration(self, output_dir):
-        print("azure.vm_name:                      {}".format(self.backup_configuration.get_vm_name()))
-        print("azure.resource_group_name:          {}".format(self.backup_configuration.get_resource_group_name()))
-        print("azure.subscription_id:              {}".format(self.backup_configuration.get_subscription_id()))
-        print("sap.SID:                            {}".format(self.backup_configuration.get_SID()))
-        print("sap.CID:                            {}".format(self.backup_configuration.get_CID()))
-        print("skipped databases:                  {}".format(self.backup_configuration.get_databases_to_skip()))
-        print("db_backup_interval_min:             {}".format(self.backup_configuration.get_db_backup_interval_min()))
-        print("db_backup_interval_max:             {}".format(self.backup_configuration.get_db_backup_interval_max()))
-        print("log_backup_interval_min:            {}".format(self.backup_configuration.get_log_backup_interval_min()))
+        return "\n".join(self.get_configuration_printable(output_dir=output_dir))
+
+    def get_configuration_printable(self, output_dir):
         business_hours = self.backup_configuration.get_business_hours()
-        for day in range(1, 8):
-            print("business_hours_{}:                 {}".format(["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][day], 
-                "".join(map(lambda x: {True:"1", False:"0"}[x], business_hours.hours[day]))))
-        print("azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name))
-        print("azure_storage_account_name:         {}".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_name()))
-        print("azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10]))
-        print("ASE Version:                        {}".format(self.backup_configuration.get_ase_version()))
-        print("ASE Directory:                      {}".format(DatabaseConnector(self.backup_configuration).get_ase_base_directory()))
-        print("working directory:                  {}".format(output_dir))
+        day_f = lambda d: [None, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][d]
+        b2s_f = lambda x: {True:"1", False:"0"}[x]
+        s_f = lambda day: "business_hours_{}:                 {}".format(day_f(day), "".join(map(b2s_f, business_hours.hours[day])))
+        hours = list(map(s_f, range(1, 8)))
+
+        return [
+            "azure.vm_name:                      {}".format(self.backup_configuration.get_vm_name()),
+            "azure.resource_group_name:          {}".format(self.backup_configuration.get_resource_group_name()),
+            "azure.subscription_id:              {}".format(self.backup_configuration.get_subscription_id()),
+            "",
+            "sap.SID:                            {}".format(self.backup_configuration.get_SID()),
+            "sap.CID:                            {}".format(self.backup_configuration.get_CID()),
+            "ASE version:                        {}".format(self.backup_configuration.get_ase_version()),
+            "ASE dir:                            {}".format(DatabaseConnector(self.backup_configuration).get_ase_base_directory()),
+            "Output dir:                         {}".format(output_dir),
+            "",
+            "skipped databases:                  {}".format(self.backup_configuration.get_databases_to_skip()),
+            "db_backup_interval_min:             {}".format(self.backup_configuration.get_db_backup_interval_min()),
+            "db_backup_interval_max:             {}".format(self.backup_configuration.get_db_backup_interval_max()),
+            "log_backup_interval_min:            {}".format(self.backup_configuration.get_log_backup_interval_min())
+        ] + hours + [
+            "",
+            "azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name),
+            "azure_storage_account_name:         {}".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_name()),
+            "azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10])
+        ]

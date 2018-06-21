@@ -1,17 +1,24 @@
 import logging
 import argparse
 import pid
+import sys
+import os
+import getpass
+import socket
+import os.path
 
+from .funcmodule import printe
 from .backupagent import BackupAgent
 from .backupconfiguration import BackupConfiguration
 from .scheduleparser import ScheduleParser
+from .timing import Timing
+from .__init__ import version
 
 class Runner:
     @staticmethod
     def configure_logging():
-        logfile_name='backup.log'
         logging.basicConfig(
-            filename=logfile_name,
+            filename="asebackupcli.log",
             level=logging.DEBUG,
             format="%(asctime)-15s pid-%(process)d line-%(lineno)d %(levelname)s: \"%(message)s\""
             )
@@ -37,13 +44,53 @@ class Runner:
         return parser
 
     @staticmethod
+    def log_script_invocation():
+        return ", ".join([
+            "Script version v{}".format(version()),
+            "Script arguments: {}".format(str(sys.argv)),
+            "Current directory: {}".format(os.getcwd()),
+            "User: {} (uid {}, gid {})".format(getpass.getuser(), os.getuid(), os.getgid),
+            "Hostname: {}".format(socket.gethostname()),
+            "uname: {}".format(str(os.uname())),
+            "ProcessID: {}".format(os.getpid()),
+            "Parent ProcessID: {}".format(os.getppid())
+        ])
+
+    @staticmethod
+    def get_config_file(args, parser):
+        if args.config:
+            config_file = os.path.abspath(args.config)
+            if not os.path.isfile(config_file):
+                raise(Exception("Cannot find configuration {}".format(config_file)))
+
+            return config_file
+        else:
+            raise(Exception(parser.print_help()))
+
+    @staticmethod
     def get_output_dir(args):
         if args.output_dir:
-            return args.output_dir
+            output_dir = os.path.abspath(args.output_dir)
+            logging.debug("Output dir is user-supplied: {}".format(output_dir))
+            return output_dir
         elif args.config:
-            return BackupConfiguration(args.config).get_standard_local_directory()
+            output_dir = os.path.abspath(BackupConfiguration(args.config).get_standard_local_directory())
+            logging.debug("Output dir via config file {}".format(output_dir))
+            return output_dir
         else:
-            return "/tmp"
+            output_dir = os.path.abspath("/tmp")
+            logging.debug("Output dir is fallback: {}".format(output_dir))
+            return output_dir
+
+    @staticmethod
+    def get_databases(args):
+        if args.databases:
+            databases = args.databases.split(",")
+            logging.debug("User manually selected databases: {}".format(str(databases)))
+            return databases
+        else:
+            logging.debug("User did not select databases, trying to backup all databases")
+            return []
 
     @staticmethod
     def main():
@@ -51,56 +98,47 @@ class Runner:
         parser = Runner.arg_parser() 
         args = parser.parse_args()
 
-        backup_configuration = BackupConfiguration(args.config)
+        logging.debug(Runner.log_script_invocation())
+        config_file = Runner.get_config_file(args=args, parser=parser)
+        backup_configuration = BackupConfiguration(config_file)
+        backup_agent = BackupAgent(backup_configuration)
         output_dir = Runner.get_output_dir(args)
+        databases = Runner.get_databases(args)
+
+        for line in backup_agent.get_configuration_printable(output_dir=output_dir):
+            logging.debug(line)
 
         if args.full_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
-                    BackupAgent(backup_configuration).full_backup(
-                        force=args.force, 
-                        skip_upload=args.skip_upload,
-                        output_dir=output_dir,
-                        databases=args.databases)
+                    backup_agent.full_backup(
+                        force=args.force, skip_upload=args.skip_upload,
+                        output_dir=output_dir, databases=databases)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
         elif args.transaction_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
-                    BackupAgent(backup_configuration).transaction_backup(
-                        force=args.force,
-                        skip_upload=args.skip_upload,
-                        output_dir=output_dir,
-                        databases=args.databases)
+                    backup_agent.transaction_backup(
+                        force=args.force, skip_upload=args.skip_upload,
+                        output_dir=output_dir, databases=databases)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip transaction log backup, already running")
         elif args.restore:
-            BackupAgent(backup_configuration).restore(
+            backup_agent.restore(
                 restore_point=args.restore, 
                 output_dir=output_dir, 
                 databases=args.databases)
         elif args.list_backups:
-            if args.databases:
-                databases = args.databases.split(",")
-            else:
-                databases = []
-
-            BackupAgent(backup_configuration).list_backups(
-                databases=databases)
+            backup_agent.list_backups(databases=databases)
         elif args.prune_old_backups:
-            if args.databases:
-                databases = args.databases.split(",")
-            else:
-                databases = None
-
             age = ScheduleParser.parse_timedelta(args.prune_old_backups)
-
-            BackupAgent(backup_configuration).prune_old_backups(older_than=age, databases=databases)
+            backup_agent.prune_old_backups(older_than=age, databases=databases)
         elif args.unit_tests:
             import doctest
             doctest.testmod()
             # doctest.testmod(verbose=True)
         elif args.show_configuration:
-            BackupAgent(backup_configuration).show_configuration(output_dir=output_dir)
+            print(backup_agent.show_configuration(output_dir=output_dir))
         else:
             parser.print_help()
