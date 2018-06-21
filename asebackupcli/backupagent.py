@@ -171,6 +171,15 @@ class BackupAgent:
 
         return perform_full_backup
 
+    @staticmethod
+    def log_stdout_stderr(stdout, stderr):
+        if len(stdout) > 0:
+            for l in stdout.split("\n"):
+                logging.info(l)
+        if len(stderr) > 0:
+            for l in stderr.split("\n"):
+                logging.warning(l)
+
     def full_backup_single_db(self, dbname, force, skip_upload, output_dir):
         is_full=True
         if not BackupAgent.should_run_full_backup(
@@ -192,8 +201,7 @@ class BackupAgent:
             output_dir=output_dir)
         end_timestamp = Timing.now_localtime()
 
-        logging.info(stdout)
-        logging.warning(stderr)
+        BackupAgent.log_stdout_stderr(stdout, stderr)
 
         ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, 
             start_timestamp=start_timestamp)
@@ -285,8 +293,7 @@ class BackupAgent:
             stripe_count=stripe_count, output_dir=output_dir)
         end_timestamp = Timing.now_localtime()
 
-        logging.info(stdout)
-        logging.warning(stderr)
+        BackupAgent.log_stdout_stderr(stdout, stderr)
 
         #
         # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
