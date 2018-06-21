@@ -10,6 +10,7 @@ import os.path
 from .funcmodule import printe
 from .backupagent import BackupAgent
 from .backupconfiguration import BackupConfiguration
+from .databaseconnector import DatabaseConnector
 from .scheduleparser import ScheduleParser
 from .timing import Timing
 from .__init__ import version
@@ -104,6 +105,7 @@ class Runner:
         backup_agent = BackupAgent(backup_configuration)
         output_dir = Runner.get_output_dir(args)
         databases = Runner.get_databases(args)
+        DatabaseConnector(backup_configuration).log_env()
 
         for line in backup_agent.get_configuration_printable(output_dir=output_dir):
             logging.debug(line)
