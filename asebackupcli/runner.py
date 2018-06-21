@@ -130,7 +130,7 @@ class Runner:
             backup_agent.restore(
                 restore_point=args.restore, 
                 output_dir=output_dir, 
-                databases=args.databases)
+                databases=databases)
         elif args.list_backups:
             backup_agent.list_backups(databases=databases)
         elif args.prune_old_backups:
