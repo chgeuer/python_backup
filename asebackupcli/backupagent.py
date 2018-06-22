@@ -424,7 +424,7 @@ class BackupAgent:
                     storage_client.get_blob_to_path(
                         container_name=self.backup_configuration.azure_storage_container_name,
                         blob_name=ddlgen_file_name, file_path=ddlgen_file_path)
-                    BackupAgent.out("Downloaded ddlgen description {}".format(file_path))
+                    BackupAgent.out("Downloaded ddlgen description {}".format(ddlgen_file_path))
 
             blob_name = "{dbname}_{type}_{start}--{end}_S{idx:03d}-{cnt:03d}.cdmp".format(
                 dbname=dbname, type=Naming.backup_type_str(is_full), 
