@@ -38,6 +38,8 @@ class Runner:
         parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
         parser.add_argument("-p",  "--prune-old-backups", help="Removes old backups from Azure storage ('--prune-old-backups 30d' removes files older 30 days)")
 
+        parser.add_argument("-i",  "--pipe-upload", help="")
+
         parser.add_argument("-y",  "--force", help="Perform forceful backup (ignores age of last backup or business hours)", action="store_true")
         parser.add_argument("-s",  "--skip-upload", help="Skip uploads of backup files", action="store_true")
         parser.add_argument("-o",  "--output-dir", help="Specify target folder for backup files")
@@ -143,6 +145,8 @@ class Runner:
             import doctest
             doctest.testmod()
             # doctest.testmod(verbose=True)
+        elif args.pipe_upload:
+            print(backup_agent.pipe())
         elif args.show_configuration:
             print(backup_agent.show_configuration(output_dir=output_dir))
         else:

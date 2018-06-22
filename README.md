@@ -225,5 +225,33 @@ In that output, the displayed values come from different locations:
     - `db_backup_interval_min`, `db_backup_interval_max`, `log_backup_interval_min` and the business hours
 
 
+# Piping
+
+
+
+
+## Make pipes and listen
+
+```bash
+mkfifo /home/chgeuer/p1
+mkfifo /home/chgeuer/p2
+
+
+tail -f /home/chgeuer/p1
+tail -f /home/chgeuer/p2
+```
+
+## Dump into pipes
+
+```bash
+#!/bin/bash
+
+isql -S JLD -U sapsa -P Test123.- -w 999 <<-EOF
+dump transaction AZU to '/home/chgeuer/p1' stripe on '/home/chgeuer/p2' with compression='101'
+go
+EOF
+```
+
+
 [tags]:       docs/tags.png "tags in the portal"
 [virtualenv]: https://packaging.python.org/guides/installing-using-pip-and-virtualenv/

@@ -7,6 +7,7 @@ from .funcmodule import printe
 from .naming import Naming
 from .timing import Timing
 from .databaseconnector import DatabaseConnector
+from .pipeuploader import PipeUploader
 
 class BackupAgent:
     """
@@ -496,3 +497,8 @@ class BackupAgent:
             "azure_storage_account_name:         {}".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_name()),
             "azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10])
         ]
+
+    def pipe(self):
+        uploader = PipeUploader(self.backup_configuration.storage_client(), pipe_path="1.pipe", container_name=self.backup_configuration.azure_storage_container_name, blob_name="1.pipe")
+        uploader.run()
+
