@@ -96,7 +96,10 @@ class Runner:
     @staticmethod
     def main():
         Runner.configure_logging()
-        parser = Runner.arg_parser() 
+        logging.info("#######################################################################################################")
+        logging.info("#                                                                                                     #")
+        logging.info("#######################################################################################################")
+        parser = Runner.arg_parser()
         args = parser.parse_args()
 
         logging.debug(Runner.log_script_invocation())
