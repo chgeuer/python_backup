@@ -1,5 +1,6 @@
 import time
 import datetime
+import logging
 
 class Timing:
     time_format="%Y%m%d_%H%M%S"
@@ -145,4 +146,8 @@ class Timing:
             if create_tuple(x) in index_of_files_to_download:
                 files_to_download.append(x)
 
-        return Timing.sort(files_to_download, select_end_date)
+        result = Timing.sort(files_to_download, select_end_date)
+
+        logging.debug("Files which must be fetched for {}: {}".format(restore_point, str(result)))
+
+        return result
