@@ -213,25 +213,25 @@ class BackupAgent:
             file.write(ddl_gen_sql)
         BackupAgent.out("Wrote ddlgen to {}".format(ddlgen_file_path))
 
-        #
-        # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
-        #
-        # If the machine reboots during an isql run, then that rename doesn't happen, and we do 
-        # not upload these potentially corrupt dump files
-        #
-        for stripe_index in range(1, stripe_count + 1):
-            file_name = Naming.construct_filename(
-                dbname=dbname, is_full=is_full, 
-                start_timestamp=start_timestamp, 
-                stripe_index=stripe_index, stripe_count=stripe_count)
-            blob_name = Naming.construct_blobname(
-                dbname=dbname, is_full=is_full, 
-                start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
-                stripe_index=stripe_index, stripe_count=stripe_count)
-            os.rename(os.path.join(output_dir, file_name), os.path.join(output_dir, blob_name))
-            BackupAgent.out("Wrote {}".format(os.path.join(output_dir, blob_name)))
-
         if not skip_upload:
+            #
+            # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
+            #
+            # If the machine reboots during an isql run, then that rename doesn't happen, and we do 
+            # not upload these potentially corrupt dump files
+            #
+            for stripe_index in range(1, stripe_count + 1):
+                file_name = Naming.construct_filename(
+                    dbname=dbname, is_full=is_full, 
+                    start_timestamp=start_timestamp, 
+                    stripe_index=stripe_index, stripe_count=stripe_count)
+                blob_name = Naming.construct_blobname(
+                    dbname=dbname, is_full=is_full, 
+                    start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
+                    stripe_index=stripe_index, stripe_count=stripe_count)
+                os.rename(os.path.join(output_dir, file_name), os.path.join(output_dir, blob_name))
+                BackupAgent.out("Wrote {}".format(os.path.join(output_dir, blob_name)))
+
             # Upload & delete the SQL description
             self.backup_configuration.storage_client.create_blob_from_path(
                 container_name=self.backup_configuration.azure_storage_container_name, 
@@ -300,26 +300,26 @@ class BackupAgent:
 
         BackupAgent.log_stdout_stderr(stdout, stderr)
 
-        #
-        # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
-        #
-        # If the machine reboots during an isql run, then that rename doesn't happen, and we do 
-        # not upload these potentially corrupt dump files
-        #
-        for stripe_index in range(1, stripe_count + 1):
-            file_name = Naming.construct_filename(
-                dbname=dbname, is_full=is_full, 
-                start_timestamp=start_timestamp, 
-                stripe_index=stripe_index, stripe_count=stripe_count)
-            blob_name = Naming.construct_blobname(
-                dbname=dbname, is_full=is_full, 
-                start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
-                stripe_index=stripe_index, stripe_count=stripe_count)
-            os.rename(
-                os.path.join(output_dir, file_name), 
-                os.path.join(output_dir, blob_name))
-
         if not skip_upload:
+            #
+            # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
+            #
+            # If the machine reboots during an isql run, then that rename doesn't happen, and we do 
+            # not upload these potentially corrupt dump files
+            #
+            for stripe_index in range(1, stripe_count + 1):
+                file_name = Naming.construct_filename(
+                    dbname=dbname, is_full=is_full, 
+                    start_timestamp=start_timestamp, 
+                    stripe_index=stripe_index, stripe_count=stripe_count)
+                blob_name = Naming.construct_blobname(
+                    dbname=dbname, is_full=is_full, 
+                    start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
+                    stripe_index=stripe_index, stripe_count=stripe_count)
+                os.rename(
+                    os.path.join(output_dir, file_name), 
+                    os.path.join(output_dir, blob_name))
+
             for stripe_index in range(1, stripe_count + 1):
                 blob_name = Naming.construct_blobname(
                     dbname=dbname, is_full=is_full, 
