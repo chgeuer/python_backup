@@ -396,12 +396,17 @@ class BackupAgent:
                 break
 
     def restore(self, restore_point, output_dir, databases):
-        print("Restore for databases {}".format(str(databases)))
+        print("Retriving point-in-time restore {} for databases {}".format(restore_point, str(databases)))
         databases = self.database_connector.determine_databases(user_selected_databases=databases, is_full=True)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases = filter(lambda db: not (db in skip_dbs), databases)
         for dbname in databases:
             self.restore_single_db(dbname=dbname, output_dir=output_dir, restore_point=restore_point)
+
+    @staticmethod
+    def out(message):
+        logging.info(message)
+        print(message)
 
     def restore_single_db(self, dbname, restore_point, output_dir):
         blobs = self.list_restore_blobs(dbname=dbname)
@@ -419,6 +424,7 @@ class BackupAgent:
                     storage_client.get_blob_to_path(
                         container_name=self.backup_configuration.azure_storage_container_name,
                         blob_name=ddlgen_file_name, file_path=ddlgen_file_path)
+                    BackupAgent.out("Downloaded ddlgen description {}".format(file_path))
 
             blob_name = "{dbname}_{type}_{start}--{end}_S{idx:03d}-{cnt:03d}.cdmp".format(
                 dbname=dbname, type=Naming.backup_type_str(is_full), 
@@ -433,6 +439,7 @@ class BackupAgent:
                 container_name=self.backup_configuration.azure_storage_container_name,
                 blob_name=blob_name,
                 file_path=file_path)
+            BackupAgent.out("Downloaded dump {}".format(file_path))
 
     def list_restore_blobs(self, dbname):
         existing_blobs = []
