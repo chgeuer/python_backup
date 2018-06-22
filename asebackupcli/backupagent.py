@@ -92,6 +92,7 @@ class BackupAgent:
             os.remove(blob_path)
 
     def full_backup(self, output_dir, databases, force=False, skip_upload=False):
+        BackupAgent.out("Creating full backup for {}".format(str(databases)))
         is_full=True
         databases_to_backup = self.database_connector.determine_databases(user_selected_databases=databases, is_full=is_full)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
@@ -188,7 +189,8 @@ class BackupAgent:
                 business_hours=self.backup_configuration.get_business_hours(),
                 db_backup_interval_min=self.backup_configuration.get_db_backup_interval_min(),
                 db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max()):
-            logging.info("Skipping backup of database {dbname}".format(dbname=dbname))
+
+            BackupAgent.out("Skipping backup of database {dbname}".format(dbname=dbname))
             return
 
         stripe_count = self.database_connector.determine_database_backup_stripe_count(dbname=dbname, is_full=is_full)
@@ -209,6 +211,7 @@ class BackupAgent:
         with open(ddlgen_file_path, mode='wt') as file:
             ddl_gen_sql = self.database_connector.create_ddlgen(dbname=dbname)
             file.write(ddl_gen_sql)
+        BackupAgent.out("Wrote ddlgen to {}".format(ddlgen_file_path))
 
         #
         # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
@@ -226,6 +229,7 @@ class BackupAgent:
                 start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
                 stripe_index=stripe_index, stripe_count=stripe_count)
             os.rename(os.path.join(output_dir, file_name), os.path.join(output_dir, blob_name))
+            BackupAgent.out("Wrote {}".format(os.path.join(output_dir, blob_name)))
 
         if not skip_upload:
             # Upload & delete the SQL description
@@ -247,6 +251,7 @@ class BackupAgent:
                     file_path=blob_path, blob_name=blob_name, 
                     validate_content=True, max_connections=4)
                 os.remove(blob_path)
+                BackupAgent.out("Moved {} to Azure Storage".format(blob_path))
 
     def transaction_backup(self, output_dir, databases, force=False, skip_upload=False):
         is_full=False
