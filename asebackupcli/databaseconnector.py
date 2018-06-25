@@ -19,7 +19,7 @@ class DatabaseConnector:
             self.get_ase_base_directory(), 
             "dba/bin/dbsp")
         arg = "***REMOVED***"
-        stdout, _stderr = self.call_process(command_line=[executable, arg], stdin="")
+        stdout, _stderr, _returncode = self.call_process(command_line=[executable, arg], stdin="")
         return str(stdout).strip()
 
     def isql(self):
@@ -66,8 +66,8 @@ class DatabaseConnector:
         """
             Create a SQL sidecar file with the database schema.
         """
-        stdout1, _stderr = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
-        stdout2, _stderr = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%"]))
+        stdout1, _stderr, _returncode = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
+        stdout2, _stderr, _returncode = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%"]))
         return "\n".join([stdout1, "", stdout2])
 
     @staticmethod
@@ -275,7 +275,7 @@ class DatabaseConnector:
         )
 
     def determine_database_backup_stripe_count(self, dbname, is_full):
-        (stdout, _stderr) = self.call_process(
+        (stdout, _stderr, _returncode) = self.call_process(
             command_line=self.isql(),
             stdin=DatabaseConnector.sql_statement_stripe_count(dbname=dbname, is_full=is_full))
         return int(stdout)
@@ -287,7 +287,7 @@ class DatabaseConnector:
             return self.list_databases(is_full=is_full)
 
     def list_databases(self, is_full):
-        (stdout, _stderr) = self.call_process(
+        (stdout, _stderr, _returncode) = self.call_process(
             command_line=self.isql(),
             stdin=DatabaseConnector.sql_statement_list_databases(is_full=is_full))
 
