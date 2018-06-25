@@ -181,32 +181,34 @@ class BackupAgent:
 
     def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir):
         start_timestamp = Timing.now_localtime()
-        if not self.should_run_backup(
-            dbname=dbname, is_full=is_full, 
-            force=force, start_timestamp=start_timestamp):
+        if not self.should_run_backup(dbname=dbname, is_full=is_full, force=force, start_timestamp=start_timestamp):
+            BackupAgent.out("Skipping backup of database {}".format(dbname))
             return
 
-        stripe_count = self.database_connector.determine_database_backup_stripe_count(
-            dbname=dbname, is_full=is_full)
-
-        stdout, stderr = self.database_connector.create_backup(
-            dbname=dbname, is_full=is_full,
-            start_timestamp=start_timestamp,
-            stripe_count=stripe_count, output_dir=output_dir)
+        stripe_count = self.database_connector.determine_database_backup_stripe_count(dbname=dbname, is_full=is_full)
+        stdout, stderr = self.database_connector.create_backup(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,stripe_count=stripe_count, output_dir=output_dir)
         end_timestamp = Timing.now_localtime()
 
+        BackupAgent.out("Command ran from {} to {}".format(start_timestamp, end_timestamp))
         BackupAgent.log_stdout_stderr(stdout, stderr)
 
         if is_full:
-            ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, 
-                start_timestamp=start_timestamp)
+            ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
             ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
             with open(ddlgen_file_path, mode='wt') as file:
-                ddl_gen_sql = self.database_connector.create_ddlgen(dbname=dbname)
-                file.write(ddl_gen_sql)
+                file.write(self.database_connector.create_ddlgen(dbname=dbname))
             BackupAgent.out("Wrote ddlgen to {}".format(ddlgen_file_path))
 
-        if not skip_upload:
+        if skip_upload:
+            BackupAgent.out("Skip results upload")
+        else:
+            BackupAgent.out("Uploading results")
+            if is_full:
+                # Upload & delete the SQL description
+                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=ddlgen_file_path, blob_name=ddlgen_file_name, validate_content=True, max_connections=4)
+                BackupAgent.out("Uploaded ddlgen to {}".format(ddlgen_file_path))
+                os.remove(ddlgen_file_path)
+
             #
             # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
             #
@@ -214,39 +216,17 @@ class BackupAgent:
             # not upload these potentially corrupt dump files
             #
             for stripe_index in range(1, stripe_count + 1):
-                file_name = Naming.construct_filename(
-                    dbname=dbname, is_full=is_full, 
-                    start_timestamp=start_timestamp, 
-                    stripe_index=stripe_index, stripe_count=stripe_count)
-                blob_name = Naming.construct_blobname(
-                    dbname=dbname, is_full=is_full, 
-                    start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
-                    stripe_index=stripe_index, stripe_count=stripe_count)
-                os.rename(
-                    os.path.join(output_dir, file_name), 
-                    os.path.join(output_dir, blob_name))
-
-            if is_full:
-                # Upload & delete the SQL description
-                self.backup_configuration.storage_client.create_blob_from_path(
-                    container_name=self.backup_configuration.azure_storage_container_name, 
-                    file_path=ddlgen_file_path, blob_name=ddlgen_file_name, 
-                    validate_content=True, max_connections=4)
-                os.remove(ddlgen_file_path)
-
-            # Upload & delete all stripes
-            for stripe_index in range(1, stripe_count + 1):
-                blob_name = Naming.construct_blobname(
-                    dbname=dbname, is_full=is_full, 
-                    start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
-                    stripe_index=stripe_index, stripe_count=stripe_count)
+                file_name = Naming.construct_filename(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,                              stripe_index=stripe_index, stripe_count=stripe_count)
+                file_path = os.path.join(output_dir, file_name)
+                blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
                 blob_path = os.path.join(output_dir, blob_name)
-                self.backup_configuration.storage_client.create_blob_from_path(
-                    container_name=self.backup_configuration.azure_storage_container_name, 
-                    file_path=blob_path, blob_name=blob_name, 
-                    validate_content=True, max_connections=4)
+
+                BackupAgent.out("Rename {} to {}".format(file_path, blob_path))
+                os.rename(file_path, blob_path)
+                BackupAgent.out("Upload {} to Azure Storage".format(blob_path))
+                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
+                BackupAgent.out("Delete {}".format(blob_path))
                 os.remove(blob_path)
-                BackupAgent.out("Moved {} to Azure Storage".format(blob_path))
 
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
         for file in os.listdir(output_dir):
@@ -260,10 +240,9 @@ class BackupAgent:
             blob_name = file
             blob_path = os.path.join(output_dir, blob_name)
 
-            self.backup_configuration.storage_client.create_blob_from_path(
-                container_name=self.backup_configuration.azure_storage_container_name, 
-                file_path=blob_path, blob_name=blob_name, 
-                validate_content=True, max_connections=4)
+            BackupAgent.out("Upload {} to Azure Storage".format(blob_path))
+            self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
+            BackupAgent.out("Delete {}".format(blob_path))
             os.remove(blob_path)
 
     def list_backups(self, databases = []):
