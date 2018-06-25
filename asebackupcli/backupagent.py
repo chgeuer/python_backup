@@ -501,7 +501,6 @@ class BackupAgent:
     def pipe(self):
         uploader = PipeUploader(
             self.backup_configuration.storage_client, 
-            container_name=self.backup_configuration.azure_storage_container_name, 
-            blob_name="1.pipe",
-            pipe_path="1.pipe")
+            container_name=self.backup_configuration.azure_storage_container_name,
+            stripe_count=3)
         uploader.run()
