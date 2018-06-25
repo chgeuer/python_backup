@@ -232,21 +232,43 @@ class BackupAgent:
 
         if not use_streaming:
             out("Starting file-based backup")
-            stdout, stderr, returncode = self.database_connector.create_backup(
+            stdout, stderr, _returncode = self.database_connector.create_backup(
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                 stripe_count=stripe_count, output_dir=output_dir)
+            end_timestamp = Timing.now_localtime()
         else:
             out("Start streaming thread")
             threads = self.start_streaming_threads(
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, 
                 stripe_count=stripe_count, output_dir=output_dir)
             out("Start streaming backup SQL call")
-            stdout, stderr, returncode = self.database_connector.create_backup_streaming(
+            stdout, stderr, _returncode = self.database_connector.create_backup_streaming(
                 dbname=dbname, is_full=is_full, stripe_count=stripe_count, 
                 output_dir=output_dir)
             self.finalize_streaming_threads(threads)
+            end_timestamp = Timing.now_localtime()
 
-        end_timestamp = Timing.now_localtime()
+            for stripe_index in range(1, stripe_count + 1):
+                old_bob_name = Naming.construct_filename(dbname=dbname, 
+                    is_full=is_full, start_timestamp=start_timestamp, 
+                    stripe_index=stripe_index, stripe_count=stripe_count)
+
+                print("{}".format(self.backup_configuration.storage_client.get_blob_properties(
+                    container_name=self.backup_configuration.azure_storage_container_name,
+                    blob_name=old_bob_name)))
+
+                self.backup_configuration.storage_client.copy_blob(
+                    container_name=self.backup_configuration.azure_storage_container_name, 
+                    blob_name=Naming.construct_blobname(
+                        dbname=dbname, is_full=is_full, 
+                        start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
+                        stripe_index=stripe_index, stripe_count=stripe_count), 
+                    copy_source="https://{}.blob.core.windows.net/{}/{}".format(
+                        self.backup_configuration.get_azure_storage_account_name(),
+                        self.backup_configuration.azure_storage_container_name,
+                        old_bob_name
+                    ))
+
 
         out("Backup of {} ({}) ran from {} to {}".format(dbname, is_full, start_timestamp, end_timestamp))
         log_stdout_stderr(stdout, stderr)
@@ -460,6 +482,6 @@ class BackupAgent:
         ] + hours + [
             "",
             "azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name),
-            "azure_storage_account_name:         {}".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_name()),
+            "azure_storage_account_name:         {}".format(self.backup_configuration.get_azure_storage_account_name()),
             "azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10])
         ]
