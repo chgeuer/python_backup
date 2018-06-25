@@ -5,7 +5,6 @@ import os
 import logging
 
 from .naming import Naming
-from .backupagent import BackupAgent
 from .funcmodule import printe, out, log_stdout_stderr
 
 class DatabaseConnector:
