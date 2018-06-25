@@ -120,7 +120,7 @@ class Runner:
         if args.full_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
-                    backup_agent.full_backup(
+                    backup_agent.backup(is_full=True,
                         force=args.force, skip_upload=args.skip_upload,
                         output_dir=output_dir, databases=databases)
             except pid.PidFileAlreadyLockedError:
@@ -128,7 +128,7 @@ class Runner:
         elif args.transaction_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
-                    backup_agent.transaction_backup(
+                    backup_agent.backup(is_full=False,
                         force=args.force, skip_upload=args.skip_upload,
                         output_dir=output_dir, databases=databases)
             except pid.PidFileAlreadyLockedError:

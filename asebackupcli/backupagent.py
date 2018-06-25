@@ -76,37 +76,6 @@ class BackupAgent:
             return "19000101_000000"
         return Timing.sort(existing_blobs_dict.keys())[-1:][0]
 
-    def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
-        for file in os.listdir(output_dir):
-            parts = Naming.parse_blobname(file)
-            if parts == None:
-                continue
-            (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
-            if (is_full != is_full_file):
-                continue
-
-            blob_name = file
-            blob_path = os.path.join(output_dir, blob_name)
-
-            self.backup_configuration.storage_client.create_blob_from_path(
-                container_name=self.backup_configuration.azure_storage_container_name, 
-                file_path=blob_path, blob_name=blob_name, 
-                validate_content=True, max_connections=4)
-            os.remove(blob_path)
-
-    def full_backup(self, output_dir, databases, force=False, skip_upload=False):
-        BackupAgent.out("Creating full backup for {}".format(str(databases)))
-        is_full=True
-        databases_to_backup = self.database_connector.determine_databases(user_selected_databases=databases, is_full=is_full)
-        skip_dbs = self.backup_configuration.get_databases_to_skip()
-        databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
-
-        for dbname in databases_to_backup:
-            self.backup_single_db(dbname=dbname, is_full=True, force=force, skip_upload=skip_upload, output_dir=output_dir)
-
-        if not skip_upload:
-            self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
-
     @staticmethod
     def should_run_full_backup(now_time, force, latest_full_backup_timestamp, business_hours, db_backup_interval_min, db_backup_interval_max):
         """
@@ -172,17 +141,18 @@ class BackupAgent:
         return perform_full_backup
 
     @staticmethod
-    def log_stdout_stderr(stdout, stderr):
-        if len(stdout) > 0:
-            for l in stdout.split("\n"):
-                logging.info(l)
-        if len(stderr) > 0:
-            for l in stderr.split("\n"):
-                logging.warning(l)
+    def should_run_tran_backup(now_time, force, latest_tran_backup_timestamp, log_backup_interval_min):
+        if force:
+            return True
+
+        age_of_latest_backup_in_storage = Timing.time_diff(latest_tran_backup_timestamp, now_time)
+        min_interval_allows_backup = age_of_latest_backup_in_storage > log_backup_interval_min
+        perform_tran_backup = min_interval_allows_backup
+        return perform_tran_backup 
 
     def should_run_backup(self, dbname, is_full, force, start_timestamp):
         if is_full:
-            return BackupAgent.should_run_full_backup(
+            result = BackupAgent.should_run_full_backup(
                 now_time=start_timestamp, 
                 force=force, 
                 latest_full_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
@@ -190,11 +160,24 @@ class BackupAgent:
                 db_backup_interval_min=self.backup_configuration.get_db_backup_interval_min(),
                 db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max())
         else:
-            return BackupAgent.should_run_tran_backup(
+            result = BackupAgent.should_run_tran_backup(
                 now_time=start_timestamp, 
                 force=force,
                 latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
                 log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min())
+
+        return result
+
+    def backup(self, output_dir, databases, is_full, force=False, skip_upload=False):
+        databases_to_backup = self.database_connector.determine_databases(user_selected_databases=databases, is_full=is_full)
+        skip_dbs = self.backup_configuration.get_databases_to_skip()
+        databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
+
+        for dbname in databases_to_backup:
+            self.backup_single_db(dbname=dbname, is_full=is_full, force=force, skip_upload=skip_upload, output_dir=output_dir)
+
+        if not skip_upload:
+            self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
 
     def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir):
         start_timestamp = Timing.now_localtime()
@@ -265,28 +248,23 @@ class BackupAgent:
                 os.remove(blob_path)
                 BackupAgent.out("Moved {} to Azure Storage".format(blob_path))
 
-    def transaction_backup(self, output_dir, databases, force=False, skip_upload=False):
-        is_full=False
-        databases_to_backup = self.database_connector.determine_databases(user_selected_databases=databases, is_full=is_full)
-        skip_dbs = self.backup_configuration.get_databases_to_skip()
-        databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
+    def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
+        for file in os.listdir(output_dir):
+            parts = Naming.parse_blobname(file)
+            if parts == None:
+                continue
+            (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
+            if (is_full != is_full_file):
+                continue
 
-        for dbname in databases_to_backup:
-            self.backup_single_db(dbname=dbname, is_full=False, 
-            output_dir=output_dir, force=force, skip_upload=skip_upload)
+            blob_name = file
+            blob_path = os.path.join(output_dir, blob_name)
 
-        if not skip_upload:
-            self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
-
-    @staticmethod
-    def should_run_tran_backup(now_time, force, latest_tran_backup_timestamp, log_backup_interval_min):
-        if force:
-            return True
-
-        age_of_latest_backup_in_storage = Timing.time_diff(latest_tran_backup_timestamp, now_time)
-        min_interval_allows_backup = age_of_latest_backup_in_storage > log_backup_interval_min
-        perform_tran_backup = min_interval_allows_backup
-        return perform_tran_backup 
+            self.backup_configuration.storage_client.create_blob_from_path(
+                container_name=self.backup_configuration.azure_storage_container_name, 
+                file_path=blob_path, blob_name=blob_name, 
+                validate_content=True, max_connections=4)
+            os.remove(blob_path)
 
     def list_backups(self, databases = []):
         baks_dict = self.existing_backups(databases=databases)
@@ -363,11 +341,6 @@ class BackupAgent:
         databases = filter(lambda db: not (db in skip_dbs), databases)
         for dbname in databases:
             self.restore_single_db(dbname=dbname, output_dir=output_dir, restore_point=restore_point)
-
-    @staticmethod
-    def out(message):
-        logging.info(message)
-        print(message)
 
     def restore_single_db(self, dbname, restore_point, output_dir):
         blobs = self.list_restore_blobs(dbname=dbname)
@@ -452,6 +425,20 @@ class BackupAgent:
             "azure_storage_account_name:         {}".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_name()),
             "azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10])
         ]
+
+    @staticmethod
+    def log_stdout_stderr(stdout, stderr):
+        if len(stdout) > 0:
+            for l in stdout.split("\n"):
+                logging.info(l)
+        if len(stderr) > 0:
+            for l in stderr.split("\n"):
+                logging.warning(l)
+
+    @staticmethod
+    def out(message):
+        logging.info(message)
+        print(message)
 
     def pipe(self):
         uploader = PipeUploader(
