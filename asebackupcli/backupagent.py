@@ -232,9 +232,11 @@ class BackupAgent:
         for file in os.listdir(output_dir):
             parts = Naming.parse_blobname(file)
             if parts == None:
+                BackupAgent.out("Skipping {} (not a backup file)".format(file))
                 continue
             (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
             if (is_full != is_full_file):
+                BackupAgent.out("Skipping {} (not right type of backup file)".format(file))
                 continue
 
             blob_name = file
