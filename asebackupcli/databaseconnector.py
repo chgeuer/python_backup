@@ -5,6 +5,7 @@ import os
 import logging
 
 from .naming import Naming
+from .backupagent import BackupAgent
 
 class DatabaseConnector:
     def __init__(self, backup_configuration):
@@ -307,11 +308,9 @@ class DatabaseConnector:
         return self.call_process(
             command_line=self.isql(), 
             stdin=DatabaseConnector.sql_statement_create_backup_for_filenames(
-                dbname=dbname, 
-                is_full=is_full, 
+                dbname=dbname, is_full=is_full, 
                 files=Naming.pipe_names(
-                    dbname=dbname, 
-                    is_full=is_full, 
+                    dbname=dbname, is_full=is_full, 
                     stripe_count=stripe_count, 
                     output_dir=output_dir)))
 
@@ -371,6 +370,10 @@ class DatabaseConnector:
         return ase_env
 
     def call_process(self, command_line, stdin=None):
+        BackupAgent.out("Run \"{}\" << EOF".format(" ".join(command_line)))
+        BackupAgent.out(stdin)
+        BackupAgent.out("EOF")
+
         p = subprocess.Popen(
             command_line,
             stdin=subprocess.PIPE,
