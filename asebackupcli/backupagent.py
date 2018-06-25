@@ -201,16 +201,22 @@ class BackupAgent:
                 is_full=is_full, start_timestamp=start_timestamp, 
                 stripe_index=stripe_index, stripe_count=stripe_count)
 
-            BackupAgent.out("Create pipe {}".format(pipe_path))
+            if os.path.exists(pipe_path):
+                BackupAgent.out("Remove old pipe file {}".format(pipe_path))
+                os.remove(pipe_path)
+
+            BackupAgent.out("Create named pipe {}".format(pipe_path))
             os.mkfifo(pipe_path)
 
+            BackupAgent.out("Create thread object {}".format(stripe_index))
             t = threading.Thread(
                 target=BackupAgent.upload_pipe, 
                 args=(self.backup_configuration.storage_client, self.backup_configuration.azure_storage_container_name, blob_name, pipe_path))
             threads.append(t)
 
+        print("Start all {} threads".format(len(threads)))
         [t.start() for t in threads]
-        print("Started {} threads".format(len(threads)))
+        print("Started all {} threads".format(len(threads)))
 
     def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir, use_streaming):
         start_timestamp = Timing.now_localtime()
@@ -226,8 +232,9 @@ class BackupAgent:
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                 stripe_count=stripe_count, output_dir=output_dir)
         else:
-            BackupAgent.out("Starting streaming backup")
+            BackupAgent.out("Start streaming thread")
             self.start_streaming_threads(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, stripe_count=stripe_count, output_dir=output_dir)
+            BackupAgent.out("Start streaming backup SQL call")
             stdout, stderr = self.database_connector.create_backup_streaming(dbname=dbname, is_full=is_full, stripe_count=stripe_count, output_dir=output_dir)
 
         end_timestamp = Timing.now_localtime()
