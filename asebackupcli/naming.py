@@ -48,7 +48,7 @@ class Naming:
 
     @staticmethod
     def pipe_name(output_dir, dbname, is_full, stripe_index, stripe_count):
-        return os.path.join(output_dir, "backup_{}_{}_{03d}_{03d}.cdmp_pipe".format(
+        return os.path.join(output_dir, "backup_{}_{}_{:03d}_{:03d}.cdmp_pipe".format(
             dbname, Naming.backup_type_str(is_full), stripe_index, stripe_count))
 
     @staticmethod

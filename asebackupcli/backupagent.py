@@ -181,15 +181,13 @@ class BackupAgent:
             self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
 
     @staticmethod
-    def upload(self, pipe_path, blob_name):
+    def upload_pipe(blob_client, container_name, blob_name, pipe_path):
         print("Start upload for {}".format(pipe_path))
         with open(pipe_path, "rb", buffering=0) as stream:
-            self.blob_client.create_blob_from_stream(
-                container_name=self.container_name,
-                blob_name=blob_name, 
-                stream=stream,
-                use_byte_buffer=True,
-                max_connections=1)
+            blob_client.create_blob_from_stream(
+                container_name=container_name,
+                blob_name=blob_name, stream=stream,
+                use_byte_buffer=True, max_connections=1)
         print("Finished {}".format(pipe_path))
         os.remove(pipe_path)
 
@@ -206,8 +204,10 @@ class BackupAgent:
             BackupAgent.out("Create pipe {}".format(pipe_path))
             os.mkfifo(pipe_path)
 
-            thread = threading.Thread(target=self.upload, args=(pipe_path, blob_name, ))
-            threads.append(thread)
+            t = threading.Thread(
+                target=BackupAgent.upload_pipe, 
+                args=(self.backup_configuration.storage_client, self.backup_configuration.azure_storage_container_name, blob_name, pipe_path))
+            threads.append(t)
 
         [t.start() for t in threads]
         print("Started {} threads".format(len(threads)))
