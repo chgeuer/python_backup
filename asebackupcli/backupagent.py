@@ -232,7 +232,7 @@ class BackupAgent:
 
         if not use_streaming:
             out("Starting file-based backup")
-            stdout, stderr = self.database_connector.create_backup(
+            stdout, stderr, returncode = self.database_connector.create_backup(
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                 stripe_count=stripe_count, output_dir=output_dir)
         else:
@@ -241,7 +241,7 @@ class BackupAgent:
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, 
                 stripe_count=stripe_count, output_dir=output_dir)
             out("Start streaming backup SQL call")
-            stdout, stderr = self.database_connector.create_backup_streaming(
+            stdout, stderr, returncode = self.database_connector.create_backup_streaming(
                 dbname=dbname, is_full=is_full, stripe_count=stripe_count, 
                 output_dir=output_dir)
             self.finalize_streaming_threads(threads)

@@ -370,9 +370,8 @@ class DatabaseConnector:
         return ase_env
 
     def call_process(self, command_line, stdin=None):
-        out("Run \"{}\" << EOF".format(" ".join(command_line)))
-        out(stdin)
-        out("EOF")
+        cmd = "\" \"".join(command_line)
+        logging.debug("Executing \"{}\"".format(cmd))
 
         p = subprocess.Popen(
             command_line,
@@ -382,7 +381,11 @@ class DatabaseConnector:
             env=self.get_ase_environment()
         )
         stdout, stderr = p.communicate(stdin)
-        return (stdout, stderr)
+        returncode = p.returncode
+        if returncode != 0:
+            logging.debug("Error {} calling \"{}\"".format(returncode, cmd))
+
+        return (stdout, stderr, returncode)
 
     def log_env(self):
         ase_env = self.get_ase_environment()
