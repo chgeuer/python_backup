@@ -303,6 +303,18 @@ class DatabaseConnector:
                 stripe_count=stripe_count,
                 output_dir=output_dir))
 
+    def create_backup_streaming(self, dbname, is_full, stripe_count, output_dir):
+        return self.call_process(
+            command_line=self.isql(), 
+            stdin=DatabaseConnector.sql_statement_create_backup_for_filenames(
+                dbname=dbname, 
+                is_full=is_full, 
+                files=Naming.pipe_names(
+                    dbname=dbname, 
+                    is_full=is_full, 
+                    stripe_count=stripe_count, 
+                    output_dir=output_dir)))
+
     def get_ase_environment(self):
         ase_env = os.environ.copy()
 

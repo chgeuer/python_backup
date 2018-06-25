@@ -47,6 +47,19 @@ class Naming:
         return os.path.join(directory, file_name)
 
     @staticmethod
+    def pipe_name(output_dir, dbname, is_full, stripe_index, stripe_count):
+        return os.path.join(output_dir, "backup_{}_{}_{03d}_{03d}.cdmp_pipe".format(
+            dbname, Naming.backup_type_str(is_full), stripe_index, stripe_count))
+
+    @staticmethod
+    def pipe_names(dbname, is_full, stripe_count, output_dir):
+        return map(lambda stripe_index: Naming.pipe_name(
+                output_dir=output_dir, dbname=dbname, is_full=is_full, 
+                stripe_index=stripe_index, stripe_count=stripe_count), 
+            range(1, stripe_count + 1))
+
+
+    @staticmethod
     def construct_blobname_prefix(dbname, is_full):
         """
             >>> Naming.construct_blobname_prefix(dbname="test1db", is_full=True)

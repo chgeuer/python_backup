@@ -3,6 +3,7 @@
 import logging
 import os
 import datetime
+import threading
 from itertools import groupby
 
 from .funcmodule import printe
@@ -179,17 +180,56 @@ class BackupAgent:
         if not skip_upload and not use_streaming:
             self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
 
-    def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir, use_streaming):
-        if use_streaming:
-            raise Exception("Streaming not yet implemented")
+    @staticmethod
+    def upload(self, pipe_path, blob_name):
+        print("Start upload for {}".format(pipe_path))
+        with open(pipe_path, "rb", buffering=0) as stream:
+            self.blob_client.create_blob_from_stream(
+                container_name=self.container_name,
+                blob_name=blob_name, 
+                stream=stream,
+                use_byte_buffer=True,
+                max_connections=1)
+        print("Finished {}".format(pipe_path))
+        os.remove(pipe_path)
 
+    def start_streaming_threads(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
+        threads = []
+        for stripe_index in range(1, stripe_count + 1):
+            pipe_path = Naming.pipe_name(output_dir=output_dir, 
+                dbname=dbname, is_full=is_full, stripe_index=stripe_index, 
+                stripe_count=stripe_count)
+            blob_name = Naming.construct_filename(dbname=dbname, 
+                is_full=is_full, start_timestamp=start_timestamp, 
+                stripe_index=stripe_index, stripe_count=stripe_count)
+
+            BackupAgent.out("Create pipe {}".format(pipe_path))
+            os.mkfifo(pipe_path)
+
+            thread = threading.Thread(target=self.upload, args=(pipe_path, blob_name, ))
+            threads.append(thread)
+
+        [t.start() for t in threads]
+        print("Started {} threads".format(len(threads)))
+
+    def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir, use_streaming):
         start_timestamp = Timing.now_localtime()
         if not self.should_run_backup(dbname=dbname, is_full=is_full, force=force, start_timestamp=start_timestamp):
             BackupAgent.out("Skipping backup of database {}".format(dbname))
             return
 
         stripe_count = self.database_connector.determine_database_backup_stripe_count(dbname=dbname, is_full=is_full)
-        stdout, stderr = self.database_connector.create_backup(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,stripe_count=stripe_count, output_dir=output_dir)
+
+        if not use_streaming:
+            BackupAgent.out("Starting file-based backup")
+            stdout, stderr = self.database_connector.create_backup(
+                dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
+                stripe_count=stripe_count, output_dir=output_dir)
+        else:
+            BackupAgent.out("Starting streaming backup")
+            self.start_streaming_threads(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, stripe_count=stripe_count, output_dir=output_dir)
+            stdout, stderr = self.database_connector.create_backup_streaming(dbname=dbname, is_full=is_full, stripe_count=stripe_count, output_dir=output_dir)
+
         end_timestamp = Timing.now_localtime()
 
         BackupAgent.out("Backup of {} ({}) ran from {} to {}".format(dbname, is_full, start_timestamp, end_timestamp))
