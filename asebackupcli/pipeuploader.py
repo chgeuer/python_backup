@@ -20,13 +20,17 @@ class PipeUploader:
         os.mkfifo(self.pipe_path)
 
         print("Start upload")
-
-        self.blob_client.create_blob_from_path(
-            container_name=self.container_name,
-            file_path=self.pipe_path,
-            blob_name=self.blob_name,
-            validate_content=True,
-            max_connections=4)
+        with open(self.pipe_path, "rb", buffering=0) as pipe:
+            self.blob_client.create_blob_from_stream(
+                container_name=self.container_name,
+                blob_name=self.blob_name, 
+                stream=pipe,
+                use_byte_buffer=True,
+                max_connections=1
+                )
 
         print("Remove pipe")
         os.remove(self.pipe_path)
+
+
+#open("/dev/tty", "rb", buffering=0)
