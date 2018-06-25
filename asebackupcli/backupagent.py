@@ -9,7 +9,7 @@ from itertools import groupby
 from .funcmodule import printe, out, log_stdout_stderr
 from .naming import Naming
 from .timing import Timing
-from .pipeuploader import PipeUploader
+from .databaseconnector import DatabaseConnector
 
 class BackupAgent:
     """
@@ -463,10 +463,3 @@ class BackupAgent:
             "azure_storage_account_name:         {}".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_name()),
             "azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10])
         ]
-
-    def pipe(self):
-        uploader = PipeUploader(
-            self.backup_configuration.storage_client, 
-            container_name=self.backup_configuration.azure_storage_container_name,
-            stripe_count=3)
-        uploader.run()
