@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: asebackupcli
+Version: 0.2.0
+Summary: A backup utility for Sybase ASE databases into Azure blob storage
+Home-page: UNKNOWN
+Author: Dr. Christian Geuer-Pollmann
+Author-email: chgeuer@microsoft.com
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN

@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import subprocess
 import os
 import logging
@@ -223,8 +225,27 @@ class DatabaseConnector:
                 is_full=is_full, 
                 start_timestamp=start_timestamp, 
                 stripe_index=stripe_index, 
-                stripe_count=stripe_count), range(1, stripe_count + 1))
+                stripe_count=stripe_count), 
+            range(1, stripe_count + 1))
+        
+        return DatabaseConnector.sql_statement_create_backup_for_filenames(
+            dbname=dbname, 
+            is_full=is_full, 
+            files=files)
 
+    @staticmethod
+    def sql_statement_create_backup_for_filenames(dbname, is_full, files):
+        """
+            >>> print(DatabaseConnector.sql_statement_create_backup_for_filenames(dbname="AZU", is_full=True, files=[ "/tmp/pipe0", "/tmp/pipe1" ]))
+            use master
+            go
+            sp_dboption AZU, 'trunc log on chkpt', 'false'
+            go
+            dump database AZU to '/tmp/pipe0'
+                stripüe on 'tmp/pipe1'
+            with compression = '101'
+            go
+        """
         return "\n".join(
             [
                 "use master",

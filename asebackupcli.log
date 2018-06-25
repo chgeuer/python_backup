@@ -1,0 +1,4 @@
+2018-06-25 15:52:18,303 pid-400 line-101 INFO: "#######################################################################################################"
+2018-06-25 15:52:18,304 pid-400 line-102 INFO: "#                                                                                                     #"
+2018-06-25 15:52:18,304 pid-400 line-103 INFO: "#######################################################################################################"
+2018-06-25 15:52:18,306 pid-400 line-107 DEBUG: "Script version v0.2.0, Script arguments: ['/home/chgeuer/.local/bin/asebackupcli', '-u'], Current directory: /mnt/c/github/chgeuer/python_backup, User: chgeuer (uid 1000, gid <built-in function getgid>), Hostname: erlang, uname: ('Linux', 'erlang', '4.4.0-17134-Microsoft', '#112-Microsoft Thu Jun 07 22:57:00 PST 2018', 'x86_64'), ProcessID: 400, Parent ProcessID: 4"

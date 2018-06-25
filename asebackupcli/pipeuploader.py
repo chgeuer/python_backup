@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import logging
 import threading
 import io
@@ -40,6 +42,5 @@ class PipeUploader:
                 stream=stream,
                 use_byte_buffer=True,
                 max_connections=1)
-
-            print("Finished {}".format(pipe_path))
-            os.remove(pipe_path)
+        print("Finished {}".format(pipe_path))
+        os.remove(pipe_path)

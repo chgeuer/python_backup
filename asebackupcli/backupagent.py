@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import logging
 import os
 import datetime
@@ -100,11 +102,7 @@ class BackupAgent:
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
 
         for dbname in databases_to_backup:
-            self.full_backup_single_db(
-                dbname=dbname, 
-                force=force, 
-                skip_upload=skip_upload, 
-                output_dir=output_dir)
+            self.backup_single_db(dbname=dbname, is_full=True, force=force, skip_upload=skip_upload, output_dir=output_dir)
 
         if not skip_upload:
             self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
@@ -182,37 +180,48 @@ class BackupAgent:
             for l in stderr.split("\n"):
                 logging.warning(l)
 
-    def full_backup_single_db(self, dbname, force, skip_upload, output_dir):
-        is_full=True
-        if not BackupAgent.should_run_full_backup(
-                now_time=Timing.now_localtime(), force=force, 
+    def should_run_backup(self, dbname, is_full, force, start_timestamp):
+        if is_full:
+            return BackupAgent.should_run_full_backup(
+                now_time=start_timestamp, 
+                force=force, 
                 latest_full_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
                 business_hours=self.backup_configuration.get_business_hours(),
                 db_backup_interval_min=self.backup_configuration.get_db_backup_interval_min(),
-                db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max()):
+                db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max())
+        else:
+            return BackupAgent.should_run_tran_backup(
+                now_time=start_timestamp, 
+                force=force,
+                latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
+                log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min())
 
-            BackupAgent.out("Skipping backup of database {dbname}".format(dbname=dbname))
+    def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir):
+        start_timestamp = Timing.now_localtime()
+        if not self.should_run_backup(
+            dbname=dbname, is_full=is_full, 
+            force=force, start_timestamp=start_timestamp):
             return
 
-        stripe_count = self.database_connector.determine_database_backup_stripe_count(dbname=dbname, is_full=is_full)
+        stripe_count = self.database_connector.determine_database_backup_stripe_count(
+            dbname=dbname, is_full=is_full)
 
-        start_timestamp = Timing.now_localtime()
         stdout, stderr = self.database_connector.create_backup(
             dbname=dbname, is_full=is_full,
             start_timestamp=start_timestamp,
-            stripe_count=stripe_count,
-            output_dir=output_dir)
+            stripe_count=stripe_count, output_dir=output_dir)
         end_timestamp = Timing.now_localtime()
 
         BackupAgent.log_stdout_stderr(stdout, stderr)
 
-        ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, 
-            start_timestamp=start_timestamp)
-        ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
-        with open(ddlgen_file_path, mode='wt') as file:
-            ddl_gen_sql = self.database_connector.create_ddlgen(dbname=dbname)
-            file.write(ddl_gen_sql)
-        BackupAgent.out("Wrote ddlgen to {}".format(ddlgen_file_path))
+        if is_full:
+            ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, 
+                start_timestamp=start_timestamp)
+            ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
+            with open(ddlgen_file_path, mode='wt') as file:
+                ddl_gen_sql = self.database_connector.create_ddlgen(dbname=dbname)
+                file.write(ddl_gen_sql)
+            BackupAgent.out("Wrote ddlgen to {}".format(ddlgen_file_path))
 
         if not skip_upload:
             #
@@ -230,15 +239,17 @@ class BackupAgent:
                     dbname=dbname, is_full=is_full, 
                     start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
                     stripe_index=stripe_index, stripe_count=stripe_count)
-                os.rename(os.path.join(output_dir, file_name), os.path.join(output_dir, blob_name))
-                BackupAgent.out("Wrote {}".format(os.path.join(output_dir, blob_name)))
+                os.rename(
+                    os.path.join(output_dir, file_name), 
+                    os.path.join(output_dir, blob_name))
 
-            # Upload & delete the SQL description
-            self.backup_configuration.storage_client.create_blob_from_path(
-                container_name=self.backup_configuration.azure_storage_container_name, 
-                file_path=ddlgen_file_path, blob_name=ddlgen_file_name, 
-                validate_content=True, max_connections=4)
-            os.remove(ddlgen_file_path)
+            if is_full:
+                # Upload & delete the SQL description
+                self.backup_configuration.storage_client.create_blob_from_path(
+                    container_name=self.backup_configuration.azure_storage_container_name, 
+                    file_path=ddlgen_file_path, blob_name=ddlgen_file_name, 
+                    validate_content=True, max_connections=4)
+                os.remove(ddlgen_file_path)
 
             # Upload & delete all stripes
             for stripe_index in range(1, stripe_count + 1):
@@ -261,7 +272,8 @@ class BackupAgent:
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
 
         for dbname in databases_to_backup:
-            self.tran_backup_single_db(dbname=dbname, output_dir=output_dir, force=force, skip_upload=skip_upload)
+            self.backup_single_db(dbname=dbname, is_full=False, 
+            output_dir=output_dir, force=force, skip_upload=skip_upload)
 
         if not skip_upload:
             self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
@@ -275,63 +287,6 @@ class BackupAgent:
         min_interval_allows_backup = age_of_latest_backup_in_storage > log_backup_interval_min
         perform_tran_backup = min_interval_allows_backup
         return perform_tran_backup 
-
-    def tran_backup_single_db(self, dbname, output_dir, force, skip_upload):
-        is_full=False
-        start_timestamp = Timing.now_localtime()
-        if not BackupAgent.should_run_tran_backup(
-            now_time=start_timestamp, force=force,
-            latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
-            log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min()):
-
-            log_msg="Skipping backup of transactions for {dbname}. (min='{min}' latest='{latest}' now='{now}'".format(dbname=dbname,
-                min=self.backup_configuration.get_log_backup_interval_min(),
-                latest=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
-                now=Timing.now_localtime())
-            logging.info(log_msg)
-            return
-
-        stripe_count = self.database_connector.determine_database_backup_stripe_count(
-            dbname=dbname, is_full=is_full)
-        stdout, stderr = self.database_connector.create_backup(
-            dbname=dbname, is_full=is_full, 
-            start_timestamp=start_timestamp, 
-            stripe_count=stripe_count, output_dir=output_dir)
-        end_timestamp = Timing.now_localtime()
-
-        BackupAgent.log_stdout_stderr(stdout, stderr)
-
-        if not skip_upload:
-            #
-            # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
-            #
-            # If the machine reboots during an isql run, then that rename doesn't happen, and we do 
-            # not upload these potentially corrupt dump files
-            #
-            for stripe_index in range(1, stripe_count + 1):
-                file_name = Naming.construct_filename(
-                    dbname=dbname, is_full=is_full, 
-                    start_timestamp=start_timestamp, 
-                    stripe_index=stripe_index, stripe_count=stripe_count)
-                blob_name = Naming.construct_blobname(
-                    dbname=dbname, is_full=is_full, 
-                    start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
-                    stripe_index=stripe_index, stripe_count=stripe_count)
-                os.rename(
-                    os.path.join(output_dir, file_name), 
-                    os.path.join(output_dir, blob_name))
-
-            for stripe_index in range(1, stripe_count + 1):
-                blob_name = Naming.construct_blobname(
-                    dbname=dbname, is_full=is_full, 
-                    start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
-                    stripe_index=stripe_index, stripe_count=stripe_count)
-                blob_path = os.path.join(output_dir, blob_name)
-                self.backup_configuration.storage_client.create_blob_from_path(
-                    container_name=self.backup_configuration.azure_storage_container_name, 
-                    file_path=blob_path, blob_name=blob_name, 
-                    validate_content=True, max_connections=4)
-                os.remove(blob_path)
 
     def list_backups(self, databases = []):
         baks_dict = self.existing_backups(databases=databases)
