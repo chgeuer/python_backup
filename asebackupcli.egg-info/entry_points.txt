@@ -1,3 +1,0 @@
-[console_scripts]
-asebackupcli = asebackupcli.__main__:main
-
