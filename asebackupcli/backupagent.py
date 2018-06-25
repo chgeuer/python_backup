@@ -168,18 +168,21 @@ class BackupAgent:
 
         return result
 
-    def backup(self, output_dir, databases, is_full, force=False, skip_upload=False):
+    def backup(self, is_full, databases, output_dir, force, skip_upload, use_streaming):
         databases_to_backup = self.database_connector.determine_databases(user_selected_databases=databases, is_full=is_full)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
 
         for dbname in databases_to_backup:
-            self.backup_single_db(dbname=dbname, is_full=is_full, force=force, skip_upload=skip_upload, output_dir=output_dir)
+            self.backup_single_db(dbname=dbname, is_full=is_full, force=force, skip_upload=skip_upload, output_dir=output_dir, use_streaming=use_streaming)
 
-        if not skip_upload:
+        if not skip_upload and not use_streaming:
             self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
 
-    def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir):
+    def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir, use_streaming):
+        if use_streaming:
+            raise Exception("Streaming not yet implemented")
+
         start_timestamp = Timing.now_localtime()
         if not self.should_run_backup(dbname=dbname, is_full=is_full, force=force, start_timestamp=start_timestamp):
             BackupAgent.out("Skipping backup of database {}".format(dbname))
@@ -189,7 +192,7 @@ class BackupAgent:
         stdout, stderr = self.database_connector.create_backup(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,stripe_count=stripe_count, output_dir=output_dir)
         end_timestamp = Timing.now_localtime()
 
-        BackupAgent.out("Command ran from {} to {}".format(start_timestamp, end_timestamp))
+        BackupAgent.out("Backup of {} ({}) ran from {} to {}".format(dbname, is_full, start_timestamp, end_timestamp))
         BackupAgent.log_stdout_stderr(stdout, stderr)
 
         if is_full:
@@ -199,7 +202,7 @@ class BackupAgent:
                 file.write(self.database_connector.create_ddlgen(dbname=dbname))
             BackupAgent.out("Wrote ddlgen to {}".format(ddlgen_file_path))
 
-        if skip_upload:
+        if skip_upload or use_streaming:
             BackupAgent.out("Skip results upload")
         else:
             BackupAgent.out("Uploading results")
@@ -216,9 +219,9 @@ class BackupAgent:
             # not upload these potentially corrupt dump files
             #
             for stripe_index in range(1, stripe_count + 1):
-                file_name = Naming.construct_filename(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,                              stripe_index=stripe_index, stripe_count=stripe_count)
-                file_path = os.path.join(output_dir, file_name)
+                file_name = Naming.construct_filename(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
                 blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+                file_path = os.path.join(output_dir, file_name)
                 blob_path = os.path.join(output_dir, blob_name)
 
                 BackupAgent.out("Rename {} to {}".format(file_path, blob_path))

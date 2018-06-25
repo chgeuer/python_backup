@@ -40,7 +40,7 @@ class Runner:
         parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
         parser.add_argument("-p",  "--prune-old-backups", help="Removes old backups from Azure storage ('--prune-old-backups 30d' removes files older 30 days)")
 
-        parser.add_argument("-i",  "--pipe-upload", help="Streaming experiment", action="store_true")
+        parser.add_argument("-S",  "--stream-upload", help="Streaming backup data via named pipe (no local files)", action="store_true")
 
         parser.add_argument("-y",  "--force", help="Perform forceful backup (ignores age of last backup or business hours)", action="store_true")
         parser.add_argument("-s",  "--skip-upload", help="Skip uploads of backup files", action="store_true")
@@ -106,6 +106,11 @@ class Runner:
         parser = Runner.arg_parser()
         args = parser.parse_args()
 
+        if args.unit_tests:
+            import doctest
+            doctest.testmod(verbose=True)
+            return
+
         logging.debug(Runner.log_script_invocation())
         config_file = Runner.get_config_file(args=args, parser=parser)
         backup_configuration = BackupConfiguration(config_file)
@@ -113,31 +118,28 @@ class Runner:
         output_dir = Runner.get_output_dir(args)
         databases = Runner.get_databases(args)
         DatabaseConnector(backup_configuration).log_env()
+        use_streaming=args.stream_upload
+        skip_upload=args.skip_upload
+        force=args.force
 
         for line in backup_agent.get_configuration_printable(output_dir=output_dir):
             logging.debug(line)
 
         if args.full_backup:
             try:
+                #is_full, databases, output_dir, force, skip_upload, use_streaming
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
-                    backup_agent.backup(is_full=True,
-                        force=args.force, skip_upload=args.skip_upload,
-                        output_dir=output_dir, databases=databases)
+                    backup_agent.backup(is_full=True, databases=databases, output_dir=output_dir, force=force, skip_upload=skip_upload,  use_streaming=use_streaming)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
         elif args.transaction_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
-                    backup_agent.backup(is_full=False,
-                        force=args.force, skip_upload=args.skip_upload,
-                        output_dir=output_dir, databases=databases)
+                    backup_agent.backup(is_full=False, databases=databases, output_dir=output_dir, force=force, skip_upload=skip_upload,  use_streaming=use_streaming)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip transaction log backup, already running")
         elif args.restore:
-            backup_agent.restore(
-                restore_point=args.restore, 
-                output_dir=output_dir, 
-                databases=databases)
+            backup_agent.restore(restore_point=args.restore, output_dir=output_dir, databases=databases)
         elif args.list_backups:
             backup_agent.list_backups(databases=databases)
         elif args.prune_old_backups:
@@ -145,8 +147,7 @@ class Runner:
             backup_agent.prune_old_backups(older_than=age, databases=databases)
         elif args.unit_tests:
             import doctest
-            doctest.testmod()
-            # doctest.testmod(verbose=True)
+            doctest.testmod() # doctest.testmod(verbose=True)
         elif args.pipe_upload:
             print(backup_agent.pipe())
         elif args.show_configuration:
