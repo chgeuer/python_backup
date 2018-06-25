@@ -58,7 +58,6 @@ class Naming:
                 stripe_index=stripe_index, stripe_count=stripe_count), 
             range(1, stripe_count + 1))
 
-
     @staticmethod
     def construct_blobname_prefix(dbname, is_full):
         """

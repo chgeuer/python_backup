@@ -6,10 +6,9 @@ import datetime
 import threading
 from itertools import groupby
 
-from .funcmodule import printe
+from .funcmodule import printe, out, log_stdout_stderr
 from .naming import Naming
 from .timing import Timing
-from .databaseconnector import DatabaseConnector
 from .pipeuploader import PipeUploader
 
 class BackupAgent:
@@ -202,13 +201,13 @@ class BackupAgent:
                 stripe_index=stripe_index, stripe_count=stripe_count)
 
             if os.path.exists(pipe_path):
-                BackupAgent.out("Remove old pipe file {}".format(pipe_path))
+                out("Remove old pipe file {}".format(pipe_path))
                 os.remove(pipe_path)
 
-            BackupAgent.out("Create named pipe {}".format(pipe_path))
+            out("Create named pipe {}".format(pipe_path))
             os.mkfifo(pipe_path)
 
-            BackupAgent.out("Create thread object {}".format(stripe_index))
+            out("Create thread object {}".format(stripe_index))
             t = threading.Thread(
                 target=BackupAgent.upload_pipe, 
                 args=(self.backup_configuration.storage_client, self.backup_configuration.azure_storage_container_name, blob_name, pipe_path))
@@ -226,22 +225,22 @@ class BackupAgent:
     def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir, use_streaming):
         start_timestamp = Timing.now_localtime()
         if not self.should_run_backup(dbname=dbname, is_full=is_full, force=force, start_timestamp=start_timestamp):
-            BackupAgent.out("Skipping backup of database {}".format(dbname))
+            out("Skipping backup of database {}".format(dbname))
             return
 
         stripe_count = self.database_connector.determine_database_backup_stripe_count(dbname=dbname, is_full=is_full)
 
         if not use_streaming:
-            BackupAgent.out("Starting file-based backup")
+            out("Starting file-based backup")
             stdout, stderr = self.database_connector.create_backup(
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                 stripe_count=stripe_count, output_dir=output_dir)
         else:
-            BackupAgent.out("Start streaming thread")
+            out("Start streaming thread")
             threads = self.start_streaming_threads(
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, 
                 stripe_count=stripe_count, output_dir=output_dir)
-            BackupAgent.out("Start streaming backup SQL call")
+            out("Start streaming backup SQL call")
             stdout, stderr = self.database_connector.create_backup_streaming(
                 dbname=dbname, is_full=is_full, stripe_count=stripe_count, 
                 output_dir=output_dir)
@@ -249,21 +248,21 @@ class BackupAgent:
 
         end_timestamp = Timing.now_localtime()
 
-        BackupAgent.out("Backup of {} ({}) ran from {} to {}".format(dbname, is_full, start_timestamp, end_timestamp))
-        BackupAgent.log_stdout_stderr(stdout, stderr)
+        out("Backup of {} ({}) ran from {} to {}".format(dbname, is_full, start_timestamp, end_timestamp))
+        log_stdout_stderr(stdout, stderr)
 
         if is_full:
             ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
             ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
             with open(ddlgen_file_path, mode='wt') as file:
                 file.write(self.database_connector.create_ddlgen(dbname=dbname))
-            BackupAgent.out("Wrote ddlgen to {}".format(ddlgen_file_path))
+            out("Wrote ddlgen to {}".format(ddlgen_file_path))
 
         if not skip_upload:
             if is_full:
-                BackupAgent.out("Upload & delete the SQL description")
+                out("Upload & delete the SQL description")
                 self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=ddlgen_file_path, blob_name=ddlgen_file_name, validate_content=True, max_connections=4)
-                BackupAgent.out("Uploaded ddlgen to {}".format(ddlgen_file_path))
+                out("Uploaded ddlgen to {}".format(ddlgen_file_path))
                 os.remove(ddlgen_file_path)
 
             if not use_streaming:
@@ -279,30 +278,30 @@ class BackupAgent:
                     file_path = os.path.join(output_dir, file_name)
                     blob_path = os.path.join(output_dir, blob_name)
 
-                    BackupAgent.out("Rename {} to {}".format(file_path, blob_path))
+                    out("Rename {} to {}".format(file_path, blob_path))
                     os.rename(file_path, blob_path)
-                    BackupAgent.out("Upload {} to Azure Storage".format(blob_path))
+                    out("Upload {} to Azure Storage".format(blob_path))
                     self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
-                    BackupAgent.out("Delete {}".format(blob_path))
+                    out("Delete {}".format(blob_path))
                     os.remove(blob_path)
 
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
         for file in os.listdir(output_dir):
             parts = Naming.parse_blobname(file)
             if parts == None:
-                BackupAgent.out("Skipping {} (not a backup file)".format(file))
+                out("Skipping {} (not a backup file)".format(file))
                 continue
             (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
             if (is_full != is_full_file):
-                BackupAgent.out("Skipping {} (not right type of backup file)".format(file))
+                out("Skipping {} (not right type of backup file)".format(file))
                 continue
 
             blob_name = file
             blob_path = os.path.join(output_dir, blob_name)
 
-            BackupAgent.out("Upload {} to Azure Storage".format(blob_path))
+            out("Upload {} to Azure Storage".format(blob_path))
             self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
-            BackupAgent.out("Delete {}".format(blob_path))
+            out("Delete {}".format(blob_path))
             os.remove(blob_path)
 
     def list_backups(self, databases = []):
@@ -397,7 +396,7 @@ class BackupAgent:
                     storage_client.get_blob_to_path(
                         container_name=self.backup_configuration.azure_storage_container_name,
                         blob_name=ddlgen_file_name, file_path=ddlgen_file_path)
-                    BackupAgent.out("Downloaded ddlgen description {}".format(ddlgen_file_path))
+                    out("Downloaded ddlgen description {}".format(ddlgen_file_path))
 
             blob_name = "{dbname}_{type}_{start}--{end}_S{idx:03d}-{cnt:03d}.cdmp".format(
                 dbname=dbname, type=Naming.backup_type_str(is_full), 
@@ -412,7 +411,7 @@ class BackupAgent:
                 container_name=self.backup_configuration.azure_storage_container_name,
                 blob_name=blob_name,
                 file_path=file_path)
-            BackupAgent.out("Downloaded dump {}".format(file_path))
+            out("Downloaded dump {}".format(file_path))
 
     def list_restore_blobs(self, dbname):
         existing_blobs = []
@@ -464,20 +463,6 @@ class BackupAgent:
             "azure_storage_account_name:         {}".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_name()),
             "azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10])
         ]
-
-    @staticmethod
-    def log_stdout_stderr(stdout, stderr):
-        if len(stdout) > 0:
-            for l in stdout.split("\n"):
-                logging.info(l)
-        if len(stderr) > 0:
-            for l in stderr.split("\n"):
-                logging.warning(l)
-
-    @staticmethod
-    def out(message):
-        logging.info(message)
-        print(message)
 
     def pipe(self):
         uploader = PipeUploader(

@@ -6,6 +6,7 @@ import logging
 
 from .naming import Naming
 from .backupagent import BackupAgent
+from .funcmodule import printe, out, log_stdout_stderr
 
 class DatabaseConnector:
     def __init__(self, backup_configuration):
@@ -370,9 +371,9 @@ class DatabaseConnector:
         return ase_env
 
     def call_process(self, command_line, stdin=None):
-        BackupAgent.out("Run \"{}\" << EOF".format(" ".join(command_line)))
-        BackupAgent.out(stdin)
-        BackupAgent.out("EOF")
+        out("Run \"{}\" << EOF".format(" ".join(command_line)))
+        out(stdin)
+        out("EOF")
 
         p = subprocess.Popen(
             command_line,
