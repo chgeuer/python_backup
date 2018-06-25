@@ -7,9 +7,10 @@ from .runner import Runner
 def main():
     try:
         Runner.main()
+        printe("Done")
         exit(0)
     except Exception as e:
-        printe(e.message)
+        printe("Error: {}".format(e.message))
         exit(-1)
 
 if __name__ == '__main__':
