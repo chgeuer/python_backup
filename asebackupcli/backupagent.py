@@ -222,6 +222,48 @@ class BackupAgent:
         [t.join() for t in threads]
         print("Finished {} threads".format(len(threads)))
 
+    def streaming_backup_single_db(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
+        threads = self.start_streaming_threads(
+            dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, 
+            stripe_count=stripe_count, output_dir=output_dir)
+        out("Start streaming backup SQL call")
+        stdout, stderr, returncode = self.database_connector.create_backup_streaming(
+            dbname=dbname, is_full=is_full, stripe_count=stripe_count, 
+            output_dir=output_dir)
+        self.finalize_streaming_threads(threads)
+        end_timestamp = Timing.now_localtime()
+
+        #
+        # We have to rename the blobs with the end-times for restore logic to work.
+        # Rename is non-existent in blob storage, so copy & delete
+        #
+        source_blobs = []
+        copied_blobs = []
+        storage_client = self.backup_configuration.storage_client
+        container_name = self.backup_configuration.azure_storage_container_name
+        for stripe_index in range(1, stripe_count + 1):
+            old_blob_name = Naming.construct_filename(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+            source_blobs.append(old_blob_name)
+            new_blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+            copied_blobs.append(new_blob_name)
+
+            copy_source = storage_client.make_blob_url(container_name, old_blob_name)
+            storage_client.copy_blob(container_name, new_blob_name, copy_source=copy_source)
+
+        #
+        # Wait for all copies to succeed
+        #
+        get_all_copy_statuses = map(lambda b: storage_client.get_blob_properties(container_name, b).properties.copy, copied_blobs)
+        while not all(status == "success" for status in get_all_copy_statuses()):
+            print("Waiting for all blobs to be copied")
+
+        #
+        # Delete sources
+        #
+        [storage_client.delete_blob(container_name, b) for b in source_blobs]
+
+        return (stdout, stderr, returncode)
+
     def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir, use_streaming):
         start_timestamp = Timing.now_localtime()
         if not self.should_run_backup(dbname=dbname, is_full=is_full, force=force, start_timestamp=start_timestamp):
@@ -237,33 +279,10 @@ class BackupAgent:
                 stripe_count=stripe_count, output_dir=output_dir)
             end_timestamp = Timing.now_localtime()
         else:
-            out("Start streaming thread")
-            threads = self.start_streaming_threads(
-                dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, 
+            out("Start streaming-based backup")
+            stdout, stderr, _returncode = self.streaming_backup_single_db(
+                dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                 stripe_count=stripe_count, output_dir=output_dir)
-            out("Start streaming backup SQL call")
-            stdout, stderr, _returncode = self.database_connector.create_backup_streaming(
-                dbname=dbname, is_full=is_full, stripe_count=stripe_count, 
-                output_dir=output_dir)
-            self.finalize_streaming_threads(threads)
-            end_timestamp = Timing.now_localtime()
-
-            for stripe_index in range(1, stripe_count + 1):
-                storage_client = self.backup_configuration.storage_client
-                container_name = self.backup_configuration.azure_storage_container_name
-                old_blob_name = Naming.construct_filename(dbname=dbname, 
-                    is_full=is_full, start_timestamp=start_timestamp, 
-                    stripe_index=stripe_index, stripe_count=stripe_count)
-                new_blob_name = Naming.construct_blobname(
-                        dbname=dbname, is_full=is_full, 
-                        start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
-                        stripe_index=stripe_index, stripe_count=stripe_count)
-
-                storage_client.copy_blob(container_name, new_blob_name, 
-                    copy_source=storage_client.make_blob_url(container_name, old_blob_name))
-                
-                copy_properties = storage_client.get_blob_properties(container_name, new_blob_name)
-                print("XYZ {}".format(copy_properties))
 
         out("Backup of {} ({}) ran from {} to {}".format(dbname, is_full, start_timestamp, end_timestamp))
         log_stdout_stderr(stdout, stderr)
