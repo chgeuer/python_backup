@@ -307,10 +307,10 @@ go
 use master
 go
 
-sp_dboption JLD, 'trunc log on chkpt', 'true'
+sp_dboption AZU, 'trunc log on chkpt', 'true'
 go
 
-use JLD
+use AZU
 go
 
 if object_id('abc') is null
@@ -342,6 +342,6 @@ go
 use master
 go
 
-sp_dboption JLD, 'trunc log on chkpt', 'false'
+sp_dboption AZU, 'trunc log on chkpt', 'false'
 go
 ```

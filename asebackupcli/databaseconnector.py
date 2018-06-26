@@ -15,12 +15,11 @@ class DatabaseConnector:
         return "/sybase/{}".format(self.backup_configuration.get_SID())
 
     def get_database_password(self, sid):
-        executable = os.path.join(
-            self.get_ase_base_directory(), 
-            "dba/bin/dbsp")
+        executable = os.path.join(self.get_ase_base_directory(), "dba/bin/dbsp")
         arg = "***REMOVED***"
-        stdout, _stderr, _returncode = self.call_process(command_line=[executable, arg], stdin="")
-        return str(stdout).strip()
+        #password, stderr, _returncode = self.call_process(command_line=[executable, arg], stdin="")
+        password=subprocess.check_output(" ".join([executable, arg]), shell=True)
+        return str(password).strip()
 
     def isql(self):
         isql_path = os.path.join(

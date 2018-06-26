@@ -8,7 +8,7 @@
 - [ ] Debug password manager issue, currently not returning the proper password
 - [x] Streaming support
 - [ ] read/parse ASE dump history file and check precise timestamps
-
+- [ ] check with ASE eng. When ddlgen SQL file from full backup time contains certain DB file sizes, and transactions grew the DB size, how does restore handle that? 
 
 ## snippets
 
