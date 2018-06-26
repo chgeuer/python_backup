@@ -255,3 +255,93 @@ EOF
 
 [tags]:       docs/tags.png "tags in the portal"
 [virtualenv]: https://packaging.python.org/guides/installing-using-pip-and-virtualenv/
+
+
+## Test Data
+
+Run script multiple times. Cannot to transactional backup until full backup is done. 
+
+```sql
+use master
+go
+
+sp_dboption JLD, 'trunc log on chkpt', 'true'
+go
+
+use JLD
+go
+
+create table abc (id int identity , a varchar(255))
+go
+
+set nocount on
+go
+
+declare @i int
+
+select @i = 0
+
+if (select count(*) from abc) < 10000
+begin
+  while @i < 10000
+  begin
+    insert into abc (a) select replicate (char(convert(int, (rand() * 26)) + 65), 255)
+    select @i = @i + 1
+  end
+end
+go
+
+insert into abc (a) select a from abc where id < 10000
+go
+
+use master
+go
+
+sp_dboption JLD, 'trunc log on chkpt', 'false'
+go
+```
+
+## TD 2
+
+```sql
+use master
+go
+
+sp_dboption JLD, 'trunc log on chkpt', 'true'
+go
+
+use JLD
+go
+
+if object_id('abc') is null
+begin
+  execute ("create table abc (id int identity , a varchar(255))")
+end
+go
+
+set nocount on
+go
+
+declare @i int
+
+select @i = 0
+
+if (select count(*) from abc) < 10000
+begin
+  while @i < 10000
+  begin
+    insert into abc (a) select replicate (char(convert(int, (rand() * 26)) + 65), 255)
+    select @i = @i + 1
+  end
+end
+go
+
+insert into abc (a) select a from abc where id < 10000
+go
+
+use master
+go
+
+sp_dboption JLD, 'trunc log on chkpt', 'false'
+go
+```

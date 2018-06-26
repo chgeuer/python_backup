@@ -6,7 +6,8 @@
 - [ ] Debug level command line switch
 - [x] Create `ddlgen` sidecar files
 - [ ] Debug password manager issue, currently not returning the proper password
-- [ ] Streaming support
+- [x] Streaming support
+- [ ] read/parse ASE dump history file and check precise timestamps
 
 
 ## snippets

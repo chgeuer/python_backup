@@ -98,6 +98,17 @@ class Runner:
             return []
 
     @staticmethod
+    def run_unit_tests():
+        import doctest
+        # import unittest
+        # suite = unittest.TestSuite()
+        # result = unittest.TestResult()
+        # finder = doctest.DocTestFinder(exclude_empty=False)
+        # suite.addTest(doctest.DocTestSuite('backupagent', test_finder=finder))
+        # suite.run(result)
+        doctest.testmod() # doctest.testmod(verbose=True)
+
+    @staticmethod
     def main():
         Runner.configure_logging()
         logging.info("#######################################################################################################")
@@ -109,6 +120,10 @@ class Runner:
         if args.unit_tests:
             import doctest
             doctest.testmod(verbose=True)
+            return
+
+        if args.unit_tests:
+            Runner.run_unit_tests()
             return
 
         logging.debug(Runner.log_script_invocation())
@@ -146,10 +161,7 @@ class Runner:
             age = ScheduleParser.parse_timedelta(args.prune_old_backups)
             backup_agent.prune_old_backups(older_than=age, databases=databases)
         elif args.unit_tests:
-            import doctest
-            doctest.testmod() # doctest.testmod(verbose=True)
-        elif args.pipe_upload:
-            print(backup_agent.pipe())
+            Runner.run_unit_tests()
         elif args.show_configuration:
             print(backup_agent.show_configuration(output_dir=output_dir))
         else:
