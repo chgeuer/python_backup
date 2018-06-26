@@ -249,20 +249,20 @@ class BackupAgent:
             end_timestamp = Timing.now_localtime()
 
             for stripe_index in range(1, stripe_count + 1):
-                old_bob_name = Naming.construct_filename(dbname=dbname, 
+                storage_client = self.backup_configuration.storage_client
+                container_name = self.backup_configuration.azure_storage_container_name
+                old_blob_name = Naming.construct_filename(dbname=dbname, 
                     is_full=is_full, start_timestamp=start_timestamp, 
                     stripe_index=stripe_index, stripe_count=stripe_count)
-
-                copy_properties = self.backup_configuration.storage_client.copy_blob(
-                    container_name=self.backup_configuration.azure_storage_container_name, 
-                    blob_name=Naming.construct_blobname(
+                new_blob_name = Naming.construct_blobname(
                         dbname=dbname, is_full=is_full, 
                         start_timestamp=start_timestamp, end_timestamp=end_timestamp, 
-                        stripe_index=stripe_index, stripe_count=stripe_count), 
-                    copy_source=self.backup_configuration.storage_client.make_blob_url(
-                        container_name=self.backup_configuration.azure_storage_container_name,
-                        blob_name=old_bob_name))
+                        stripe_index=stripe_index, stripe_count=stripe_count)
+
+                storage_client.copy_blob(container_name, new_blob_name, 
+                    copy_source=storage_client.make_blob_url(container_name, old_blob_name))
                 
+                copy_properties = storage_client.get_blob_properties(container_name, new_blob_name)
                 print("XYZ {}".format(copy_properties))
 
         out("Backup of {} ({}) ran from {} to {}".format(dbname, is_full, start_timestamp, end_timestamp))
