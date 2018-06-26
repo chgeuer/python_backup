@@ -253,7 +253,7 @@ class BackupAgent:
                     is_full=is_full, start_timestamp=start_timestamp, 
                     stripe_index=stripe_index, stripe_count=stripe_count)
                 
-                print("XYZ {}".format(self.backup_configuration.storage_client.generate_blob_shared_access_signature(
+                print("XYZ {}".format(self.backup_configuration.storage_client.make_blob_url(
                     container_name=self.backup_configuration.azure_storage_container_name,
                     blob_name=old_bob_name)))
 

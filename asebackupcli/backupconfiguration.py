@@ -73,6 +73,7 @@ class BackupConfiguration:
             self._block_blob_service = BlockBlobService(
                 account_name=self.get_azure_storage_account_name(), 
                 account_key=self.__get_azure_storage_account_key())
-            _created = self._block_blob_service.create_container(container_name=self.azure_storage_container_name)
+            _created = self._block_blob_service.create_container(
+                container_name=self.azure_storage_container_name)
         return self._block_blob_service
 
