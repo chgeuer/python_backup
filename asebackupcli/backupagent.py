@@ -253,16 +253,16 @@ class BackupAgent:
         #
         # Wait for all copies to succeed
         #
-        get_all_copy_statuses = map(lambda b: storage_client.get_blob_properties(container_name, b).properties.copy, copied_blobs)
+        get_all_copy_statuses = lambda: map(lambda b: storage_client.get_blob_properties(container_name, b).properties.copy.status, copied_blobs)
         while not all(status == "success" for status in get_all_copy_statuses()):
-            print("Waiting for all blobs to be copied")
+            print("Waiting for all blobs to be copied {}".format(get_all_copy_statuses()))
 
         #
         # Delete sources
         #
         [storage_client.delete_blob(container_name, b) for b in source_blobs]
 
-        return (stdout, stderr, returncode)
+        return (stdout, stderr, returncode, end_timestamp)
 
     def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir, use_streaming):
         start_timestamp = Timing.now_localtime()
@@ -280,7 +280,7 @@ class BackupAgent:
             end_timestamp = Timing.now_localtime()
         else:
             out("Start streaming-based backup")
-            stdout, stderr, _returncode = self.streaming_backup_single_db(
+            stdout, stderr, _returncode, end_timestamp = self.streaming_backup_single_db(
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                 stripe_count=stripe_count, output_dir=output_dir)
 
