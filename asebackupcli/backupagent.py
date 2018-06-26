@@ -264,6 +264,14 @@ class BackupAgent:
 
         return (stdout, stderr, returncode, end_timestamp)
 
+    def file_backup_single_db(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
+        stdout, stderr, returncode = self.database_connector.create_backup(
+            dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
+            stripe_count=stripe_count, output_dir=output_dir)
+        end_timestamp = Timing.now_localtime()
+
+        return (stdout, stderr, returncode, end_timestamp)
+
     def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir, use_streaming):
         start_timestamp = Timing.now_localtime()
         if not self.should_run_backup(dbname=dbname, is_full=is_full, force=force, start_timestamp=start_timestamp):
@@ -274,17 +282,16 @@ class BackupAgent:
 
         if not use_streaming:
             out("Starting file-based backup")
-            stdout, stderr, _returncode = self.database_connector.create_backup(
+            stdout, stderr, _returncode, end_timestamp = self.file_backup_single_db(
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                 stripe_count=stripe_count, output_dir=output_dir)
-            end_timestamp = Timing.now_localtime()
         else:
             out("Start streaming-based backup")
             stdout, stderr, _returncode, end_timestamp = self.streaming_backup_single_db(
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                 stripe_count=stripe_count, output_dir=output_dir)
 
-        out("Backup of {} ({}) ran from {} to {}".format(dbname, is_full, start_timestamp, end_timestamp))
+        out("Backup of {} ({}) ran from {} to {}".format(dbname, {True:"full DB",False:"transactions"}[is_full], start_timestamp, end_timestamp))
         log_stdout_stderr(stdout, stderr)
 
         if is_full:
