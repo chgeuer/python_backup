@@ -253,9 +253,9 @@ class BackupAgent:
                     is_full=is_full, start_timestamp=start_timestamp, 
                     stripe_index=stripe_index, stripe_count=stripe_count)
 
-                print("{}".format(self.backup_configuration.storage_client.get_blob_properties(
+                print("XYZ {}".format(type(self.backup_configuration.storage_client.get_blob_properties(
                     container_name=self.backup_configuration.azure_storage_container_name,
-                    blob_name=old_bob_name)))
+                    blob_name=old_bob_name))))
 
                 self.backup_configuration.storage_client.copy_blob(
                     container_name=self.backup_configuration.azure_storage_container_name, 
