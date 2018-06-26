@@ -19,6 +19,7 @@ class DatabaseConnector:
         arg = "***REMOVED***"
         #password, stderr, _returncode = self.call_process(command_line=[executable, arg], stdin="")
         password=subprocess.check_output(" ".join([executable, arg]), shell=True)
+        out("Using password {}".format(password)) # TODO remove this line!!!!!!! 
         return str(password).strip()
 
     def isql(self):

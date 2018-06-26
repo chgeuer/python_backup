@@ -66,5 +66,4 @@ while 1:
         print("Data: {input}".format(input=input))
 
 os.close(pipe)
-
 ```
