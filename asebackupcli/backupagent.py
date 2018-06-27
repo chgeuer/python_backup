@@ -294,39 +294,33 @@ class BackupAgent:
         out("Backup of {} ({}) ran from {} to {}".format(dbname, {True:"full DB",False:"transactions"}[is_full], start_timestamp, end_timestamp))
         log_stdout_stderr(stdout, stderr)
 
-        if is_full:
-            ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
-            ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
-            with open(ddlgen_file_path, mode='wt') as file:
-                file.write(self.database_connector.create_ddlgen(dbname=dbname))
-            out("Wrote ddlgen to {}".format(ddlgen_file_path))
+        ddl_content = self.database_connector.create_ddlgen(dbname=dbname)
+        print("Upload ddlgen {} bytes".format(len(ddl_content)))
+        ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
+        self.backup_configuration.storage_client.create_blob_from_text(
+            container_name=self.backup_configuration.azure_storage_container_name,
+            blob_name=ddlgen_file_name, 
+            text=ddl_content)
 
-        if not skip_upload:
-            if is_full:
-                out("Upload & delete the SQL description")
-                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=ddlgen_file_path, blob_name=ddlgen_file_name, validate_content=True, max_connections=4)
-                out("Uploaded ddlgen to {}".format(ddlgen_file_path))
-                os.remove(ddlgen_file_path)
+        if not skip_upload and not use_streaming:
+            #
+            # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
+            #
+            # If the machine reboots during an isql run, then that rename doesn't happen, and we do 
+            # not upload these potentially corrupt dump files
+            #
+            for stripe_index in range(1, stripe_count + 1):
+                file_name = Naming.construct_filename(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+                blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+                file_path = os.path.join(output_dir, file_name)
+                blob_path = os.path.join(output_dir, blob_name)
 
-            if not use_streaming:
-                #
-                # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
-                #
-                # If the machine reboots during an isql run, then that rename doesn't happen, and we do 
-                # not upload these potentially corrupt dump files
-                #
-                for stripe_index in range(1, stripe_count + 1):
-                    file_name = Naming.construct_filename(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
-                    blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
-                    file_path = os.path.join(output_dir, file_name)
-                    blob_path = os.path.join(output_dir, blob_name)
-
-                    out("Rename {} to {}".format(file_path, blob_path))
-                    os.rename(file_path, blob_path)
-                    out("Upload {} to Azure Storage".format(blob_path))
-                    self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
-                    out("Delete {}".format(blob_path))
-                    os.remove(blob_path)
+                out("Rename {} to {}".format(file_path, blob_path))
+                os.rename(file_path, blob_path)
+                out("Upload {} to Azure Storage".format(blob_path))
+                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
+                out("Delete {}".format(blob_path))
+                os.remove(blob_path)
 
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
         for file in os.listdir(output_dir):

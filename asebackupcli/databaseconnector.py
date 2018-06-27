@@ -80,7 +80,7 @@ class DatabaseConnector:
         out("ddlgen2 dbname={} stderr={}".format(dbname, stderr2))
         out("#####################################################################")
 
-        return "\n".join([stdout1, "", stdout2])
+        return "\n".join([str(stdout1), "", str(stdout2)])
 
     @staticmethod
     def sql_statement_stripe_count(dbname, is_full):
