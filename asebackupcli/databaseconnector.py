@@ -65,20 +65,8 @@ class DatabaseConnector:
         """
             Create a SQL sidecar file with the database schema.
         """
-        stdout1, stderr1, returncode1 = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
-        stdout2, stderr2, returncode2 = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%"]))
-
-        out("#####################################################################")
-        out("ddlgen dbname={} {} {}".format(dbname, returncode1, returncode2))
-        out("#####################################################################")
-        out("ddlgen1 dbname={} stdout={}".format(dbname, stdout1))
-        out("#####################################################################")
-        out("ddlgen1 dbname={} stderr={}".format(dbname, stderr1))
-        out("#####################################################################")
-        out("ddlgen2 dbname={} stdout={}".format(dbname, stdout2))
-        out("#####################################################################")
-        out("ddlgen2 dbname={} stderr={}".format(dbname, stderr2))
-        out("#####################################################################")
+        stdout1, _stderr1, _returncode1 = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
+        stdout2, _stderr2, _returncode2 = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%"]))
 
         return "\n".join([str(stdout1), "", str(stdout2)])
 

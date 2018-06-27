@@ -295,7 +295,6 @@ class BackupAgent:
         log_stdout_stderr(stdout, stderr)
 
         ddl_content = self.database_connector.create_ddlgen(dbname=dbname)
-        print("Upload ddlgen {} bytes".format(len(ddl_content)))
         ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
         self.backup_configuration.storage_client.create_blob_from_text(
             container_name=self.backup_configuration.azure_storage_container_name,
