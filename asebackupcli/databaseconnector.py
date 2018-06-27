@@ -65,8 +65,21 @@ class DatabaseConnector:
         """
             Create a SQL sidecar file with the database schema.
         """
-        stdout1, _stderr, _returncode = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
-        stdout2, _stderr, _returncode = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%"]))
+        stdout1, stderr1, returncode1 = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
+        stdout2, stderr2, returncode2 = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%"]))
+
+        out("#####################################################################")
+        out("ddlgen dbname={} {} {}".format(dbname, returncode1, returncode2))
+        out("#####################################################################")
+        out("ddlgen1 dbname={} stdout={}".format(dbname, stdout1))
+        out("#####################################################################")
+        out("ddlgen1 dbname={} stderr={}".format(dbname, stderr1))
+        out("#####################################################################")
+        out("ddlgen2 dbname={} stdout={}".format(dbname, stdout2))
+        out("#####################################################################")
+        out("ddlgen2 dbname={} stderr={}".format(dbname, stderr2))
+        out("#####################################################################")
+
         return "\n".join([stdout1, "", stdout2])
 
     @staticmethod
