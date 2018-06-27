@@ -9,6 +9,11 @@
 - [x] Streaming support
 - [ ] read/parse ASE dump history file and check precise timestamps
 - [ ] check with ASE eng. When ddlgen SQL file from full backup time contains certain DB file sizes, and transactions grew the DB size, how does restore handle that? 
+- [ ] validate that script works with Azure Storage Immutable Storage (WORM) feature. 
+- [ ] Monitoring / web hook --> Sebastian provide information how to notify
+
+
+
 
 
 full   140000    needed for restore
@@ -16,8 +21,23 @@ tran   141000    needed for restore
 tran   142000    needed for restore
 tran   145000    needed for restore
        145959                            restore point
-full   150000
+full   150000    not needed
 tran   150100    needed for restore
+tran   150200    not needed
+
+
+full   140000    needed for restore
+tran   141000    needed for restore
+tran   142000    needed for restore
+tran   145000    needed for restore
+tran   150100    needed for restore
+
+
+
+
+
+
+
 
 
 
