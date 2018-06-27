@@ -132,7 +132,7 @@ class Runner:
         backup_agent = BackupAgent(backup_configuration)
         output_dir = Runner.get_output_dir(args)
         databases = Runner.get_databases(args)
-        # DatabaseConnector(backup_configuration).log_env()
+        DatabaseConnector(backup_configuration).log_env()
         use_streaming=args.stream_upload
         skip_upload=args.skip_upload
         force=args.force

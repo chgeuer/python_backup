@@ -19,7 +19,6 @@ class DatabaseConnector:
         arg = "***REMOVED***"
         #password, stderr, _returncode = self.call_process(command_line=[executable, arg], stdin="")
         password=subprocess.check_output(" ".join([executable, arg]), shell=True)
-        out("Using password {}".format(password)) # TODO remove this line!!!!!!! 
         return str(password).strip()
 
     def isql(self):
@@ -314,6 +313,25 @@ class DatabaseConnector:
                     stripe_count=stripe_count, 
                     output_dir=output_dir)))
 
+    def call_process(self, command_line, stdin=None):
+        cmd = "\" \"".join(command_line)
+        logging.debug("Executing \"{}\"".format(cmd))
+
+        p = subprocess.Popen(
+            command_line,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            # env=self.get_ase_environment()
+        )
+        stdout, stderr = p.communicate(stdin)
+        returncode = p.returncode
+        if returncode != 0:
+            logging.debug("Error {} calling \"{}\"".format(returncode, cmd))
+
+        return (stdout, stderr, returncode)
+
+
     # def get_ase_environment(self):
     #     ase_env = os.environ.copy()
     #
@@ -369,30 +387,12 @@ class DatabaseConnector:
     #
     #     return ase_env
 
-    def call_process(self, command_line, stdin=None):
-        cmd = "\" \"".join(command_line)
-        logging.debug("Executing \"{}\"".format(cmd))
-
-        p = subprocess.Popen(
-            command_line,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            # env=self.get_ase_environment()
-        )
-        stdout, stderr = p.communicate(stdin)
-        returncode = p.returncode
-        if returncode != 0:
-            logging.debug("Error {} calling \"{}\"".format(returncode, cmd))
-
-        return (stdout, stderr, returncode)
-
-    # def log_env(self):
-    #     ase_env = self.get_ase_environment()
-    #     for key in ["INCLUDE", "LIB", "LD_LIBRARY_PATH", "PATH", "LANG", "COCKPIT_JAVA_HOME",
-    #                 "SAP_JRE7", "SAP_JRE7_64", "SYBASE_JRE_RTDS", "SAP_JRE8", "SAP_JRE8_64", 
-    #                 "SYBASE", "SYBROOT", "SYBASE_OCS", "SYBASE_ASE", "SYBASE_WS"]:
-    #         if ase_env.has_key(key):
-    #             logging.debug("Environment {}={}".format(key, ase_env[key]))
-    #         else:
-    #             logging.debug("Environment {}=".format(key))
+    def log_env(self):
+        ase_env = os.environ
+        for key in ["INCLUDE", "LIB", "LD_LIBRARY_PATH", "PATH", "LANG", "COCKPIT_JAVA_HOME",
+                    "SAP_JRE7", "SAP_JRE7_64", "SYBASE_JRE_RTDS", "SAP_JRE8", "SAP_JRE8_64", 
+                    "SYBASE", "SYBROOT", "SYBASE_OCS", "SYBASE_ASE", "SYBASE_WS"]:
+            if ase_env.has_key(key):
+                logging.debug("Environment {}={}".format(key, ase_env[key]))
+            else:
+                logging.debug("Environment {}=".format(key))
