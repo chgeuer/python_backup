@@ -190,7 +190,7 @@ class BackupAgent:
         print("Finished {}".format(pipe_path))
         os.remove(pipe_path)
 
-    def start_streaming_threads(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
+    def start_streaming_threads(self, dbname, is_full, start_timestamp, stripe_count, output_dir, container_name):
         threads = []
         for stripe_index in range(1, stripe_count + 1):
             pipe_path = Naming.pipe_name(output_dir=output_dir, 
@@ -201,21 +201,21 @@ class BackupAgent:
                 stripe_index=stripe_index, stripe_count=stripe_count)
 
             if os.path.exists(pipe_path):
-                out("Remove old pipe file {}".format(pipe_path))
+                logging.warning("Remove old pipe file {}".format(pipe_path))
                 os.remove(pipe_path)
 
-            out("Create named pipe {}".format(pipe_path))
+            logging.debug("Create named pipe {}".format(pipe_path))
             os.mkfifo(pipe_path)
 
-            out("Create thread object {}".format(stripe_index))
+            logging.debug("Create thread object #{} to upload {} to {}/{} ".format(stripe_index, pipe_path, container_name, blob_name))
             t = threading.Thread(
                 target=BackupAgent.upload_pipe, 
-                args=(self.backup_configuration.storage_client, self.backup_configuration.azure_storage_container_name, blob_name, pipe_path))
+                args=(self.backup_configuration.storage_client, container_name, blob_name, pipe_path))
             threads.append(t)
 
-        print("Start all {} threads".format(len(threads)))
+        logging.debug("Start all {} threads".format(len(threads)))
         [t.start() for t in threads]
-        print("Started all {} threads".format(len(threads)))
+        logging.debug("Started all {} threads".format(len(threads)))
         return threads
 
     def finalize_streaming_threads(self, threads):
@@ -223,10 +223,20 @@ class BackupAgent:
         print("Finished {} threads".format(len(threads)))
 
     def streaming_backup_single_db(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
+        storage_client = self.backup_configuration.storage_client
+        #
+        # The container where backups end up (dest_container_name) could be set with an immutability policy. 
+        # We have to "rename" the blobs with the end-times for restore logic to work.
+        # Rename is non-existent in blob storage, so copy & delete
+        #
+        temp_container_name = "tmp_{dbname}_{start_timestamp}".format(dbname=dbname, start_timestamp=start_timestamp).lower()
+        storage_client.create_container(container_name=temp_container_name)
+        dest_container_name = self.backup_configuration.azure_storage_container_name
+
         threads = self.start_streaming_threads(
             dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, 
-            stripe_count=stripe_count, output_dir=output_dir)
-        out("Start streaming backup SQL call")
+            stripe_count=stripe_count, output_dir=output_dir, container_name=temp_container_name)
+        logging.debug("Start streaming backup SQL call")
         stdout, stderr, returncode = self.database_connector.create_backup_streaming(
             dbname=dbname, is_full=is_full, stripe_count=stripe_count, 
             output_dir=output_dir)
@@ -234,33 +244,33 @@ class BackupAgent:
         end_timestamp = Timing.now_localtime()
 
         #
-        # We have to rename the blobs with the end-times for restore logic to work.
-        # Rename is non-existent in blob storage, so copy & delete
+        # Rename 
+        # - copy from temp_container_name/old_blob_name to dest_container_name/new_blob_name)
+        # - delete temp_container_name
         #
         source_blobs = []
         copied_blobs = []
-        storage_client = self.backup_configuration.storage_client
-        container_name = self.backup_configuration.azure_storage_container_name
         for stripe_index in range(1, stripe_count + 1):
             old_blob_name = Naming.construct_filename(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
             source_blobs.append(old_blob_name)
             new_blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
             copied_blobs.append(new_blob_name)
 
-            copy_source = storage_client.make_blob_url(container_name, old_blob_name)
-            storage_client.copy_blob(container_name, new_blob_name, copy_source=copy_source)
+            copy_source = storage_client.make_blob_url(temp_container_name, old_blob_name)
+            storage_client.copy_blob(dest_container_name, new_blob_name, copy_source=copy_source)
 
         #
         # Wait for all copies to succeed
         #
-        get_all_copy_statuses = lambda: map(lambda b: storage_client.get_blob_properties(container_name, b).properties.copy.status, copied_blobs)
+        get_all_copy_statuses = lambda: map(lambda b: storage_client.get_blob_properties(dest_container_name, b).properties.copy.status, copied_blobs)
         while not all(status == "success" for status in get_all_copy_statuses()):
-            print("Waiting for all blobs to be copied {}".format(get_all_copy_statuses()))
+            logging.debug("Waiting for all blobs to be copied {}".format(get_all_copy_statuses()))
 
         #
         # Delete sources
         #
-        [storage_client.delete_blob(container_name, b) for b in source_blobs]
+        # [storage_client.delete_blob(temp_container_name, b) for b in source_blobs]
+        storage_client.delete_container(container_name=temp_container_name)
 
         return (stdout, stderr, returncode, end_timestamp)
 
