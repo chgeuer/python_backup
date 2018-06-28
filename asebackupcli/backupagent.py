@@ -376,7 +376,7 @@ class BackupAgent:
                     "stripe_index": x["parts"][4],
                 }, stripes)
 
-            group_by_key=lambda x: "Database \"{dbname}\" ended {end} begin {begin} - {type} ".format(
+            group_by_key=lambda x: "db {dbname: <30} start {begin} end {end} ({type})".format(
                 dbname=x["dbname"], end=x["end"], begin=x["begin"], type=Naming.backup_type_str(x["is_full"]))
 
             for group, values in groupby(stripes, key=group_by_key): 
