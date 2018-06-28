@@ -181,13 +181,18 @@ class BackupAgent:
 
     @staticmethod
     def upload_pipe(blob_client, container_name, blob_name, pipe_path):
-        print("Start upload for {}".format(pipe_path))
+        logging.debug("Start streaming upload for {} to {}/{}".format(pipe_path, container_name, blob_name))
         with open(pipe_path, "rb", buffering=0) as stream:
+            #
+            # For streaming to work, we need to ensure that 
+            # use_byte_buffer=True and 
+            # max_connections=1 are set
+            #
             blob_client.create_blob_from_stream(
                 container_name=container_name,
                 blob_name=blob_name, stream=stream,
                 use_byte_buffer=True, max_connections=1)
-        print("Finished {}".format(pipe_path))
+        logging.debug("Finished streaming upload of {}/{}".format(container_name, blob_name))
         os.remove(pipe_path)
 
     def start_streaming_threads(self, dbname, is_full, start_timestamp, stripe_count, output_dir, container_name):
@@ -229,7 +234,7 @@ class BackupAgent:
         # We have to "rename" the blobs with the end-times for restore logic to work.
         # Rename is non-existent in blob storage, so copy & delete
         #
-        temp_container_name = "tmp_{dbname}_{start_timestamp}".format(dbname=dbname, start_timestamp=start_timestamp).lower()
+        temp_container_name = "tmp_{dbname}_{start_timestamp}".format(dbname=dbname, start_timestamp=start_timestamp).decode('utf-8').lower()
         storage_client.create_container(container_name=temp_container_name)
         dest_container_name = self.backup_configuration.azure_storage_container_name
 
