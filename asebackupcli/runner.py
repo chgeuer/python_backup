@@ -83,14 +83,20 @@ class Runner:
         if args.output_dir:
             output_dir = os.path.abspath(args.output_dir)
             logging.debug("Output dir is user-supplied: {}".format(output_dir))
+            if not os.path.exists(output_dir):
+                raise BackupException("Directory {} does not exist".format(output_dir))
             return output_dir
         elif args.config:
             output_dir = os.path.abspath(BackupConfiguration(args.config).get_standard_local_directory())
             logging.debug("Output dir via config file {}".format(output_dir))
+            if not os.path.exists(output_dir):
+                raise BackupException("Directory {} (from config file {}) does not exist".format(output_dir, args.config))
             return output_dir
         else:
             output_dir = os.path.abspath("/tmp")
             logging.debug("Output dir is fallback: {}".format(output_dir))
+            if not os.path.exists(output_dir):
+                raise BackupException("Directory {} does not exist".format(output_dir))
             return output_dir
 
     @staticmethod
