@@ -12,7 +12,7 @@ class AzureVMInstanceMetadata:
             response = requests.get(url=url, headers={"Metadata": "true"})
             return response.json()
         except Exception as e:
-            raise(Exception("Failed to connect to Azure instance metadata endpoint {}\n\n{}".format(url, e.message)))
+            raise(BackupException("Failed to connect to Azure instance metadata endpoint {}:\n{}".format(url, e.message)))
 
     @staticmethod
     def create_instance():
@@ -32,16 +32,31 @@ class AzureVMInstanceMetadata:
         return self.req()
 
     def get_tags(self):
-        tags_value = str(self.json()['compute']['tags'])
-        if tags_value == None:
-            return dict()
-        return dict(kvp.split(":", 1) for kvp in (tags_value.split(";")))
+        try:
+            tags_value = str(self.json()['compute']['tags'])
+            if tags_value == None:
+                return dict()
+            return dict(kvp.split(":", 1) for kvp in (tags_value.split(";")))
+        except Exception as e:
+            raise(BackupException("Cannot parse tags value from instance metadata endpoint: {}".format(e.message)))
 
     @property
-    def subscription_id(self): return str(self.req()["compute"]["subscriptionId"])
+    def subscription_id(self): 
+        try:
+            return str(self.req()["compute"]["subscriptionId"])
+        except Exception:
+            raise(BackupException("Cannot read subscriptionId from instance metadata endpoint"))
 
     @property
-    def resource_group_name(self): return str(self.req()["compute"]["resourceGroupName"])
+    def resource_group_name(self):
+        try:
+            return str(self.req()["compute"]["resourceGroupName"])
+        except Exception:
+            raise(BackupException("Cannot read resourceGroupName from instance metadata endpoint"))
 
     @property
-    def vm_name(self): return str(self.req()["compute"]["name"])
+    def vm_name(self):
+        try:
+            return str(self.req()["compute"]["name"])
+        except Exception:
+            raise(BackupException("Cannot read VM name from instance metadata endpoint"))

@@ -9,14 +9,14 @@ from .backupexception import BackupException
 class BackupConfigurationFile:
     def __init__(self, filename):
         if not os.path.isfile(filename):
-            raise("Cannot find configuration {}".format(filename))
+            raise(BackupException("Cannot find configuration file {}:".format(filename)))
         self.filename = filename
 
         try:
             vals = BackupConfigurationFile.read_key_value_file(filename=self.filename)
             logging.debug("Configuration {}".format(str(vals)))
-        except:
-            raise(Exception("Error parsing config file {}".format(filename)))
+        except Exception as e:
+            raise(BackupException("Error parsing config file {}:\n{}".format(filename, e.message)))
 
     def get_value(self, key):
         values = BackupConfigurationFile.read_key_value_file(filename=self.filename)

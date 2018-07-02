@@ -17,15 +17,18 @@ class ScheduleParser:
             >>> ScheduleParser._ScheduleParser__from_atom('2w')
             datetime.timedelta(14)
         """
-        num = int(time[:-1])
-        unit = time[-1:]
-        return {
-            "w": lambda w: datetime.timedelta(days=7*w),
-            "d": lambda d: datetime.timedelta(days=d),
-            "h": lambda h: datetime.timedelta(hours=h),
-            "m": lambda m: datetime.timedelta(minutes=m),
-            "s": lambda s: datetime.timedelta(seconds=s)
-        }[unit](num)
+        try:
+            num = int(time[:-1])
+            unit = time[-1:]
+            return {
+                "w": lambda w: datetime.timedelta(days=7*w),
+                "d": lambda d: datetime.timedelta(days=d),
+                "h": lambda h: datetime.timedelta(hours=h),
+                "m": lambda m: datetime.timedelta(minutes=m),
+                "s": lambda s: datetime.timedelta(seconds=s)
+            }[unit](num)
+        except Exception as e:
+            raise(BackupException("Cannot parse value '{}' into duration: {}".format(time, e.message)))
 
     @staticmethod
     def parse_timedelta(time_val):
@@ -45,7 +48,10 @@ class ScheduleParser:
             >>> ScheduleParser.parse_timedelta('1d 23h 59m 60s')
             datetime.timedelta(2)
         """
-        no_spaces = time_val.replace(" ", "")
-        atoms = re.findall(r"(\d+[wdhms])", no_spaces)
-        durations = map(lambda time: ScheduleParser.__from_atom(time), atoms)
-        return reduce(lambda x, y: x + y, durations)
+        try:
+            no_spaces = time_val.replace(" ", "")
+            atoms = re.findall(r"(\d+[wdhms])", no_spaces)
+            durations = map(lambda time: ScheduleParser.__from_atom(time), atoms)
+            return reduce(lambda x, y: x + y, durations)
+        except Exception as e:
+            raise(BackupException("Cannot parse value '{}' into duration: {}".format(time_val, e.message)))

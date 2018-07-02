@@ -24,28 +24,43 @@ class BackupConfiguration:
         self.instance_metadata = AzureVMInstanceMetadata.create_instance()
         self._block_blob_service = None
 
+        
+
         #
         # This dict contains function callbacks (lambdas) to return the value based on the current value
         #
         self.data = {
-            "sap.CID": lambda: self.cfg_file.get_value("sap.CID"),
-            "sap.SID": lambda: self.cfg_file.get_value("sap.SID"),
-            "sap.ase.version": lambda: self.cfg_file.get_value("sap.ase.version"),
-            "local_temp_directory": lambda: self.cfg_file.get_value("local_temp_directory"),
-            "azure.storage.account_name": lambda: self.cfg_file.get_value("azure.storage.account_name"),
-            "azure.storage.account_key": lambda: self.cfg_file.get_value("azure.storage.account_key"),
-            "azure.storage.container_name": lambda: self.cfg_file.get_value("azure.storage.container_name"),
+            "sap.CID": lambda: self.cfg_file_value("sap.CID"),
+            "sap.SID": lambda: self.cfg_file_value("sap.SID"),
+            "sap.ase.version": lambda: self.cfg_file_value("sap.ase.version"),
+            "local_temp_directory": lambda: self.cfg_file_value("local_temp_directory"),
+            "azure.storage.account_name": lambda: self.cfg_file_value("azure.storage.account_name"),
+            "azure.storage.account_key": lambda: self.cfg_file_value("azure.storage.account_key"),
+            "azure.storage.container_name": lambda: self.cfg_file_value("azure.storage.container_name"),
 
             "vm_name": lambda: self.instance_metadata.vm_name,
             "subscription_id": lambda: self.instance_metadata.subscription_id,
             "resource_group_name": lambda: self.instance_metadata.resource_group_name,
 
-            "db_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db_backup_interval_min"]),
-            "db_backup_interval_max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["db_backup_interval_max"]),
-            "log_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata.get_tags()["log_backup_interval_min"]),
+            "db_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata_tag_value("db_backup_interval_min")),
+            "db_backup_interval_max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata_tag_value("db_backup_interval_max")),
+            "log_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata_tag_value("log_backup_interval_min")),
 
             "backup.businesshours": lambda: BusinessHours(self.instance_metadata.get_tags())
         }
+    
+    def cfg_file_value(self, name):
+        try:
+            return self.cfg_file.get_value(name)
+        except Exception:
+            raise(BackupException("Cannot read value {} from config file '{}'".format(name, self.cfg_file.filename)))
+
+    def instance_metadata_tag_value(self, name):
+        try:
+            return self.instance_metadata.get_tags()[name]
+        except Exception:
+            raise(BackupException("Cannot read value {} from VM's tag configuration".format(name)))
+
 
     def get_value(self, key): return self.data[key]()
     def get_vm_name(self): return self.get_value("vm_name")
