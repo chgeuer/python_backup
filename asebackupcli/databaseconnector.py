@@ -6,6 +6,7 @@ import logging
 
 from .naming import Naming
 from .funcmodule import printe, out, log_stdout_stderr
+from .backupexception import BackupException
 
 class DatabaseConnector:
     def __init__(self, backup_configuration):

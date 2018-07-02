@@ -4,16 +4,16 @@
 
 from .funcmodule import printe
 from .runner import Runner
+from .backupexception import BackupException
 
 def main():
     try:
         Runner.main()
         print("Done")
         exit(0)
-    except Exception as e:
-        printe("Error: {}".format(e.message))
-        raise e
-        # exit(-1)
+    except BackupException as be:
+        printe("{}".format(be.message))
+        exit(-1)
 
 if __name__ == '__main__':
     main()

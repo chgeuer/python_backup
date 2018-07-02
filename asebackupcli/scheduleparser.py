@@ -2,6 +2,7 @@
 
 import datetime
 import re
+from .backupexception import BackupException
 
 class ScheduleParser:
     """

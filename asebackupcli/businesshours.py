@@ -4,6 +4,7 @@
 import re
 
 from .timing import Timing
+from .backupexception import BackupException
 
 class BusinessHours:
     """

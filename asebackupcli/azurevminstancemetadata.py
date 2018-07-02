@@ -2,6 +2,7 @@
 
 import requests
 import json
+from .backupexception import BackupException
 
 class AzureVMInstanceMetadata:
     @staticmethod

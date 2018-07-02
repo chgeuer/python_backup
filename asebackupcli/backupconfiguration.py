@@ -6,6 +6,7 @@ from .azurevminstancemetadata import AzureVMInstanceMetadata
 from .backupconfigurationfile import BackupConfigurationFile
 from .businesshours import BusinessHours
 from .scheduleparser import ScheduleParser
+from .backupexception import BackupException
 
 class BackupConfiguration:
     def __init__(self, config_filename):

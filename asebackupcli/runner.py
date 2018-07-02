@@ -15,6 +15,7 @@ from .backupconfiguration import BackupConfiguration
 from .databaseconnector import DatabaseConnector
 from .scheduleparser import ScheduleParser
 from .timing import Timing
+from .backupexception import BackupException
 from .__init__ import version
 
 class Runner:
@@ -30,22 +31,25 @@ class Runner:
     @staticmethod
     def arg_parser():
         parser = argparse.ArgumentParser()
-        parser.add_argument("-c",  "--config", help="the path to the config file")
-        parser.add_argument("-x",  "--show-configuration", help="Shows the VM's configuration values", action="store_true")
-        parser.add_argument("-u",  "--unit-tests", help="Run unit tests", action="store_true")
+        requiredNamed = parser.add_argument_group("required arguments")
+        requiredNamed.add_argument("-c",  "--config", help="the path to the config file")
 
-        parser.add_argument("-f",  "--full-backup", help="Perform full backup", action="store_true")
-        parser.add_argument("-t",  "--transaction-backup", help="Perform transactions backup", action="store_true")
-        parser.add_argument("-r",  "--restore", help="Perform restore for date")
-        parser.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
-        parser.add_argument("-p",  "--prune-old-backups", help="Removes old backups from Azure storage ('--prune-old-backups 30d' removes files older 30 days)")
+        commands = parser.add_argument_group("commands")
+        commands.add_argument("-f",  "--full-backup", help="Perform full backup", action="store_true")
+        commands.add_argument("-t",  "--transaction-backup", help="Perform transactions backup", action="store_true")
+        commands.add_argument("-r",  "--restore", help="Perform restore for date")
+        commands.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
+        commands.add_argument("-p",  "--prune-old-backups", help="Removes old backups from Azure storage ('--prune-old-backups 30d' removes files older 30 days)")
+        commands.add_argument("-x",  "--show-configuration", help="Shows the VM's configuration values", action="store_true")
+        commands.add_argument("-u",  "--unit-tests", help="Run unit tests", action="store_true")
 
-        parser.add_argument("-S",  "--stream-upload", help="Streaming backup data via named pipe (no local files)", action="store_true")
+        options = parser.add_argument_group("options")
 
-        parser.add_argument("-y",  "--force", help="Perform forceful backup (ignores age of last backup or business hours)", action="store_true")
-        parser.add_argument("-s",  "--skip-upload", help="Skip uploads of backup files", action="store_true")
-        parser.add_argument("-o",  "--output-dir", help="Specify target folder for backup files")
-        parser.add_argument("-db", "--databases", help="Select databases to backup or restore ('--databases A,B,C')")
+        options.add_argument("-o",  "--output-dir", help="Specify target folder for backup files")
+        options.add_argument("-S",  "--stream-upload", help="Streaming backup data via named pipe (no local files)", action="store_true")
+        options.add_argument("-y",  "--force", help="Perform forceful backup (ignores age of last backup or business hours)", action="store_true")
+        options.add_argument("-s",  "--skip-upload", help="Skip uploads of backup files", action="store_true")
+        options.add_argument("-db", "--databases", help="Select databases to backup or restore ('--databases A,B,C')")
         return parser
 
     @staticmethod
@@ -66,11 +70,13 @@ class Runner:
         if args.config:
             config_file = os.path.abspath(args.config)
             if not os.path.isfile(config_file):
-                raise(Exception("Cannot find configuration {}".format(config_file)))
+                raise(BackupException("Cannot find configuration file '{}'".format(config_file)))
 
             return config_file
         else:
-            raise(Exception(parser.print_help()))
+            parser.print_help()
+
+            raise(BackupException("Please specify a configuration file."))
 
     @staticmethod
     def get_output_dir(args):
@@ -118,15 +124,11 @@ class Runner:
         args = parser.parse_args()
 
         if args.unit_tests:
-            import doctest
-            doctest.testmod(verbose=True)
-            return
-
-        if args.unit_tests:
             Runner.run_unit_tests()
             return
 
         logging.debug(Runner.log_script_invocation())
+
         config_file = Runner.get_config_file(args=args, parser=parser)
         backup_configuration = BackupConfiguration(config_file)
         backup_agent = BackupAgent(backup_configuration)

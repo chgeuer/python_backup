@@ -3,6 +3,7 @@
 import time
 import datetime
 import logging
+from .backupexception import BackupException
 
 class Timing:
     time_format="%Y%m%d_%H%M%S"

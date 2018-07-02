@@ -4,6 +4,7 @@ import re
 import logging
 import os.path
 from .funcmodule import printe
+from .backupexception import BackupException
 
 class BackupConfigurationFile:
     def __init__(self, filename):
