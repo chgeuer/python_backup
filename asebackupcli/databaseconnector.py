@@ -336,62 +336,6 @@ class DatabaseConnector:
 
         return (stdout, stderr, returncode)
 
-
-    # def get_ase_environment(self):
-    #     ase_env = os.environ.copy()
-    #
-    #     p=lambda path: os.path.join(self.get_ase_base_directory(), path)
-    #     val=lambda name: ase_env.get(name, "")
-    #
-    #     jre7=p("shared/SAPJRE-7_1_049_64BIT")
-    #     jre8=p("shared/SAPJRE-8_1_029_64BIT")
-    #
-    #     ase_env["SAP_JRE7"]=jre7
-    #     ase_env["SAP_JRE7_64"]=jre7
-    #     ase_env["SYBASE_JRE_RTDS"]=jre7
-    #     ase_env["SAP_JRE8"]=jre8
-    #     ase_env["SAP_JRE8_64"]=jre8
-    #     ase_env["COCKPIT_JAVA_HOME"]=jre8
-    #     ase_env["SYBASE"]=p("")
-    #     ase_env["SYBROOT"]=p("")
-    #     ase_env["SYBASE_OCS"]="OCS-{}".format(self.backup_configuration.get_ase_version())
-    #     ase_env["SYBASE_ASE"]="ASE-{}".format(self.backup_configuration.get_ase_version())
-    #     ase_env["SYBASE_WS"]="WS-{}".format(self.backup_configuration.get_ase_version())
-    #
-    #     ase_env["INCLUDE"] = os.pathsep.join([
-    #         p("OCS-{}/include".format(self.backup_configuration.get_ase_version())),
-    #         val("INCLUDE")
-    #     ])
-    #
-    #     ase_env["LIB"] = os.pathsep.join([
-    #         p("OCS-{}/lib".format(self.backup_configuration.get_ase_version())),
-    #         val("LIB")
-    #     ])
-    #
-    #     ase_env["LD_LIBRARY_PATH"] = os.pathsep.join([
-    #         p("ASE-{}/lib".format(self.backup_configuration.get_ase_version())),
-    #         p("OCS-{}/lib".format(self.backup_configuration.get_ase_version())),
-    #         p("OCS-{}/lib3p".format(self.backup_configuration.get_ase_version())),
-    #         p("OCS-{}/lib3p64".format(self.backup_configuration.get_ase_version())),
-    #         p("DataAccess/ODBC/lib"),
-    #         p("DataAccess64/ODBC/lib"),
-    #         val("LD_LIBRARY_PATH")
-    #     ])
-    #
-    #     ase_env["PATH"] = os.pathsep.join([
-    #         p("ASE-{}/bin".format(self.backup_configuration.get_ase_version())),
-    #         p("ASE-{}/install".format(self.backup_configuration.get_ase_version())),
-    #         p("ASE-{}/jobscheduler/bin".format(self.backup_configuration.get_ase_version())),
-    #         p("OCS-{}/bin".format(self.backup_configuration.get_ase_version())),
-    #         p("COCKPIT-4/bin"),
-    #         val("PATH")
-    #      ])
-    #
-    #     if ase_env.has_key("LANG"):
-    #         del(ase_env["LANG"])
-    #
-    #     return ase_env
-
     def log_env(self):
         ase_env = os.environ
         for key in ["INCLUDE", "LIB", "LD_LIBRARY_PATH", "PATH", "LANG", "COCKPIT_JAVA_HOME",
