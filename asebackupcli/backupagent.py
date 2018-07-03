@@ -235,7 +235,7 @@ class BackupAgent:
         # We have to "rename" the blobs with the end-times for restore logic to work.
         # Rename is non-existent in blob storage, so copy & delete
         #
-        temp_container_name = "tmp_{dbname}_{start_timestamp}".format(dbname=dbname, start_timestamp=start_timestamp).decode('utf-8').lower()
+        temp_container_name = "tmp-{dbname}-{start_timestamp}".format(dbname=dbname, start_timestamp=start_timestamp).decode('utf-8').replace("_","-").lower()
         storage_client.create_container(container_name=temp_container_name)
         dest_container_name = self.backup_configuration.azure_storage_container_name
 
