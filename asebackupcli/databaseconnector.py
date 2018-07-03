@@ -179,7 +179,10 @@ class DatabaseConnector:
                 "end",
                 "select name from #dbname order by 1",
                 "go"
-            ])
+            ]
+            +
+            DatabaseConnector.sql_append_error_status()
+            )
 
     @staticmethod
     def sql_statement_create_backup(dbname, is_full, start_timestamp, stripe_count, output_dir):
@@ -276,7 +279,24 @@ class DatabaseConnector:
                 "with compression = '101'",
                 "go"
             ]
+            +
+            DatabaseConnector.sql_append_error_status()
         )
+
+    @staticmethod
+    def sql_append_error_status():
+        ok_marker = "ASE_AZURE_BACKUP_SUCCESS"
+        fail_marker = "ASE_AZURE_BACKUP_FAILURE"
+        return [
+            "if @@error = 0",
+            "begin",
+            "  print '{}'".format(ok_marker),
+            "end",
+            "else",
+            "begin",
+            "  print '{}'".format(fail_marker),
+            "end"
+        ]
 
     def determine_database_backup_stripe_count(self, dbname, is_full):
         (stdout, _stderr, _returncode) = self.call_process(
