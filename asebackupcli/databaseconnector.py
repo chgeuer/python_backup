@@ -339,8 +339,7 @@ class DatabaseConnector:
                     output_dir=output_dir)))
 
     def call_process(self, command_line, stdin=None):
-        cmd = "\" \"".join(command_line)
-        logging.debug("Executing \"{}\"".format(cmd))
+        logging.debug("Executing {}".format(command_line[0]))
 
         p = subprocess.Popen(
             command_line,
@@ -352,7 +351,7 @@ class DatabaseConnector:
         stdout, stderr = p.communicate(stdin)
         returncode = p.returncode
         if returncode != 0:
-            logging.debug("Error {} calling \"{}\"".format(returncode, cmd))
+            logging.debug("Error {} calling \"{}\"".format(returncode, command_line[0]))
 
         return (stdout, stderr, returncode)
 
