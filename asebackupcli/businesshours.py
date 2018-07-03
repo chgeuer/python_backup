@@ -31,8 +31,11 @@ class BusinessHours:
             >>> BusinessHours.parse_tag_str(BusinessHours._BusinessHours__sample_data(), 'db_backup_window').tags['db_backup_window_1']
             '111111 111000 000000 011111'
         """
-        tags = dict(kvp.split(":", 1) for kvp in (tags_value.split(";")))
-        return BusinessHours(tags=tags, prefix=prefix)
+        try:
+            tags = dict(kvp.split(":", 1) for kvp in (tags_value.split(";")))
+            return BusinessHours(tags=tags, prefix=prefix)
+        except Exception as e:
+            raise(BackupException("Error parsing business hours '{}': {}".format(tags_value, e.message)))
 
     @staticmethod
     def parse_day(day_values):
@@ -40,9 +43,12 @@ class BusinessHours:
             >>> BusinessHours.parse_day('111111 111000 000000 011111')
             [True, True, True, True, True, True, True, True, True, False, False, False, False, False, False, False, False, False, False, True, True, True, True, True]
         """
-        hour_strs = re.findall(r"([01])", day_values)
-        durations = map(lambda x: {"1":True, "0":False}[x], hour_strs)
-        return durations
+        try:
+            hour_strs = re.findall(r"([01])", day_values)
+            durations = map(lambda x: {"1":True, "0":False}[x], hour_strs)
+            return durations
+        except Exception as e:
+            raise(BackupException("Error parsing business hours '{}': {}".format(day_values, e.message)))
 
     def __init__(self, tags, prefix=standard_prefix):
         """
@@ -54,9 +60,12 @@ class BusinessHours:
         self.prefix = prefix
         self.hours = dict()
         for day in range(1, 8):
-            x = tags["{prefix}_{day}".format(prefix=prefix, day=day)]
+            name = "{prefix}_{day}".format(prefix=prefix, day=day)
+            if not tags.has_key(name):
+                raise(BackupException("Missing VM tag {}".format(name)))
+            x = tags[name]
             self.hours[day] = BusinessHours.parse_day(x)
-    
+
     def is_backup_allowed_dh(self, day, hour):
         """
             >>> sample_data = BusinessHours._BusinessHours__sample_data()
@@ -69,7 +78,7 @@ class BusinessHours:
             True
         """
         return self.hours[day][hour]
-    
+
     def is_backup_allowed_time(self, time):
         """
             >>> sample_data = BusinessHours._BusinessHours__sample_data()
