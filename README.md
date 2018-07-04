@@ -345,3 +345,42 @@ go
 sp_dboption AZU, 'trunc log on chkpt', 'false'
 go
 ```
+
+
+## Restore
+
+```sql
+
+
+# Full
+
+load database AZ2 from '/tmp/pipe1' stripe on '/tmp/pip2'
+go
+
+load transaction AZ2 from ....
+go
+
+load transaction AZ2 from '/tmp/20180701_120000' with until_time = '20180701_115923' 
+go
+
+' An ASE compliant datetime / timestamp is required'
+' Either the 12-hours or the 24-hours system can be used'
+' Specify AM or PM for the 12-hours system, otherwise the 24-hours system is used'
+' These are samples for valid timestamps:'
+'         Aug 3 2017 5:40:00:310PM'
+'         Aug 3 2017 17:40:00:310'
+'         2017-08-03 17:40'
+'         2017-08-03T17:40'
+'         2017-08-03T17:40:23'
+'         2017/08/03 17:40'
+'         20170803 17:40'
+' If anything of the time-part is omitted, this part is taken as 0'
+'     e.g. if the hours are given only, the minutes, seconds, etc are set to 0'
+'          "2017/08/03 5pm" is converted to "Aug  3 2017  5:00:00:000PM"'
+'     e.g. if the hours and minutes are given only, the seconds, etc are set to 0'
+'          "2017/08/03 5:40pm" is converted to "Aug  3 2017  5:40:00:000PM"'
+' If no hours are given, midnight of that day is taken'
+'     e.g. "2017-08-03" is converted to "Aug  3 2017 12:00:00:000AM"'
+' If the date-part is omitted, Jan, 1st 1900 is taken'
+'     e.g. "5:40PM" is converted to "Jan  1 1900  5:40:00:000PM"' 
+```
