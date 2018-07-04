@@ -180,8 +180,6 @@ class DatabaseConnector:
                 "select name from #dbname order by 1",
                 "go"
             ]
-            +
-            DatabaseConnector.sql_append_error_status()
             )
 
     @staticmethod
@@ -250,7 +248,7 @@ class DatabaseConnector:
             sp_dboption AZU, 'trunc log on chkpt', 'false'
             go
             dump database AZU to '/tmp/pipe0'
-                stripüe on 'tmp/pipe1'
+                stripe on 'tmp/pipe1'
             with compression = '101'
             go
         """
@@ -260,15 +258,8 @@ class DatabaseConnector:
                 "go"
             ]
             +
-            {
-                False: [],
-                True: [
-                    "sp_dboption {dbname}, 'trunc log on chkpt', 'false'".format(dbname=dbname),
-                    "go"
-                ]
-            }[is_full]
-            +
             [
+                # load full AZ2 from full-1.cdmp stripe on full-2.cdmp stripe on tran-1.cdmp stripe on tran-2.cdmp wi 
                 "dump {type} {dbname} to {file_names}".format(
                     type={True:"database", False:"transaction"}[is_full],
                     dbname=dbname,
@@ -277,26 +268,15 @@ class DatabaseConnector:
                     )
                 ),
                 "with compression = '101'",
+                "",
+                "if @@error = 0",
+                "begin",
+                "  print 'ASE_AZURE_BACKUP_SUCCESS'",
+                "end",
+                "",
                 "go"
             ]
-            +
-            DatabaseConnector.sql_append_error_status()
         )
-
-    @staticmethod
-    def sql_append_error_status():
-        ok_marker = "ASE_AZURE_BACKUP_SUCCESS"
-        fail_marker = "ASE_AZURE_BACKUP_FAILURE"
-        return [
-            "if @@error = 0",
-            "begin",
-            "  print '{}'".format(ok_marker),
-            "end",
-            "else",
-            "begin",
-            "  print '{}'".format(fail_marker),
-            "end"
-        ]
 
     def determine_database_backup_stripe_count(self, dbname, is_full):
         (stdout, _stderr, _returncode) = self.call_process(
