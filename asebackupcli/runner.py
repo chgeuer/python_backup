@@ -83,21 +83,26 @@ class Runner:
         if args.output_dir:
             output_dir = os.path.abspath(args.output_dir)
             logging.debug("Output dir is user-supplied: {}".format(output_dir))
-            if not os.path.exists(output_dir):
-                raise BackupException("Directory {} does not exist".format(output_dir))
-            return output_dir
         elif args.config:
             output_dir = os.path.abspath(BackupConfiguration(args.config).get_standard_local_directory())
             logging.debug("Output dir via config file {}".format(output_dir))
-            if not os.path.exists(output_dir):
-                raise BackupException("Directory {} (from config file {}) does not exist".format(output_dir, args.config))
-            return output_dir
         else:
             output_dir = os.path.abspath("/tmp")
             logging.debug("Output dir is fallback: {}".format(output_dir))
-            if not os.path.exists(output_dir):
-                raise BackupException("Directory {} does not exist".format(output_dir))
-            return output_dir
+
+        if not os.path.exists(output_dir):
+            raise BackupException("Directory {} does not exist".format(output_dir))
+
+        try:
+            test_file_name = '__delete_me_ase_backup_test__.txt'
+            with open(test_file_name,'wt') as testfile:
+                testfile.write("Hallo")
+            os.remove(test_file_name)
+        except Exception:
+            raise BackupException("Directory {} is not writable".format(output_dir))
+
+        return output_dir
+
 
     @staticmethod
     def get_databases(args):
