@@ -83,13 +83,13 @@ class Runner:
 
         if args.output_dir:
             output_dir = os.path.abspath(args.output_dir)
-            specified_via = "user-supplied"
+            specified_via = "dir was user-supplied via command line"
         elif args.config:
             output_dir = os.path.abspath(BackupConfiguration(args.config).get_standard_local_directory())
-            specified_via = "config file"
+            specified_via = "dir is specified in config file {}".format(args.config)
         else:
             output_dir = os.path.abspath("/tmp")
-            specified_via = "fallback"
+            specified_via = "fallback dir"
 
         logging.debug("Output dir ({}): {}".format(specified_via, output_dir))
 
