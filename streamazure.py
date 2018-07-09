@@ -50,7 +50,7 @@ class AzureVMInstanceMetadata:
 
     @staticmethod
     def test_data():
-        return '{{ "compute": {{ "tags":"azure_storage_account_name:{};azure_storage_account_key:{};fs_backup_interval_min:24h;fs_backup_interval_max:3d" }} }}'.format(
+        return '{{ "compute": {{ "name":"vm3728739", "tags":"azure_storage_account_name:{};azure_storage_account_key:{};fs_backup_interval_min:24h;fs_backup_interval_max:3d" }} }}'.format(
             os.environ["SAMPLE_STORAGE_ACCOUNT_NAME"],os.environ["SAMPLE_STORAGE_ACCOUNT_KEY"]
         )
 
@@ -74,6 +74,13 @@ class AzureVMInstanceMetadata:
             return dict(kvp.split(":", 1) for kvp in (tags_value.split(";")))
         except Exception as e:
             raise(BackupException("Cannot parse tags value from instance metadata endpoint: {}".format(e.message)))
+
+    @property
+    def vm_name(self):
+        try:
+            return str(self.json["compute"]["name"])
+        except Exception:
+            raise(BackupException("Cannot read VM name from instance metadata endpoint"))
 
 class Timing:
     time_format="%Y%m%d_%H%M%S"
@@ -323,12 +330,8 @@ class UploadThread(threading.Thread):
                     use_byte_buffer=True, max_connections=1)
             logging.debug("Finished streaming upload of {}/{}".format(self.container_name, self.blob_name))
             os.remove(self.pipe_path)
-
-            raise BackupException("Oh, Fuck")
         except Exception as e:
             self.exception = e
-
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -341,8 +344,9 @@ def main():
     account_key=config.get_tags()["azure_storage_account_key"]
     storage_client = BlockBlobService(account_name=account_name, account_key=account_key)
     container_name = "backup"
-    blob_name = "file-{}.tar.gz".format(Timing.now_localtime())
-    pipe_path = os.path.join(tempfile.gettempdir(), "backup-{}.pipe".format(blob_name))
+    
+    blob_name = "{}_{}.tar.gz".format(config.vm_name, Timing.now_localtime())
+    pipe_path = os.path.join(tempfile.gettempdir(), "{}.pipe".format(blob_name))
 
     if not storage_client.exists(container_name=container_name):
         storage_client.create_container(container_name=container_name)

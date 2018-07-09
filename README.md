@@ -360,7 +360,7 @@ go
 load transaction AZ2 from ....
 go
 
-load transaction AZ2 from '/tmp/20180701_120000' with until_time = '20180701_115923' 
+load transaction AZ2 from '/tmp/20180701_120000' with until_time = '2017-08-03T17:40:23' 
 go
 
 ' An ASE compliant datetime / timestamp is required'
