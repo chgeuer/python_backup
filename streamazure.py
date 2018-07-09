@@ -56,7 +56,7 @@ class AzureVMInstanceMetadata:
 
     @staticmethod
     def create_instance():
-        #return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(AzureVMInstanceMetadata.test_data()))
+        # return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(AzureVMInstanceMetadata.test_data()))
         return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata())
 
     def __init__(self, req):
@@ -284,30 +284,14 @@ class ScheduleParser:
         except Exception as e:
             raise(BackupException("Cannot parse value '{}' into duration: {}".format(time_val, e.message)))
 
-def call_process(command_line, stdin=None):
-    logging.debug("Executing {}".format(command_line[0]))
-
-    p = subprocess.Popen(
-        command_line,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    stdout, stderr = p.communicate(stdin)
-    returncode = p.returncode
-    if returncode != 0:
-        logging.debug("Error {} calling \"{}\"".format(returncode, command_line[0]))
-
-    return (stdout, stderr, returncode)
-
 class UploadThread(threading.Thread):
-    def __init__(self, storage_client, container_name, blob_name, pipe_path):
+    def __init__(self, storage_client, container_name, blob_name, stream):
         super(UploadThread, self).__init__()
         
         self.storage_client = storage_client
         self.container_name = container_name
         self.blob_name = blob_name
-        self.pipe_path = pipe_path
+        self.stream = stream
         self.exception = None
 
     def get_exception(self):
@@ -315,21 +299,14 @@ class UploadThread(threading.Thread):
 
     def run(self):
         try:
-            logging.debug("Start streaming upload for {} to {}/{}".format(self.pipe_path, self.container_name, self.blob_name))
-            os.mkfifo(self.pipe_path)
+            logging.debug("Start streaming upload to {}/{}".format(self.container_name, self.blob_name))
 
-            with open(self.pipe_path, "rb", buffering=0) as stream:
-                #
-                # For streaming to work, we need to ensure that 
-                # use_byte_buffer=True and 
-                # max_connections=1 are set
-                #
-                self.storage_client.create_blob_from_stream(
-                    container_name=self.container_name,
-                    blob_name=self.blob_name, stream=stream,
-                    use_byte_buffer=True, max_connections=1)
+            self.storage_client.create_blob_from_stream(
+                container_name=self.container_name,
+                blob_name=self.blob_name, stream=self.stream,
+                use_byte_buffer=True, max_connections=1)
+
             logging.debug("Finished streaming upload of {}/{}".format(self.container_name, self.blob_name))
-            os.remove(self.pipe_path)
         except Exception as e:
             self.exception = e
 
@@ -345,26 +322,12 @@ def backup(args):
     config, storage_client, container_name = client_and_container()
 
     blob_name = "{}_{}.tar.gz".format(config.vm_name, Timing.now_localtime())
-    pipe_path = os.path.join(tempfile.gettempdir(), "{}.pipe".format(blob_name))
 
     if not storage_client.exists(container_name=container_name):
         storage_client.create_container(container_name=container_name)
 
-    t = UploadThread(storage_client, container_name, blob_name, pipe_path)
+    t = UploadThread(storage_client, container_name, blob_name, stream=sys.stdin)
     t.start() 
-
-    print("tar and upload {} to {}".format(
-        os.path.abspath(args.directory),
-        storage_client.make_blob_url(container_name, blob_name)))
-
-    stdout, stderr, _err = call_process(["tar", "cvfz", pipe_path, args.directory])
-
-    if len(stdout) > 0:
-        print(stdout)
-
-    if len(stderr) > 0:
-        printe(stderr)
-
     t.join()
     exception_during_upload = t.get_exception()
     if exception_during_upload != None:
@@ -377,7 +340,7 @@ def restore(args):
         Timing.parse(args.restore)
     except Exception:
         printe("{} is not a valid time".format(args.restore))
-        return
+        sys.exit(1)
 
     blob_name = "{}_{}.tar.gz".format(config.vm_name, args.restore)
     printe("Restoring {}".format(blob_name))
@@ -409,8 +372,6 @@ def main():
     commands.add_argument("-b", "--backup", help="Perform backup", action="store_true")
     commands.add_argument("-r", "--restore", help="Perform restore")
     commands.add_argument("-l", "--list", help="List backups in storage", action="store_true")
-    requiredNamed = parser.add_argument_group("required arguments")
-    requiredNamed.add_argument("directory", help="Directory")
     args = parser.parse_args()
 
     if args.backup:
@@ -421,6 +382,7 @@ def main():
         list_backups(args)
     else:
         printe("Select backup or restore")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
