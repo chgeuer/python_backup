@@ -172,8 +172,8 @@ class Runner:
         elif args.restore:
             try:
                 Timing.parse(args.restore)
-            except ValueError as ve:
-                raise BackupException("Cannot parse restore point \"{}\" ({})".format(args.restore. ve.message))
+            except Exception:
+                raise BackupException("Cannot parse restore point \"{}\"".format(args.restore))
 
             backup_agent.restore(restore_point=args.restore, output_dir=output_dir, databases=databases)
         elif args.list_backups:
