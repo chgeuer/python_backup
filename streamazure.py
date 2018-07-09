@@ -333,25 +333,23 @@ class UploadThread(threading.Thread):
         except Exception as e:
             self.exception = e
 
-def main():
-    parser = argparse.ArgumentParser()
-    requiredNamed = parser.add_argument_group("required arguments")
-    requiredNamed.add_argument("directory", help="Directory")
-    args = parser.parse_args()
-
+def client_and_container():
     config = AzureVMInstanceMetadata.create_instance()
     account_name=config.get_tags()["azure_storage_account_name"]
     account_key=config.get_tags()["azure_storage_account_key"]
     storage_client = BlockBlobService(account_name=account_name, account_key=account_key)
     container_name = "backup"
-    
+    return config, storage_client, container_name
+
+def backup(args):
+    config, storage_client, container_name = client_and_container()
+
     blob_name = "{}_{}.tar.gz".format(config.vm_name, Timing.now_localtime())
     pipe_path = os.path.join(tempfile.gettempdir(), "{}.pipe".format(blob_name))
 
     if not storage_client.exists(container_name=container_name):
         storage_client.create_container(container_name=container_name)
 
-    #t = threading.Thread(target=StreamAzure.upload_pipe, args=(storage_client, container_name, blob_name, pipe_path))
     t = UploadThread(storage_client, container_name, blob_name, pipe_path)
     t.start() 
 
@@ -371,6 +369,58 @@ def main():
     exception_during_upload = t.get_exception()
     if exception_during_upload != None:
         printe("Problem during upload: {}".format(exception_during_upload.message))
+
+def restore(args):
+    config, storage_client, container_name = client_and_container()
+
+    try:
+        Timing.parse(args.restore)
+    except Exception:
+        printe("{} is not a valid time".format(args.restore))
+        return
+
+    blob_name = "{}_{}.tar.gz".format(config.vm_name, args.restore)
+    printe("Restoring {}".format(blob_name))
+    storage_client.get_blob_to_stream(container_name=container_name, blob_name=blob_name, stream=sys.stdout)
+
+def list_backups(args):
+    config, storage_client, container_name = client_and_container()
+
+    existing_blobs = []
+    marker = None
+    while True:
+        results = storage_client.list_blobs(
+            container_name=container_name,
+            prefix="{vmname}_".format(vmname=config.vm_name), 
+            marker=marker)
+        for blob in results:
+            existing_blobs.append(blob.name)
+        if results.next_marker:
+            marker = results.next_marker
+        else:
+            break
+
+    for blob in filter(lambda x: x.endswith(".tar.gz"), existing_blobs):
+        print("{}".format(blob))
+
+def main():
+    parser = argparse.ArgumentParser()
+    commands = parser.add_argument_group("commands")
+    commands.add_argument("-b", "--backup", help="Perform backup", action="store_true")
+    commands.add_argument("-r", "--restore", help="Perform restore")
+    commands.add_argument("-l", "--list", help="List backups in storage", action="store_true")
+    requiredNamed = parser.add_argument_group("required arguments")
+    requiredNamed.add_argument("directory", help="Directory")
+    args = parser.parse_args()
+
+    if args.backup:
+        backup(args)
+    elif args.restore:
+        restore(args)
+    elif args.list:
+        list_backups(args)
+    else:
+        printe("Select backup or restore")
 
 if __name__ == '__main__':
     main()
