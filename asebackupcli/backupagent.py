@@ -243,9 +243,16 @@ class BackupAgent:
             dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, 
             stripe_count=stripe_count, output_dir=output_dir, container_name=temp_container_name)
         logging.debug("Start streaming backup SQL call")
-        stdout, stderr, returncode = self.database_connector.create_backup_streaming(
-            dbname=dbname, is_full=is_full, stripe_count=stripe_count, 
-            output_dir=output_dir)
+        try:
+            stdout, stderr, returncode = self.database_connector.create_backup_streaming(
+                dbname=dbname, is_full=is_full, stripe_count=stripe_count, 
+                output_dir=output_dir)
+        except BackupException:
+            printe("Forcefully stopping threads")
+            [t.join(0) for t in threads]
+            printe("Forcefully stopping threads")
+            raise
+
         self.finalize_streaming_threads(threads)
         end_timestamp = Timing.now_localtime()
 
