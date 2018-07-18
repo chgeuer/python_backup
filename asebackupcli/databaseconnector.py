@@ -271,12 +271,14 @@ class DatabaseConnector:
                 "",
                 "if @@error = 0",
                 "begin",
-                "  print 'ASE_AZURE_BACKUP_SUCCESS'",
+                "  print '{}'".format(DatabaseConnector.MAGIC_SUCCESS_STRING),
                 "end",
                 "",
                 "go"
             ]
         )
+
+    MAGIC_SUCCESS_STRING="ASE_AZURE_BACKUP_SUCCESS"
 
     def determine_database_backup_stripe_count(self, dbname, is_full):
         (stdout, _stderr, _returncode) = self.call_process(

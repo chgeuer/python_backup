@@ -307,8 +307,12 @@ class BackupAgent:
                 dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                 stripe_count=stripe_count, output_dir=output_dir)
 
-        out("Backup of {} ({}) ran from {} to {}".format(dbname, {True:"full DB",False:"transactions"}[is_full], start_timestamp, end_timestamp))
         log_stdout_stderr(stdout, stderr)
+        success = DatabaseConnector.MAGIC_SUCCESS_STRING in stdout
+        out("Backup of {} ({}) ran from {} to {} with status {}".format(
+            dbname, {True:"full DB",False:"transactions"}[is_full], 
+            start_timestamp, end_timestamp, 
+            {True:"success",False:"failure"}[success]))
 
         ddl_content = self.database_connector.create_ddlgen(dbname=dbname)
         ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
