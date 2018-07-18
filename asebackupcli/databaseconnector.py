@@ -281,10 +281,11 @@ class DatabaseConnector:
     MAGIC_SUCCESS_STRING="ASE_AZURE_BACKUP_SUCCESS"
 
     def determine_database_backup_stripe_count(self, dbname, is_full):
-        (stdout, _stderr, _returncode) = self.call_process(
-            command_line=self.isql(),
+        (stdout, _stderr, _returncode) = self.call_isql(
             stdin=DatabaseConnector.sql_statement_stripe_count(dbname=dbname, is_full=is_full))
+
         return int(stdout)
+
 
     def determine_databases(self, user_selected_databases, is_full):
         if len(user_selected_databases) > 0:
@@ -293,8 +294,7 @@ class DatabaseConnector:
             return self.list_databases(is_full=is_full)
 
     def list_databases(self, is_full):
-        (stdout, _stderr, _returncode) = self.call_process(
-            command_line=self.isql(),
+        (stdout, _stderr, _returncode) = self.call_isql(
             stdin=DatabaseConnector.sql_statement_list_databases(is_full=is_full))
 
         return filter(
@@ -302,8 +302,7 @@ class DatabaseConnector:
             map(lambda s: s.strip(), stdout.split("\n")))
 
     def create_backup(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
-        return self.call_process(
-            command_line=self.isql(), 
+        return self.call_isql(
             stdin=DatabaseConnector.sql_statement_create_backup(
                 dbname=dbname, is_full=is_full, 
                 start_timestamp=start_timestamp, 
@@ -311,14 +310,21 @@ class DatabaseConnector:
                 output_dir=output_dir))
 
     def create_backup_streaming(self, dbname, is_full, stripe_count, output_dir):
-        return self.call_process(
-            command_line=self.isql(), 
+        return self.call_isql(
             stdin=DatabaseConnector.sql_statement_create_backup_for_filenames(
                 dbname=dbname, is_full=is_full, 
                 files=Naming.pipe_names(
                     dbname=dbname, is_full=is_full, 
                     stripe_count=stripe_count, 
                     output_dir=output_dir)))
+
+    def call_isql(self, stdin):
+        stdout, stderr, returncode = self.call_process(command_line=self.isql(), stdin=stdin)
+
+        if returncode == 255 and "ct_connect(): network packet layer:" in stdout:
+            raise BackupException("Database not reachable")
+
+        return (stdout, stderr, returncode)
 
     def call_process(self, command_line, stdin=None):
         logging.debug("Executing {}".format(command_line[0]))
@@ -334,6 +340,8 @@ class DatabaseConnector:
         returncode = p.returncode
         if returncode != 0:
             logging.debug("Error {} calling \"{}\"".format(returncode, command_line[0]))
+
+
 
         return (stdout, stderr, returncode)
 
