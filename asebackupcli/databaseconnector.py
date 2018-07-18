@@ -283,7 +283,6 @@ class DatabaseConnector:
     def determine_database_backup_stripe_count(self, dbname, is_full):
         (stdout, _stderr, _returncode) = self.call_isql(
             stdin=DatabaseConnector.sql_statement_stripe_count(dbname=dbname, is_full=is_full))
-
         return int(stdout)
 
 
@@ -322,7 +321,12 @@ class DatabaseConnector:
         stdout, stderr, returncode = self.call_process(command_line=self.isql(), stdin=stdin)
 
         if returncode == 255 and "ct_connect(): network packet layer:" in stdout:
-            raise BackupException("Database not reachable")
+            raise BackupException("Database service not reachable")
+
+
+        if "Attempt to locate entry in sysdatabases for database" in stdout:
+            # "Attempt to locate entry in sysdatabases for database 'not_there' by name failed - no entry found under that name. Make sure that name is entered properly."
+            raise BackupException("Unknown database")
 
         return (stdout, stderr, returncode)
 
@@ -340,8 +344,6 @@ class DatabaseConnector:
         returncode = p.returncode
         if returncode != 0:
             logging.debug("Error {} calling \"{}\"".format(returncode, command_line[0]))
-
-
 
         return (stdout, stderr, returncode)
 
