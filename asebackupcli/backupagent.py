@@ -182,6 +182,7 @@ class BackupAgent:
             self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
 
     def start_streaming_threads(self, dbname, is_full, start_timestamp, stripe_count, output_dir, container_name):
+        out("Must create {} threads".format(stripe_count))
         threads = []
         for stripe_index in range(1, stripe_count + 1):
             pipe_path = Naming.pipe_name(output_dir=output_dir, 
@@ -204,10 +205,13 @@ class BackupAgent:
                 container_name=container_name, blob_name=blob_name, pipe_path=pipe_path)
             threads.append(t)
 
-        logging.debug("Start all {} threads".format(len(threads)))
-        [t.start() for t in threads]
-        logging.debug("Started all {} threads".format(len(threads)))
-        return threads
+        try:
+            logging.debug("Start all {} threads".format(len(threads)))
+            [t.start() for t in threads]
+            logging.debug("Started all {} threads".format(len(threads)))
+            return threads
+        except Exception as e:
+            printe(e.message)
 
     def finalize_streaming_threads(self, threads):
         [t.join() for t in threads]
@@ -224,6 +228,7 @@ class BackupAgent:
         storage_client.create_container(container_name=temp_container_name)
         dest_container_name = self.backup_configuration.azure_storage_container_name
 
+        out("call self.start_streaming_threads")
         threads = self.start_streaming_threads(
             dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, 
             stripe_count=stripe_count, output_dir=output_dir, container_name=temp_container_name)

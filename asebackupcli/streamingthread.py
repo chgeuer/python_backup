@@ -6,7 +6,8 @@ import threading
 
 class StreamingThread(threading.Thread):
     def __init__(self, storage_client, container_name, blob_name, pipe_path):
-        super(StreamingThread, self).__init__()
+        threading.Thread.__init__(self)
+        #super(StreamingThread, self).__init__()
 
         self.storage_client = storage_client
         self.container_name = container_name
