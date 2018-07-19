@@ -5,6 +5,9 @@ import os
 import datetime
 import threading
 from itertools import groupby
+import json
+import urllib2
+import uuid
 
 from .funcmodule import printe, out, log_stdout_stderr
 from .naming import Naming
@@ -317,14 +320,13 @@ class BackupAgent:
             # Clean up resources
             #
             for stripe_index in range(1, stripe_count + 1):
-                blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
                 file_name = Naming.construct_filename(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
                 file_path = os.path.join(output_dir, file_name)
                 if os.path.exists(file_path):
-                    print("delete local corrupt file {}".format(file_path))
                     os.remove(file_path)
+
+                blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
                 if self.backup_configuration.storage_client.exists(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob_name):
-                    print("delete corrupt blob {}".format(blob_name))
                     self.backup_configuration.storage_client.delete_blob(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob.name)
 
             message = None
@@ -541,3 +543,36 @@ class BackupAgent:
             "azure_storage_account_name:         {}".format(self.backup_configuration.get_azure_storage_account_name()),
             "azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10])
         ]
+
+    def send_notification(self, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
+        data = {
+            "SourceSystem" :"Azure",
+            "TenantId" :"unknown",
+            "SubscriptionId": self.backup_configuration.get_subscription_id(),
+            "Resource": self.backup_configuration.get_vm_name(),
+            "BackupManagementType_s": "AzureWorkload", 
+            "BackupItemType_s": "SAPASEDataBase",
+            "BackupItemUniqueId_s": "{location};{storageaccountid};{resourcetype};{resourcegroupname};{resourcename};{aseservername};{db_name}".format(
+                location=self.backup_configuration.get_location(),
+                storageaccountid=self.backup_configuration.get_azure_storage_account_name(),
+                resourcetype="compute",
+                resourcegroupname=self.backup_configuration.get_resource_group_name(),
+                resourcename=self.backup_configuration.get_vm_name(),
+                aseservername=aseservername,
+                db_name=db_name),
+            "BackupItemFriendlyName_s": db_name,
+            "JobUniqueId_g": uuid.uuid4,
+            "JobStatus_s": {True:"Completed", False:"Failed"}[success],
+            "JobFailureCode_s": {None:"Success", error_msg:error_msg}[error_msg], # "Success OperationCancelledBecauseConflictingOperationRunningUserError",
+            "JobOperationSubType_s": {True:"Full", False:"Log"}[is_full],
+            "TimeGenerated": end_timestamp, #"2018-07-12T14:46:09.726Z",
+            "JobStartDateTime_s": start_timestamp, # "2018-07-13 04:33:00Z",
+            "JobDurationInSecs_s": "{}".format(Timing.time_diff_in_seconds(end_timestamp, start_timestamp)),
+            "DataTransferredInMB_s": "{}".format(data_in_MB)
+        }
+
+        url = 'https://postman-echo.com/post'
+        req = urllib2.Request(url)
+        req.add_header('Content-Type', 'application/json')
+        response = urllib2.urlopen(req, json.dumps(data))
+        return response.read()
