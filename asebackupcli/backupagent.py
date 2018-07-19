@@ -8,6 +8,7 @@ from itertools import groupby
 import json
 import urllib2
 import uuid
+import time
 
 from .funcmodule import printe, out, log_stdout_stderr
 from .naming import Naming
@@ -544,14 +545,15 @@ class BackupAgent:
             "azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10])
         ]
 
-    def send_notification(self, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
+    def send_notification(self, url, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
         data = {
             "SourceSystem" :"Azure",
+            "BackupManagementType_s": "AzureWorkload", 
+            "BackupItemType_s": "SAPASEDatabase",
             "TenantId" :"unknown",
             "SubscriptionId": self.backup_configuration.get_subscription_id(),
             "Resource": self.backup_configuration.get_vm_name(),
-            "BackupManagementType_s": "AzureWorkload", 
-            "BackupItemType_s": "SAPASEDataBase",
+            "BackupItemFriendlyName_s": db_name,
             "BackupItemUniqueId_s": "{location};{storageaccountid};{resourcetype};{resourcegroupname};{resourcename};{aseservername};{db_name}".format(
                 location=self.backup_configuration.get_location(),
                 storageaccountid=self.backup_configuration.get_azure_storage_account_name(),
@@ -560,18 +562,15 @@ class BackupAgent:
                 resourcename=self.backup_configuration.get_vm_name(),
                 aseservername=aseservername,
                 db_name=db_name),
-            "BackupItemFriendlyName_s": db_name,
-            "JobUniqueId_g": uuid.uuid4,
+            "JobUniqueId_g": str(uuid.uuid4()),
             "JobStatus_s": {True:"Completed", False:"Failed"}[success],
             "JobFailureCode_s": {None:"Success", error_msg:error_msg}[error_msg], # "Success OperationCancelledBecauseConflictingOperationRunningUserError",
             "JobOperationSubType_s": {True:"Full", False:"Log"}[is_full],
-            "TimeGenerated": end_timestamp, #"2018-07-12T14:46:09.726Z",
-            "JobStartDateTime_s": start_timestamp, # "2018-07-13 04:33:00Z",
-            "JobDurationInSecs_s": "{}".format(Timing.time_diff_in_seconds(end_timestamp, start_timestamp)),
-            "DataTransferredInMB_s": "{}".format(data_in_MB)
+            "TimeGenerated": time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(end_timestamp)), #"2018-07-12T14:46:09.726Z",
+            "JobStartDateTime_s": time.strftime("%Y-%m-%d %H:%M:%SZ", Timing.parse(start_timestamp)), # "2018-07-13 04:33:00Z",
+            "JobDurationInSecs_s": "{}".format(int(Timing.time_diff_in_seconds(start_timestamp, end_timestamp))),
+            "DataTransferredInMB_s": "{}".format(int(data_in_MB))
         }
-
-        url = 'https://postman-echo.com/post'
         req = urllib2.Request(url)
         req.add_header('Content-Type', 'application/json')
         response = urllib2.urlopen(req, json.dumps(data))
