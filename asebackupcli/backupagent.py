@@ -11,6 +11,7 @@ from .naming import Naming
 from .timing import Timing
 from .databaseconnector import DatabaseConnector
 from .backupexception import BackupException
+from .streamingthread import StreamingThread
 
 class BackupAgent:
     """
@@ -180,22 +181,6 @@ class BackupAgent:
         if not skip_upload and not use_streaming:
             self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
 
-    @staticmethod
-    def upload_pipe(blob_client, container_name, blob_name, pipe_path):
-        logging.debug("Start streaming upload for {} to {}/{}".format(pipe_path, container_name, blob_name))
-        with open(pipe_path, "rb", buffering=0) as stream:
-            #
-            # For streaming to work, we need to ensure that 
-            # use_byte_buffer=True and 
-            # max_connections=1 are set
-            #
-            blob_client.create_blob_from_stream(
-                container_name=container_name,
-                blob_name=blob_name, stream=stream,
-                use_byte_buffer=True, max_connections=1)
-        logging.debug("Finished streaming upload of {}/{}".format(container_name, blob_name))
-        os.remove(pipe_path)
-
     def start_streaming_threads(self, dbname, is_full, start_timestamp, stripe_count, output_dir, container_name):
         threads = []
         for stripe_index in range(1, stripe_count + 1):
@@ -214,9 +199,9 @@ class BackupAgent:
             os.mkfifo(pipe_path)
 
             logging.debug("Create thread object #{} to upload {} to {}/{} ".format(stripe_index, pipe_path, container_name, blob_name))
-            t = threading.Thread(
-                target=BackupAgent.upload_pipe, 
-                args=(self.backup_configuration.storage_client, container_name, blob_name, pipe_path))
+            t = StreamingThread(
+                storage_client=self.backup_configuration.storage_client,
+                container_name=container_name, blob_name=blob_name, pipe_path=pipe_path)
             threads.append(t)
 
         logging.debug("Start all {} threads".format(len(threads)))
@@ -249,8 +234,7 @@ class BackupAgent:
                 output_dir=output_dir)
         except BackupException:
             printe("Forcefully stopping threads")
-            [t.join(0) for t in threads]
-            printe("Forcefully stopping threads")
+            [t.stop() for t in threads]
             raise
 
         self.finalize_streaming_threads(threads)
