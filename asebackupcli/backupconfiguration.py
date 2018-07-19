@@ -39,6 +39,7 @@ class BackupConfiguration:
             "vm_name": lambda: self.instance_metadata.vm_name,
             "subscription_id": lambda: self.instance_metadata.subscription_id,
             "resource_group_name": lambda: self.instance_metadata.resource_group_name,
+            "location": lambda: self.instance_metadata.location,
 
             "db_backup_interval_min": lambda: ScheduleParser.parse_timedelta(self.instance_metadata_tag_value("db_backup_interval_min")),
             "db_backup_interval_max": lambda: ScheduleParser.parse_timedelta(self.instance_metadata_tag_value("db_backup_interval_max")),
@@ -64,6 +65,8 @@ class BackupConfiguration:
     def get_vm_name(self): return self.get_value("vm_name")
     def get_subscription_id(self): return self.get_value("subscription_id")
     def get_resource_group_name(self): return self.get_value("resource_group_name")
+    def get_location(self): return self.get_value("location")
+
     def get_CID(self): return self.get_value("sap.CID")
     def get_SID(self): return self.get_value("sap.SID")
     def get_ase_version(self): return self.get_value("sap.ase.version")

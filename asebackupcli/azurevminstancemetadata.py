@@ -67,6 +67,13 @@ class AzureVMInstanceMetadata:
             raise(BackupException("Cannot read resourceGroupName from instance metadata endpoint"))
 
     @property
+    def location(self):
+        try:
+            return str(self.json["compute"]["location"])
+        except Exception:
+            raise(BackupException("Cannot read location from instance metadata endpoint"))
+
+    @property
     def vm_name(self):
         try:
             return str(self.json["compute"]["name"])
