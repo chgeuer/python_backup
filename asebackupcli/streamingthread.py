@@ -17,7 +17,7 @@ class StreamingThread(threading.Thread):
     def get_exception(self):
         return self.exception
 
-    def start(self):
+    def run(self):
         try:
             logging.debug("Start streaming upload for {} to {}/{}".format(
                 self.pipe_path, self.container_name, self.blob_name))
