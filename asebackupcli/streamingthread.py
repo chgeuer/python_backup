@@ -1,8 +1,6 @@
 # coding=utf-8
 
-import os
-import logging
-import threading
+import os, sys, logging, threading
 
 class StreamingThread(threading.Thread):
     def __init__(self, storage_client, container_name, blob_name, pipe_path):
@@ -28,7 +26,7 @@ class StreamingThread(threading.Thread):
                 # use_byte_buffer=True and 
                 # max_connections=1 are set
                 #
-                self.blob_client.create_blob_from_stream(
+                self.storage_client.create_blob_from_stream(
                     container_name=self.container_name,
                     blob_name=self.blob_name, stream=stream,
                     use_byte_buffer=True, max_connections=1)
@@ -41,4 +39,10 @@ class StreamingThread(threading.Thread):
             self.exception = e
 
     def stop(self):
+        #
+        # The problem is that 
+        # (a) Python does not allow me to kill a thread from the outside, and 
+        # (b) the create_blob_from_stream() method does not allow external cancellation.
+        #
         logging.debug("Requested cancellation of upload to {}/{}".format(self.container_name, self.blob_name))
+        sys.exit(-1)
