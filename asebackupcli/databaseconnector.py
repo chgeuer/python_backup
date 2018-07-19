@@ -136,7 +136,8 @@ class DatabaseConnector:
             "end",
             "",
             "select @stripes",
-            "go"
+            "go",
+            ""
         ])
 
     @staticmethod
@@ -178,7 +179,8 @@ class DatabaseConnector:
                 "    delete from #dbname where name not in (select dbname from #selected_dbs)",
                 "end",
                 "select name from #dbname order by 1",
-                "go"
+                "go",
+                ""
             ]
             )
 
@@ -274,7 +276,8 @@ class DatabaseConnector:
                 "  print '{}'".format(DatabaseConnector.MAGIC_SUCCESS_STRING),
                 "end",
                 "",
-                "go"
+                "go",
+                ""
             ]
         )
 
