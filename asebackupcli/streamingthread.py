@@ -7,7 +7,7 @@ import threading
 class StreamingThread(threading.Thread):
     def __init__(self, storage_client, container_name, blob_name, pipe_path):
         super(StreamingThread, self).__init__()
-        
+
         self.storage_client = storage_client
         self.container_name = container_name
         self.blob_name = blob_name
@@ -18,9 +18,9 @@ class StreamingThread(threading.Thread):
         return self.exception
 
     def run(self):
+        logging.debug("StreamingThread.run(): Start streaming upload for {} to {}/{}".format(self.pipe_path, self.container_name, self.blob_name))
+
         try:
-            logging.debug("Start streaming upload for {} to {}/{}".format(
-                self.pipe_path, self.container_name, self.blob_name))
             with open(self.pipe_path, "rb", buffering=0) as stream:
                 #
                 # For streaming to work, we need to ensure that 
@@ -36,6 +36,7 @@ class StreamingThread(threading.Thread):
 
                 logging.debug("Finished streaming upload of {}/{}".format(self.container_name, self.blob_name))
         except Exception as e:
+            logging.fatal("Exception during streaming upload: {}".format(e.message))
             self.exception = e
 
     def stop(self):
