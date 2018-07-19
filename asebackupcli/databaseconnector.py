@@ -322,18 +322,30 @@ class DatabaseConnector:
                     stripe_count=stripe_count, 
                     output_dir=output_dir)))
 
+    ERR_DATABASE_SERVICE_NOT_AVAILABLE="Database service not reachable"
+    ERR_BACKUP_SERVICE_NOT_AVAILABLE="Backup server not reachable"
+    ERR_BACKUP_SERVICE_KILLED="Backup service died"
+    ERR_UNKNOWN_DATABASE="Unknown database"
+    ERR_FILESYSTEM_FULL="Filesystem full"
+
     def call_isql(self, stdin):
         stdout, stderr, returncode = self.call_process(command_line=self.isql(), stdin=stdin)
 
         if returncode == 255 and "ct_connect(): network packet layer:" in stdout:
-            raise BackupException("Database service not reachable")
+            raise BackupException(DatabaseConnector.ERR_DATABASE_SERVICE_NOT_AVAILABLE)
 
         if "Attempt to locate entry in sysdatabases for database" in stdout:
             # "Attempt to locate entry in sysdatabases for database 'not_there' by name failed - no entry found under that name. Make sure that name is entered properly."
-            raise BackupException("Unknown database")
+            raise BackupException(DatabaseConnector.ERR_UNKNOWN_DATABASE)
 
         if ("Can't open a connection to site 'SYB_BACKUP'. See the error log file in the ASE boot directory." in stdout) or ("Could not establish communication with Backup Server" in stdout) or ("Please make sure that there is an entry in Sysservers for this server, and that the correct server is running." in stdout):
-            raise BackupException("Backup server unreachable")
+            raise BackupException(DatabaseConnector.ERR_BACKUP_SERVICE_NOT_AVAILABLE)
+
+        if ("error number 28 (No space left on device)" in stdout):
+            raise BackupException(DatabaseConnector.ERR_FILESYSTEM_FULL)
+
+        if ("SYBMULTBUF ERROR: Emulator interprocess communication failed with error state " in stdout):
+            raise BackupException(DatabaseConnector.ERR_BACKUP_SERVICE_KILLED)
 
         return (stdout, stderr, returncode)
 

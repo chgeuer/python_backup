@@ -235,6 +235,7 @@ class BackupAgent:
                 dbname=dbname, is_full=is_full, stripe_count=stripe_count, 
                 output_dir=output_dir)
         except BackupException:
+            storage_client.delete_container(container_name=temp_container_name)
             [t.stop() for t in threads]
             raise
 
@@ -288,23 +289,45 @@ class BackupAgent:
 
         stripe_count = self.database_connector.determine_database_backup_stripe_count(dbname=dbname, is_full=is_full)
 
-        if not use_streaming:
-            out("Starting file-based backup")
-            stdout, stderr, _returncode, end_timestamp = self.file_backup_single_db(
-                dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
-                stripe_count=stripe_count, output_dir=output_dir)
-        else:
-            out("Start streaming-based backup")
-            stdout, stderr, _returncode, end_timestamp = self.streaming_backup_single_db(
-                dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
-                stripe_count=stripe_count, output_dir=output_dir)
+        backup_exception=None
+        try:
+            if not use_streaming:
+                out("Starting file-based backup")
+                stdout, stderr, _returncode, end_timestamp = self.file_backup_single_db(
+                    dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
+                    stripe_count=stripe_count, output_dir=output_dir)
+            else:
+                out("Start streaming-based backup")
+                stdout, stderr, _returncode, end_timestamp = self.streaming_backup_single_db(
+                    dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
+                    stripe_count=stripe_count, output_dir=output_dir)
+        except BackupException as be:
+            backup_exception = be
 
         log_stdout_stderr(stdout, stderr)
         success = DatabaseConnector.MAGIC_SUCCESS_STRING in stdout
-        out("Backup of {} ({}) ran from {} to {} with status {}".format(
-            dbname, {True:"full DB",False:"transactions"}[is_full], 
-            start_timestamp, end_timestamp, 
-            {True:"success",False:"failure"}[success]))
+
+        if success and backup_exception == None:
+            out("Backup of {} ({}) ran from {} to {} with status {}".format(
+                dbname, {True:"full DB",False:"transactions"}[is_full], 
+                start_timestamp, end_timestamp, 
+                {True:"success",False:"failure"}[success]))
+        else: 
+            for stripe_index in range(1, stripe_count + 1):
+                file_name = Naming.construct_filename(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+                file_path = os.path.join(output_dir, file_name)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+
+            if not success:
+                logging.fatal("SQL statement did not successfully end")
+                out("SQL statement did not successfully end")
+            if backup_exception != None:
+                logging.fatal(backup_exception.message)
+                out(backup_exception.message)
+                raise BackupException(backup_exception.message)
+            else:
+                raise BackupException("SQL Statement did not successfully terminate")
 
         ddl_content = self.database_connector.create_ddlgen(dbname=dbname)
         ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
