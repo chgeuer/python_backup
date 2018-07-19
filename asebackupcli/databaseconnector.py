@@ -330,6 +330,9 @@ class DatabaseConnector:
             # "Attempt to locate entry in sysdatabases for database 'not_there' by name failed - no entry found under that name. Make sure that name is entered properly."
             raise BackupException("Unknown database")
 
+        if ("Can't open a connection to site 'SYB_BACKUP'. See the error log file in the ASE boot directory." in stdout) or ("Could not establish communication with Backup Server" in stdout) or ("Please make sure that there is an entry in Sysservers for this server, and that the correct server is running." in stdout):
+            raise BackupException("Backup server unreachable")
+
         return (stdout, stderr, returncode)
 
     def call_process(self, command_line, stdin=None):
