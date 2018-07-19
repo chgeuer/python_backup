@@ -9,7 +9,6 @@ from .backupexception import BackupException
 def main():
     try:
         Runner.main()
-        print("Done")
         exit(0)
     except BackupException as be:
         printe("{}".format(be.message))

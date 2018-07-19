@@ -286,8 +286,10 @@ class DatabaseConnector:
     def determine_database_backup_stripe_count(self, dbname, is_full):
         (stdout, _stderr, _returncode) = self.call_isql(
             stdin=DatabaseConnector.sql_statement_stripe_count(dbname=dbname, is_full=is_full))
-        return int(stdout)
-
+        try:
+            return int(stdout)
+        except Exception:
+            raise BackupException("Cannot determine stripe_count: {}".format(stdout))
 
     def determine_databases(self, user_selected_databases, is_full):
         if len(user_selected_databases) > 0:

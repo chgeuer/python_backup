@@ -24,8 +24,6 @@ class BackupConfiguration:
         self.instance_metadata = AzureVMInstanceMetadata.create_instance()
         self._block_blob_service = None
 
-        
-
         #
         # This dict contains function callbacks (lambdas) to return the value based on the current value
         #
