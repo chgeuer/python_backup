@@ -313,21 +313,27 @@ class BackupAgent:
                 start_timestamp, end_timestamp, 
                 {True:"success",False:"failure"}[success]))
         else: 
+            #
+            # Clean up resources
+            #
             for stripe_index in range(1, stripe_count + 1):
+                blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
                 file_name = Naming.construct_filename(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
                 file_path = os.path.join(output_dir, file_name)
                 if os.path.exists(file_path):
+                    print("delete local corrupt file {}".format(file_path))
                     os.remove(file_path)
+                if self.backup_configuration.storage_client.exists(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob_name):
+                    print("delete corrupt blob {}".format(blob_name))
+                    self.backup_configuration.storage_client.delete_blob(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob.name)
 
+            message = None
             if not success:
-                logging.fatal("SQL statement did not successfully end")
-                out("SQL statement did not successfully end")
+                message = "SQL statement did not successfully end"
             if backup_exception != None:
-                logging.fatal(backup_exception.message)
-                out(backup_exception.message)
-                raise BackupException(backup_exception.message)
-            else:
-                raise BackupException("SQL Statement did not successfully terminate")
+                message = backup_exception.message
+            logging.fatal(message)
+            raise BackupException(message)
 
         ddl_content = self.database_connector.create_ddlgen(dbname=dbname)
         ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
