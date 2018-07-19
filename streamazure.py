@@ -3,6 +3,17 @@
 # coding=utf-8
 #
 
+
+# # run a backup
+# tar cvz -f - . | ./streamazure.py -b
+# 
+# # list backups. Lists only backups which come from the same VM
+# ./streamazure.py -l
+# 
+# # restore files
+# ./streamazure.py -r 20180709_173834 | tar tvfz -
+
+
 from __future__ import print_function
 import logging
 import tempfile
@@ -56,7 +67,7 @@ class AzureVMInstanceMetadata:
 
     @staticmethod
     def create_instance():
-        # return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(AzureVMInstanceMetadata.test_data()))
+        return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(AzureVMInstanceMetadata.test_data()))
         return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata())
 
     def __init__(self, req):
@@ -372,6 +383,8 @@ def main():
     commands.add_argument("-b", "--backup", help="Perform backup", action="store_true")
     commands.add_argument("-r", "--restore", help="Perform restore")
     commands.add_argument("-l", "--list", help="List backups in storage", action="store_true")
+    options = parser.add_argument_group("options")
+    options.add_argument("-n", "--name", help="Name for the backup", action="store_true")
     args = parser.parse_args()
 
     if args.backup:

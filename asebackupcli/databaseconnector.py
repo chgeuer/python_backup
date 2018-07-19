@@ -323,7 +323,6 @@ class DatabaseConnector:
         if returncode == 255 and "ct_connect(): network packet layer:" in stdout:
             raise BackupException("Database service not reachable")
 
-
         if "Attempt to locate entry in sysdatabases for database" in stdout:
             # "Attempt to locate entry in sysdatabases for database 'not_there' by name failed - no entry found under that name. Make sure that name is entered properly."
             raise BackupException("Unknown database")
