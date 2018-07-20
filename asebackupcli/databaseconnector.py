@@ -17,10 +17,8 @@ class DatabaseConnector:
 
     def get_database_password(self, sid):
         try:
-            executable = os.path.join(self.get_ase_base_directory(), "dba/bin/dbsp")
-            arg = ""
-            #password, stderr, _returncode = self.call_process(command_line=[executable, arg], stdin="")
-            password=subprocess.check_output(" ".join([executable, arg]), shell=True)
+            gen=self.backup_configuration.get_database_password_generator()
+            password=subprocess.check_output(gen, shell=True)
             return str(password).strip()
         except Exception as e:
             raise(BackupException("Failed to retrieve the database password\n{}".format(e.message)))

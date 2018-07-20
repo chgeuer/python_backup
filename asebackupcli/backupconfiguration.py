@@ -35,6 +35,7 @@ class BackupConfiguration:
             "azure.storage.account_name": lambda: self.cfg_file_value("azure.storage.account_name"),
             "azure.storage.account_key": lambda: self.cfg_file_value("azure.storage.account_key"),
             "azure.storage.container_name": lambda: self.cfg_file_value("azure.storage.container_name"),
+            "database_password_generator": lambda: self.cfg_file_value("database_password_generator"),
 
             "vm_name": lambda: self.instance_metadata.vm_name,
             "subscription_id": lambda: self.instance_metadata.subscription_id,
@@ -75,6 +76,7 @@ class BackupConfiguration:
     def get_log_backup_interval_min(self): return self.get_value("log_backup_interval_min")
     def get_business_hours(self): return self.get_value("backup.businesshours")
     def get_standard_local_directory(self): return self.get_value("local_temp_directory")
+    def get_database_password_generator(self): return self.get_value("database_password_generator")
 
     def get_databases_to_skip(self): return [ "dbccdb" ]
 
