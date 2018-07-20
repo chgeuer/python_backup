@@ -18,7 +18,7 @@ class DatabaseConnector:
     def get_database_password(self, sid):
         try:
             executable = os.path.join(self.get_ase_base_directory(), "dba/bin/dbsp")
-            arg = "***REMOVED***"
+            arg = ""
             #password, stderr, _returncode = self.call_process(command_line=[executable, arg], stdin="")
             password=subprocess.check_output(" ".join([executable, arg]), shell=True)
             return str(password).strip()
