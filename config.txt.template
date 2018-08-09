@@ -4,7 +4,7 @@ local_temp_directory:          /tmp
 sap.ASE.version:               16_0
 sap.SID:                       JLD
 sap.CID:                       AZU
-database_password_generator: /sybase/FOO/dba/bin/dbsp Supersecret123
+database_password_generator: /sybase/JLD/dba/bin/dbsp Supersecret123
 # database_password_generator:   echo "SuperSecret123.-"
 azure.storage.account_name:    erlang
 azure.storage.account_key:     hkfhsdkjfhkshsfhkjshkjfd/Yn8k85MQ==
