@@ -32,7 +32,6 @@ cat > $HOME/aseconfig.txt <<- EOF
 	sap.ase.version:               16_0
 	
 	azure.storage.account_name:    backupstorage123
-	azure.storage.account_key:     MvZFghjghjasgdhjagshjdgahjgdjhajhdghajgdjhgahjgdhjasgjhdgajhdghjasgjdhgahjgdjhagjhdgaj==
 	azure.storage.container_name:  backup
 EOF
 
@@ -185,7 +184,6 @@ chgeuer@saphec2:~/python_backup> curl -sH Metadata:true "http://169.254.169.254/
 sap.SID:                       JLD
 sap.CID:                       ABC
 azure.storage.account_name:    erlang
-azure.storage.account_key:     UqhiqGVB...
 azure.storage.container_name:  foo
 ```
 
@@ -212,7 +210,6 @@ chgeuer@saphec2:~/python_backup> ./backup.py -c config.txt -x
     business_hours_Sun:                 111111111111111111111111
     azure_storage_container_name:       foo
     azure_storage_account_name:         erlang
-    azure_storage_account_key:          UqhiqGVBWN...
 
 chgeuer@saphec2:~/python_backup>
 ```

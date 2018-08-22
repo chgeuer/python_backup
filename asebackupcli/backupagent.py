@@ -541,8 +541,7 @@ class BackupAgent:
         ] + hours + [
             "",
             "azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name),
-            "azure_storage_account_name:         {}".format(self.backup_configuration.get_azure_storage_account_name()),
-            "azure_storage_account_key:          {}...".format(self.backup_configuration._BackupConfiguration__get_azure_storage_account_key()[0:10])
+            "azure_storage_account_name:         {}".format(self.backup_configuration.get_azure_storage_account_name())
         ]
 
     def send_notification(self, url, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
