@@ -1,7 +1,7 @@
 # coding=utf-8
 
 from azure.storage.blob import BlockBlobService
-
+from msrestazure.azure_active_directory import MSIAuthentication
 from .azurevminstancemetadata import AzureVMInstanceMetadata
 from .backupconfigurationfile import BackupConfigurationFile
 from .businesshours import BusinessHours
@@ -33,7 +33,7 @@ class BackupConfiguration:
             "sap.ase.version": lambda: self.cfg_file_value("sap.ase.version"),
             "local_temp_directory": lambda: self.cfg_file_value("local_temp_directory"),
             "azure.storage.account_name": lambda: self.cfg_file_value("azure.storage.account_name"),
-            "azure.storage.account_key": lambda: self.cfg_file_value("azure.storage.account_key"),
+            # "azure.storage.account_key": lambda: self.cfg_file_value("azure.storage.account_key"),
             "azure.storage.container_name": lambda: self.cfg_file_value("azure.storage.container_name"),
             "database_password_generator": lambda: self.cfg_file_value("database_password_generator"),
 
@@ -81,7 +81,7 @@ class BackupConfiguration:
     def get_databases_to_skip(self): return [ "dbccdb" ]
 
     def get_azure_storage_account_name(self): return self.get_value("azure.storage.account_name")
-    def __get_azure_storage_account_key(self): return self.get_value("azure.storage.account_key")
+    # def __get_azure_storage_account_key(self): return self.get_value("azure.storage.account_key")
 
     @property 
     def azure_storage_container_name(self): return self.get_value("azure.storage.container_name")
@@ -89,10 +89,16 @@ class BackupConfiguration:
     @property
     def storage_client(self):
         if not self._block_blob_service:
+            account_name=self.get_azure_storage_account_name()
+            # 
+            # Use the Azure Managed Service Identity ('MSI') to fetch an Azure AD token to talk to Azure Storage (PREVIEW!!!)
+            # 
+            token_credential = MSIAuthentication(
+                resource='https://{account_name}.blob.core.windows.net'.format(account_name=account_name))
             self._block_blob_service = BlockBlobService(
-                account_name=self.get_azure_storage_account_name(), 
-                account_key=self.__get_azure_storage_account_key())
+                account_name=account_name, 
+                # account_key=self.__get_azure_storage_account_key(),
+                token_credential=token_credential)
             _created = self._block_blob_service.create_container(
                 container_name=self.azure_storage_container_name)
         return self._block_blob_service
-
