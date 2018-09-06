@@ -300,16 +300,17 @@ class BackupAgent:
                 stdout, stderr, _returncode, end_timestamp = self.file_backup_single_db(
                     dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                     stripe_count=stripe_count, output_dir=output_dir)
+                log_stdout_stderr(stdout, stderr)
             else:
                 out("Start streaming-based backup")
                 stdout, stderr, _returncode, end_timestamp = self.streaming_backup_single_db(
                     dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                     stripe_count=stripe_count, output_dir=output_dir)
+                log_stdout_stderr(stdout, stderr)
         except BackupException as be:
             backup_exception = be
 
-        log_stdout_stderr(stdout, stderr)
-        success = DatabaseConnector.MAGIC_SUCCESS_STRING in stdout
+        success = stdout != None && DatabaseConnector.MAGIC_SUCCESS_STRING in stdout
 
         if success and backup_exception == None:
             out("Backup of {} ({}) ran from {} to {} with status {}".format(
