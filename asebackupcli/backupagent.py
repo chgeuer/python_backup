@@ -296,7 +296,7 @@ class BackupAgent:
         backup_exception=None
         stdout=None
         stderr=None
-        
+        end_timestamp=None
         try:
             if not use_streaming:
                 out("Starting file-based backup")
@@ -344,10 +344,16 @@ class BackupAgent:
 
         ddl_content = self.database_connector.create_ddlgen(dbname=dbname)
         ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
-        self.backup_configuration.storage_client.create_blob_from_text(
-            container_name=self.backup_configuration.azure_storage_container_name,
-            blob_name=ddlgen_file_name, 
-            text=ddl_content)
+        if not skip_upload:
+            self.backup_configuration.storage_client.create_blob_from_text(
+                container_name=self.backup_configuration.azure_storage_container_name,
+                blob_name=ddlgen_file_name, 
+                text=ddl_content)
+        else:
+            local_ddlgen_file = os.path.join(output_dir, ddlgen_file_name)
+            with open(local_ddlgen_file,'wt') as ddlgen_file:
+                ddlgen_file.write(ddl_content)
+                out("Wrote database structure to {}".format(local_ddlgen_file))
 
         if not skip_upload and not use_streaming:
             #
