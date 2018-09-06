@@ -294,6 +294,9 @@ class BackupAgent:
         stripe_count = self.database_connector.determine_database_backup_stripe_count(dbname=dbname, is_full=is_full)
 
         backup_exception=None
+        stdout=None
+        stderr=None
+        
         try:
             if not use_streaming:
                 out("Starting file-based backup")
