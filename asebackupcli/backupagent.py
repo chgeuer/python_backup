@@ -310,7 +310,7 @@ class BackupAgent:
         except BackupException as be:
             backup_exception = be
 
-        success = stdout != None && DatabaseConnector.MAGIC_SUCCESS_STRING in stdout
+        success = stdout != None and DatabaseConnector.MAGIC_SUCCESS_STRING in stdout
 
         if success and backup_exception == None:
             out("Backup of {} ({}) ran from {} to {} with status {}".format(
