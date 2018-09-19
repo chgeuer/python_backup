@@ -6,3 +6,4 @@
 /asebackupcli/*.pyc
 /*.log
 /asebackupcli.egg-info
+/.eggs
