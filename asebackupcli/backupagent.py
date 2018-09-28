@@ -95,7 +95,7 @@ class BackupAgent:
             >>> same_day_backup =        "20180606_010000"
             >>> during_business_hours  = "20180606_150000"
             >>> outside_business_hours = "20180606_220000"
-            >>> 
+            >>>
             >>> # Forced
             >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=same_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
             True
@@ -162,7 +162,7 @@ class BackupAgent:
                 now_time=start_timestamp, 
                 force=force, 
                 latest_full_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
-                business_hours=self.backup_configuration.get_business_hours(),
+                business_hours=self.backup_configuration.get_db_business_hours(),
                 db_backup_interval_min=self.backup_configuration.get_db_backup_interval_min(),
                 db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max())
         else:
@@ -226,12 +226,11 @@ class BackupAgent:
         # We have to "rename" the blobs with the end-times for restore logic to work.
         # Rename is non-existent in blob storage, so copy & delete
         #
-        temp_container_name = "tmp-{dbname}-{start_timestamp}".format(dbname=dbname, start_timestamp=start_timestamp).decode('utf-8').replace("_","-").lower()
-        storage_client.create_container(container_name=temp_container_name)
+        temp_container_name = self.backup_configuration.azure_storage_container_name_temp 
         dest_container_name = self.backup_configuration.azure_storage_container_name
 
         threads = self.start_streaming_threads(
-            dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, 
+            dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
             stripe_count=stripe_count, output_dir=output_dir, container_name=temp_container_name)
         logging.debug("Start streaming backup SQL call")
         try:
@@ -249,7 +248,6 @@ class BackupAgent:
         #
         # Rename 
         # - copy from temp_container_name/old_blob_name to dest_container_name/new_blob_name)
-        # - delete temp_container_name
         #
         source_blobs = []
         copied_blobs = []
@@ -272,9 +270,8 @@ class BackupAgent:
         #
         # Delete sources
         #
-        # [storage_client.delete_blob(temp_container_name, b) for b in source_blobs]
-        storage_client.delete_container(container_name=temp_container_name)
-
+        [storage_client.delete_blob(temp_container_name, b) for b in source_blobs]
+ 
         return (stdout, stderr, returncode, end_timestamp)
 
     def file_backup_single_db(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
@@ -527,7 +524,7 @@ class BackupAgent:
         return "\n".join(self.get_configuration_printable(output_dir=output_dir))
 
     def get_configuration_printable(self, output_dir):
-        business_hours = self.backup_configuration.get_business_hours()
+        business_hours = self.backup_configuration.get_db_business_hours()
         day_f = lambda d: [None, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][d]
         b2s_f = lambda x: {True:"1", False:"0"}[x]
         s_f = lambda day: "business_hours_{}:                 {}".format(day_f(day), "".join(map(b2s_f, business_hours.hours[day])))
@@ -548,10 +545,12 @@ class BackupAgent:
             "db_backup_interval_min:             {}".format(self.backup_configuration.get_db_backup_interval_min()),
             "db_backup_interval_max:             {}".format(self.backup_configuration.get_db_backup_interval_max()),
             "log_backup_interval_min:            {}".format(self.backup_configuration.get_log_backup_interval_min())
-        ] + hours + [
+            ] + hours + [
             "",
+            "azure_storage_account_name:         {}".format(self.backup_configuration.get_azure_storage_account_name()),
             "azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name),
-            "azure_storage_account_name:         {}".format(self.backup_configuration.get_azure_storage_account_name())
+            "azure_storage_container_name_temp:  {}".format(self.backup_configuration.azure_storage_container_name_temp),
+            "notification_command:               {}".format(self.backup_configuration.get_notification_command())
         ]
 
     def send_notification(self, url, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):

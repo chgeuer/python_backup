@@ -55,8 +55,8 @@ class Naming:
     @staticmethod
     def pipe_names(dbname, is_full, stripe_count, output_dir):
         return map(lambda stripe_index: Naming.pipe_name(
-                output_dir=output_dir, dbname=dbname, is_full=is_full, 
-                stripe_index=stripe_index, stripe_count=stripe_count), 
+                output_dir=output_dir, dbname=dbname, is_full=is_full,
+                stripe_index=stripe_index, stripe_count=stripe_count),
             range(1, stripe_count + 1))
 
     @staticmethod
@@ -112,8 +112,8 @@ class Naming:
             >>> Naming.parse_filename('bad_input') == None
             True
         """
-        m=re.search(r'(?P<dbname>\S+?)_(?P<type>full|tran)_(?P<start>\d{8}_\d{6})--(?P<end>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
-        if (m == None):
+        m = re.search(r'(?P<dbname>\S+?)_(?P<type>full|tran)_(?P<start>\d{8}_\d{6})--(?P<end>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
+        if m == None:
             return None
 
         (dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) = (m.group('dbname'), Naming.type_str_is_full(m.group('type')), m.group('start'), m.group('end'), int(m.group('idx')), int(m.group('cnt')))
@@ -124,9 +124,9 @@ class Naming:
     def blobname_to_filename(blobname):
         parts = Naming.parse_blobname(blobname)
         return Naming.construct_filename(
-                    dbname=parts[0],
-                    is_full=parts[1],
-                    start_timestamp=parts[2],
-                    # skip parts[3] which is end-timestamp
-                    stripe_index=parts[4],
-                    stripe_count=parts[5])
+            dbname=parts[0],
+            is_full=parts[1],
+            start_timestamp=parts[2],
+            # skip parts[3] which is end-timestamp
+            stripe_index=parts[4],
+            stripe_count=parts[5])

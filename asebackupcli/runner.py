@@ -2,14 +2,13 @@
 
 import logging
 import argparse
-import pid
 import sys
-import os
 import getpass
 import socket
+import os
 import os.path
+import pid
 
-from .funcmodule import printe
 from .backupagent import BackupAgent
 from .backupconfiguration import BackupConfiguration
 from .databaseconnector import DatabaseConnector
@@ -31,24 +30,24 @@ class Runner:
     @staticmethod
     def arg_parser():
         parser = argparse.ArgumentParser()
-        requiredNamed = parser.add_argument_group("required arguments")
-        requiredNamed.add_argument("-c",  "--config", help="the path to the config file")
+        required_named = parser.add_argument_group("required arguments")
+        required_named.add_argument("-c", "--config", help="the path to the config file")
 
         commands = parser.add_argument_group("commands")
-        commands.add_argument("-f",  "--full-backup", help="Perform full backup", action="store_true")
-        commands.add_argument("-t",  "--transaction-backup", help="Perform transactions backup", action="store_true")
-        commands.add_argument("-r",  "--restore", help="Perform restore for date")
-        commands.add_argument("-l",  "--list-backups", help="Lists all backups in Azure storage", action="store_true")
-        commands.add_argument("-p",  "--prune-old-backups", help="Removes old backups from Azure storage ('--prune-old-backups 30d' removes files older 30 days)")
-        commands.add_argument("-x",  "--show-configuration", help="Shows the VM's configuration values", action="store_true")
-        commands.add_argument("-u",  "--unit-tests", help="Run unit tests", action="store_true")
+        commands.add_argument("-f", "--full-backup", help="Perform full backup", action="store_true")
+        commands.add_argument("-t", "--transaction-backup", help="Perform transactions backup", action="store_true")
+        commands.add_argument("-r", "--restore", help="Perform restore for date")
+        commands.add_argument("-l", "--list-backups", help="Lists all backups in Azure storage", action="store_true")
+        commands.add_argument("-p", "--prune-old-backups", help="Removes old backups from Azure storage ('--prune-old-backups 30d' removes files older 30 days)")
+        commands.add_argument("-x", "--show-configuration", help="Shows the VM's configuration values", action="store_true")
+        commands.add_argument("-u", "--unit-tests", help="Run unit tests", action="store_true")
 
         options = parser.add_argument_group("options")
 
-        options.add_argument("-o",  "--output-dir", help="Specify target folder for backup files")
-        options.add_argument("-S",  "--stream-upload", help="Streaming backup data via named pipe (no local files)", action="store_true")
-        options.add_argument("-y",  "--force", help="Perform forceful backup (ignores age of last backup or business hours)", action="store_true")
-        options.add_argument("-s",  "--skip-upload", help="Skip uploads of backup files", action="store_true")
+        options.add_argument("-o", "--output-dir", help="Specify target folder for backup files")
+        options.add_argument("-S", "--stream-upload", help="Streaming backup data via named pipe (no local files)", action="store_true")
+        options.add_argument("-y", "--force", help="Perform forceful backup (ignores age of last backup or business hours)", action="store_true")
+        options.add_argument("-s", "--skip-upload", help="Skip uploads of backup files", action="store_true")
         options.add_argument("-db", "--databases", help="Select databases to backup or restore ('--databases A,B,C')")
         return parser
 
@@ -70,13 +69,13 @@ class Runner:
         if args.config:
             config_file = os.path.abspath(args.config)
             if not os.path.isfile(config_file):
-                raise(BackupException("Cannot find configuration file '{}'".format(config_file)))
+                raise BackupException("Cannot find configuration file '{}'".format(config_file))
 
             return config_file
         else:
             parser.print_help()
 
-            raise(BackupException("Please specify a configuration file."))
+            raise BackupException("Please specify a configuration file.")
 
     @staticmethod
     def get_output_dir(args):
@@ -98,14 +97,14 @@ class Runner:
 
         try:
             test_file_name = os.path.join(output_dir, '__delete_me_ase_backup_test__.txt')
-            with open(test_file_name,'wt') as testfile:
+            with open(test_file_name, 'wt') as testfile:
                 testfile.write("Hallo")
             os.remove(test_file_name)
         except Exception:
-            raise BackupException("Directory {} ({}) is not writable".format(output_dir, specified_via))
+            raise BackupException("Directory {} ({}) is not writable".format(
+                output_dir, specified_via))
 
         return output_dir
-
 
     @staticmethod
     def get_databases(args):
@@ -113,9 +112,9 @@ class Runner:
             databases = args.databases.split(",")
             logging.debug("User manually selected databases: {}".format(str(databases)))
             return databases
-        else:
-            logging.debug("User did not select databases, trying to backup all databases")
-            return []
+
+        logging.debug("User did not select databases, trying to backup all databases")
+        return []
 
     @staticmethod
     def run_unit_tests():
@@ -149,9 +148,9 @@ class Runner:
         output_dir = Runner.get_output_dir(args)
         databases = Runner.get_databases(args)
         DatabaseConnector(backup_configuration).log_env()
-        use_streaming=args.stream_upload
-        skip_upload=args.skip_upload
-        force=args.force
+        use_streaming = args.stream_upload
+        skip_upload = args.skip_upload
+        force = args.force
 
         for line in backup_agent.get_configuration_printable(output_dir=output_dir):
             logging.debug(line)
@@ -190,6 +189,6 @@ class Runner:
             #     start_timestamp="20180106_120000", end_timestamp="20180106_120501", 
             #     success=True, data_in_MB=782.1, error_msg="All went well"
             # ))
-            print(backup_agent.show_configuration(output_dir=output_dir))
+            print backup_agent.show_configuration(output_dir=output_dir)
         else:
             parser.print_help()

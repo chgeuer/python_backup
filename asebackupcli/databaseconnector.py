@@ -67,8 +67,10 @@ class DatabaseConnector:
         """
             Create a SQL sidecar file with the database schema.
         """
-        stdout1, _stderr1, _returncode1 = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
-        stdout2, _stderr2, _returncode2 = self.call_process(command_line=self.ddlgen(dbname=dbname, args=["-F%"]))
+        stdout1, _stderr1, _returncode1 = self.call_process(
+            command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
+        stdout2, _stderr2, _returncode2 = self.call_process(
+            command_line=self.ddlgen(dbname=dbname, args=["-F%"]))
 
         return "\n".join([str(stdout1), "", str(stdout2)])
 
@@ -279,7 +281,7 @@ class DatabaseConnector:
             ]
         )
 
-    MAGIC_SUCCESS_STRING="ASE_AZURE_BACKUP_SUCCESS"
+    MAGIC_SUCCESS_STRING = "ASE_AZURE_BACKUP_SUCCESS"
 
     def determine_database_backup_stripe_count(self, dbname, is_full):
         (stdout, _stderr, _returncode) = self.call_isql(
@@ -290,7 +292,7 @@ class DatabaseConnector:
             raise BackupException("Cannot determine stripe_count: {}".format(stdout))
 
     def determine_databases(self, user_selected_databases, is_full):
-        if len(user_selected_databases) > 0:
+        if user_selected_databases:
             return user_selected_databases
         else:
             return self.list_databases(is_full=is_full)
@@ -320,11 +322,11 @@ class DatabaseConnector:
                     stripe_count=stripe_count, 
                     output_dir=output_dir)))
 
-    ERR_DATABASE_SERVICE_NOT_AVAILABLE="Database service not reachable"
-    ERR_BACKUP_SERVICE_NOT_AVAILABLE="Backup server not reachable"
-    ERR_BACKUP_SERVICE_KILLED="Backup service died"
-    ERR_UNKNOWN_DATABASE="Unknown database"
-    ERR_FILESYSTEM_FULL="Filesystem full"
+    ERR_DATABASE_SERVICE_NOT_AVAILABLE = "Database service not reachable"
+    ERR_BACKUP_SERVICE_NOT_AVAILABLE = "Backup server not reachable"
+    ERR_BACKUP_SERVICE_KILLED = "Backup service died"
+    ERR_UNKNOWN_DATABASE = "Unknown database"
+    ERR_FILESYSTEM_FULL = "Filesystem full"
 
     def call_isql(self, stdin):
         stdout, stderr, returncode = self.call_process(command_line=self.isql(), stdin=stdin)
@@ -333,22 +335,23 @@ class DatabaseConnector:
             raise BackupException(DatabaseConnector.ERR_DATABASE_SERVICE_NOT_AVAILABLE)
 
         if "Attempt to locate entry in sysdatabases for database" in stdout:
-            # "Attempt to locate entry in sysdatabases for database 'not_there' by name failed - no entry found under that name. Make sure that name is entered properly."
+            # "Attempt to locate entry in sysdatabases for database 'not_there' by name failed -
+            # no entry found under that name. Make sure that name is entered properly."
             raise BackupException(DatabaseConnector.ERR_UNKNOWN_DATABASE)
 
         if ("Can't open a connection to site 'SYB_BACKUP'. See the error log file in the ASE boot directory." in stdout) or ("Could not establish communication with Backup Server" in stdout) or ("Please make sure that there is an entry in Sysservers for this server, and that the correct server is running." in stdout):
             raise BackupException(DatabaseConnector.ERR_BACKUP_SERVICE_NOT_AVAILABLE)
 
-        if ("error number 28 (No space left on device)" in stdout):
+        if "error number 28 (No space left on device)" in stdout:
             raise BackupException(DatabaseConnector.ERR_FILESYSTEM_FULL)
 
-        if ("SYBMULTBUF ERROR: Emulator interprocess communication failed with error state " in stdout):
+        if "SYBMULTBUF ERROR: Emulator interprocess communication failed with error state " in stdout:
             raise BackupException(DatabaseConnector.ERR_BACKUP_SERVICE_KILLED)
 
         return (stdout, stderr, returncode)
 
     def call_process(self, command_line, stdin=None):
-        logging.debug("Executing {}".format(command_line[0]))
+        logging.debug("Executing %s", command_line[0])
 
         p = subprocess.Popen(
             command_line,
@@ -367,7 +370,7 @@ class DatabaseConnector:
     def log_env(self):
         ase_env = os.environ
         for key in ["INCLUDE", "LIB", "LD_LIBRARY_PATH", "PATH", "LANG", "COCKPIT_JAVA_HOME",
-                    "SAP_JRE7", "SAP_JRE7_64", "SYBASE_JRE_RTDS", "SAP_JRE8", "SAP_JRE8_64", 
+                    "SAP_JRE7", "SAP_JRE7_64", "SYBASE_JRE_RTDS", "SAP_JRE8", "SAP_JRE8_64",
                     "SYBASE", "SYBROOT", "SYBASE_OCS", "SYBASE_ASE", "SYBASE_WS"]:
             if ase_env.has_key(key):
                 logging.debug("Environment {}={}".format(key, ase_env[key]))

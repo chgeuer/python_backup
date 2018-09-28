@@ -12,10 +12,10 @@ def out(message):
     print(message)
 
 def log_stdout_stderr(stdout, stderr):
-    if len(stdout) > 0:
-        for l in stdout.split("\n"):
-            logging.info(l)
-    if len(stderr) > 0:
-        for l in stderr.split("\n"):
-            logging.warning(l)
+    if stdout:
+        for line in stdout.split("\n"):
+            logging.info(line)
+    if stderr:
+        for line in stderr.split("\n"):
+            logging.warning(line)
 
