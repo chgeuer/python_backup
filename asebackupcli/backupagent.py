@@ -36,7 +36,7 @@ class BackupAgent:
             for blob in results:
                 blob_name=blob.name
                 parts = Naming.parse_blobname(blob_name)
-                if parts == None:
+                if parts is None:
                     continue
 
                 end_time_of_existing_blob = parts[3]
@@ -61,7 +61,7 @@ class BackupAgent:
             for blob in results:
                 blob_name=blob.name
                 parts = Naming.parse_blobname(blob_name)
-                if parts == None:
+                if parts is None:
                     continue
 
                 (dbname_of_existing_blob, _is_full, _start_timestamp, end_time_of_existing_blob, _stripe_index, _stripe_count) = parts
@@ -312,7 +312,7 @@ class BackupAgent:
 
         success = stdout != None and DatabaseConnector.MAGIC_SUCCESS_STRING in stdout
 
-        if success and backup_exception == None:
+        if success and backup_exception is None:
             out("Backup of {} ({}) ran from {} to {} with status {}".format(
                 dbname, {True:"full DB",False:"transactions"}[is_full], 
                 start_timestamp, end_timestamp, 
@@ -375,7 +375,7 @@ class BackupAgent:
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
         for file in os.listdir(output_dir):
             parts = Naming.parse_blobname(file)
-            if parts == None:
+            if parts is None:
                 out("Skipping {} (not a backup file)".format(file))
                 continue
             (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
@@ -437,7 +437,7 @@ class BackupAgent:
                 marker=marker)
             for blob in results:
                 parts = Naming.parse_blobname(blob.name)
-                if (parts == None):
+                if (parts is None):
                     continue
 
                 (dbname, _is_full, _start_timestamp, end_timestamp, _stripe_index, _stripe_count) = parts
@@ -552,7 +552,7 @@ class BackupAgent:
             "azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name),
             "azure_storage_container_name_temp:  {}".format(self.backup_configuration.azure_storage_container_name_temp),
             "notification_command:               {}".format(self.backup_configuration.get_notification_command())
-        ]
+            ]
 
     def send_notification(self, url, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
         data = {
