@@ -1,6 +1,10 @@
 
 # CHANGELOG
 
+## v0.3.2
+
+- Bugfix
+
 ## v0.3.1
 
 - server_name configuration
