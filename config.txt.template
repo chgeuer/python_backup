@@ -2,6 +2,6 @@
 
 sap.ase.version:               16_0
 local_temp_directory:          /tmp
-# database_password_generator: /sybase/JLD/dba/bin/dbsp Supersecret123
-database_password_generator:   /usr/bin/echo "Test123.-"
+database_password_generator:   ~/dba/bin/dbsp `cat ~/.dbpassword`
+# server_name:                 somehost:4901
 notification_command:          /usr/sbin/ticmcmc --stdin
