@@ -28,7 +28,8 @@ class DatabaseConnector:
             self.get_ase_base_directory(), 
             "OCS-{}/bin/isql".format(self.backup_configuration.get_ase_version()))
 
-        server_name=self.backup_configuration.get_CID()
+        // server_name=self.backup_configuration.get_CID()
+        server_name=self.get_db_server_name.get_CID()
         username="sapsa"
         sid = self.backup_configuration.get_SID()
         password=self.get_database_password(sid=sid)

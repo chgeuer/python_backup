@@ -538,6 +538,7 @@ class BackupAgent:
             "sap.SID:                            {}".format(self.backup_configuration.get_SID()),
             "sap.CID:                            {}".format(self.backup_configuration.get_CID()),
             "ASE version:                        {}".format(self.backup_configuration.get_ase_version()),
+            "DB Server Name:                     {}".format(self.backup_configuration.get_db_server_name()),
             "ASE dir:                            {}".format(DatabaseConnector(self.backup_configuration).get_ase_base_directory()),
             "Output dir:                         {}".format(output_dir),
             "",

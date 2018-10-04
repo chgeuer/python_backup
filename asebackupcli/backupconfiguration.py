@@ -101,6 +101,8 @@ class BackupConfiguration:
 
     def get_SID(self): return self.machine_config_file_value("DEFAULT.SID").strip('"')
 
+    def get_db_server_name(self): return self.db_config_file_value("server_name").strip('"')
+
     def get_ase_version(self): return self.db_config_file_value("sap.ase.version")
 
     def get_standard_local_directory(self): return self.db_config_file_value("local_temp_directory")
