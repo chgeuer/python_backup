@@ -3,7 +3,7 @@
 
 ## v0.3.2
 
-- Bugfix
+- Bugfixes
 
 ## v0.3.1
 

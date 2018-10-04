@@ -15,7 +15,7 @@ class DatabaseConnector:
     def get_ase_base_directory(self):
         return "/sybase/{}".format(self.backup_configuration.get_SID())
 
-    def get_database_password(self, sid):
+    def get_database_password(self):
         try:
             gen=self.backup_configuration.get_database_password_generator()
             password=subprocess.check_output(gen, shell=True)
@@ -24,14 +24,14 @@ class DatabaseConnector:
             raise(BackupException("Failed to retrieve the database password\n{}".format(e.message)))
 
     def isql(self):
+        ase_version = self.backup_configuration.get_ase_version()
         isql_path = os.path.join(
             self.get_ase_base_directory(), 
-            "OCS-{}/bin/isql".format(self.backup_configuration.get_ase_version()))
+            "OCS-{}/bin/isql".format(ase_version))
 
-        server_name=self.get_db_server_name.get_CID()
+        server_name=self.backup_configuration.get_db_server_name()
         username="sapsa"
-        sid = self.backup_configuration.get_SID()
-        password=self.get_database_password(sid=sid)
+        password=self.get_database_password()
 
         supress_header = "-b"
         return [
@@ -53,7 +53,7 @@ class DatabaseConnector:
 
         username = "sapsa"
         sid = self.backup_configuration.get_SID()
-        password = self.get_database_password(sid=sid)
+        password = self.get_database_password()
 
         return [
             ddlgen_path,
