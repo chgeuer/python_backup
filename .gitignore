@@ -9,3 +9,5 @@
 /.eggs
 /*.tgz
 /dist
+/.azurestorageaccountkey
+/.azurestorageaccountname
