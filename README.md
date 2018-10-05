@@ -1,7 +1,8 @@
 # ASE Backup
 
-## Install the executable in a user account using `virtualenv`
+[![Build Status](https://dev.azure.com/asebackupbuild/asebackupci/_apis/build/status/chgeuer.python_backup)](https://dev.azure.com/asebackupbuild/asebackupci/_build/latest?definitionId=1)
 
+## Install the executable in a user account using `virtualenv`
 
 curl https://raw.githubusercontent.com/chgeuer/python_backup/master/install_userspace.sh | bash
 
