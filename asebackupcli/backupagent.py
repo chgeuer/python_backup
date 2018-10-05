@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import datetime
 import threading
 from itertools import groupby
@@ -374,22 +375,34 @@ class BackupAgent:
 
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
         for file in os.listdir(output_dir):
+            
+            # check for remaining ddlgen.sql files
+            m = re.search(r'(?P<dbname>\S+?)_ddlgen_(?P<start>\d{8}_\d{6})\.sql', file)
+            if (m is not None):
+                blob_name = file
+                blob_path = os.path.join(output_dir, blob_name)
+                out("Upload leftover {} to Azure Storage".format(blob_path))
+                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
+                out("Delete leftover {}".format(blob_path))
+                os.remove(blob_path)
+                continue
+
+            # check for old cdmp files
             parts = Naming.parse_blobname(file)
-            if parts is None:
-                out("Skipping {} (not a backup file)".format(file))
-                continue
-            (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
-            if (is_full != is_full_file):
-                out("Skipping {} (not right type of backup file)".format(file))
-                continue
+            if parts is not None:
+                (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
+                if (is_full != is_full_file):
+                    out("Skipping leftover {} (not right type of backup file)".format(file))
+                    continue
 
-            blob_name = file
-            blob_path = os.path.join(output_dir, blob_name)
+                blob_name = file
+                blob_path = os.path.join(output_dir, blob_name)
 
-            out("Upload {} to Azure Storage".format(blob_path))
-            self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
-            out("Delete {}".format(blob_path))
-            os.remove(blob_path)
+                out("Upload leftover {} to Azure Storage".format(blob_path))
+                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
+                out("Delete leftover {}".format(blob_path))
+                os.remove(blob_path)
+                continue
 
     def list_backups(self, databases = []):
         baks_dict = self.existing_backups(databases=databases)
