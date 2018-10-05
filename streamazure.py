@@ -80,7 +80,7 @@ class AzureVMInstanceMetadata:
     def get_tags(self):
         try:
             tags_value = str(self.json['compute']['tags'])
-            if tags_value == None:
+            if tags_value is None:
                 return dict()
             return dict(kvp.split(":", 1) for kvp in (tags_value.split(";")))
         except Exception as e:

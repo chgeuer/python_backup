@@ -3,15 +3,15 @@
 import time
 import datetime
 import logging
-from .backupexception import BackupException
 
 class Timing:
-    time_format="%Y%m%d_%H%M%S"
+    time_format = "%Y%m%d_%H%M%S"
 
     @staticmethod
-    def now_localtime(): return time.strftime(Timing.time_format, time.localtime())
+    def now_localtime(): 
+        return time.strftime(Timing.time_format, time.localtime())
 
-    @staticmethod 
+    @staticmethod
     def parse(time_str):
         return time.strptime(time_str, Timing.time_format)
 
@@ -32,11 +32,11 @@ class Timing:
         return int(Timing.time_diff(timestr_1, timestr_2).total_seconds())
 
     @staticmethod
-    def files_needed_for_recovery(times, restore_point, 
-                                  select_end_date=lambda x: x["end_date"], 
+    def files_needed_for_recovery(times, restore_point,
+                                  select_end_date=lambda x: x["end_date"],
                                   select_is_full=lambda x: x["is_full"]):
-        create_tuple=lambda x: (select_end_date(x), select_is_full(x))
-        end_date_from_tuple=lambda x: x[0]
+        create_tuple = lambda x: (select_end_date(x), select_is_full(x))
+        end_date_from_tuple = lambda x: x[0]
         index_of_files_to_download = set()
         for x in Timing.sort(list(set(map(create_tuple, times))), end_date_from_tuple):
             x_end_date = end_date_from_tuple(x)
