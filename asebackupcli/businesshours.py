@@ -8,7 +8,7 @@ from .backupexception import BackupException
 
 class BusinessHours:
     """
-    Process business hour statements, such as determine wheter a certain 
+    Process business hour statements, such as determine wheter a certain
     point in time is within or outside business hours.
     """
 
@@ -62,7 +62,7 @@ class BusinessHours:
             if not self.tags.has_key(weekdays[day]):
                 raise BackupException("Missing schedule for {}".format(weekdays[day]))
             self.hours[day+1] = BusinessHours.parse_day(self.tags[weekdays[day]])
-        
+
         # Also retrieve min/max retention values from tag
         if not self.tags.has_key('min'):
             raise BackupException("Missing value for min in schedule {schedule}".format(schedule=schedule))

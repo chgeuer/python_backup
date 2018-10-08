@@ -1,4 +1,5 @@
 # coding=utf-8
+# pylint: disable=no-member
 
 import logging
 import os
@@ -218,7 +219,6 @@ class BackupAgent:
 
     def finalize_streaming_threads(self, threads):
         [t.join() for t in threads]
-        print("Finished {} threads".format(len(threads)))
 
     def streaming_backup_single_db(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
         storage_client = self.backup_configuration.storage_client
@@ -330,7 +330,7 @@ class BackupAgent:
 
                 blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
                 if self.backup_configuration.storage_client.exists(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob_name):
-                    self.backup_configuration.storage_client.delete_blob(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob.name)
+                    self.backup_configuration.storage_client.delete_blob(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob_name)
 
             message = None
             if not success:

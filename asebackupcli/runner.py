@@ -1,4 +1,5 @@
 # coding=utf-8
+# pylint: disable=no-member
 
 import logging
 import argparse
@@ -185,8 +186,8 @@ class Runner:
         elif args.show_configuration:
             # print(backup_agent.send_notification(
             #     url='https://postman-echo.com/post',
-            #     aseservername="az2-server", db_name="AZ2", is_full=True, 
-            #     start_timestamp="20180106_120000", end_timestamp="20180106_120501", 
+            #     aseservername="az2-server", db_name="AZ2", is_full=True,
+            #     start_timestamp="20180106_120000", end_timestamp="20180106_120501",
             #     success=True, data_in_MB=782.1, error_msg="All went well"
             # ))
             print backup_agent.show_configuration(output_dir=output_dir)

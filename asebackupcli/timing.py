@@ -8,7 +8,7 @@ class Timing:
     time_format = "%Y%m%d_%H%M%S"
 
     @staticmethod
-    def now_localtime(): 
+    def now_localtime():
         return time.strftime(Timing.time_format, time.localtime())
 
     @staticmethod

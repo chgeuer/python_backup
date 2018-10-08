@@ -1,5 +1,6 @@
 # coding=utf-8
 
+import os
 import logging
 from azure.storage.blob import BlockBlobService
 from msrestazure.azure_active_directory import MSIAuthentication
@@ -101,7 +102,7 @@ class BackupConfiguration:
 
     def get_SID(self): return self.machine_config_file_value("DEFAULT.SID").strip('"')
 
-    def get_db_server_name(self): 
+    def get_db_server_name(self):
         if self.db_config_file.key_exists("server_name"):
             return self.db_config_file_value("server_name").strip('"')
         return self.get_SID()
@@ -125,7 +126,7 @@ class BackupConfiguration:
         try:
             account = self.instance_metadata.get_tags()['bkp_storage_account']
             logging.debug("Using storage account name from instance metadata: %s", account)
-        except Exception as ex:
+        except Exception:
             cid = self.get_CID().lower()
             name = self.get_vm_name()[0:5]
             account = "sa{}{}backup0001".format(name, cid)
@@ -160,6 +161,8 @@ class BackupConfiguration:
             token_credential = MSIAuthentication(
                 resource='https://{account_name}.blob.{cloud_environment_storage_suffix}'.format(
                     account_name=account_name, cloud_environment_storage_suffix=cloud_environment_storage_suffix))
+            # pylint: disable=unexpected-keyword-arg
             self._block_blob_service = BlockBlobService(
                 account_name=account_name, token_credential=token_credential)
+            # pylint: enable=unexpected-keyword-arg
         return self._block_blob_service

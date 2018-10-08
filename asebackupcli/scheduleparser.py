@@ -5,9 +5,7 @@ import re
 from .backupexception import BackupException
 
 class ScheduleParser:
-    """
-        Parse time duration statements such as `7d` for 7 days or `1h 30m` for 90 minutes. 
-    """
+    """Parse time duration statements such as `7d` for 7 days or `1h 30m` for 90 minutes."""
 
     @staticmethod
     def __from_atom(time):
