@@ -4,7 +4,7 @@ import datetime
 import re
 from .backupexception import BackupException
 
-class ScheduleParser:
+class ScheduleParser(object):
     """Parse time duration statements such as `7d` for 7 days or `1h 30m` for 90 minutes."""
 
     @staticmethod
@@ -26,7 +26,7 @@ class ScheduleParser:
                 "s": lambda s: datetime.timedelta(seconds=s)
             }[unit](num)
         except Exception as e:
-            raise(BackupException("Cannot parse value '{}' into duration: {}".format(time, e.message)))
+            raise BackupException("Cannot parse value '{}' into duration: {}".format(time, e.message))
 
     @staticmethod
     def parse_timedelta(time_val):
@@ -49,7 +49,7 @@ class ScheduleParser:
         try:
             no_spaces = time_val.replace(" ", "")
             atoms = re.findall(r"(\d+[wdhms])", no_spaces)
-            durations = map(lambda time: ScheduleParser.__from_atom(time), atoms)
+            durations = [ScheduleParser.__from_atom(time) for time in atoms]
             return reduce(lambda x, y: x + y, durations)
         except Exception as e:
-            raise(BackupException("Cannot parse value '{}' into duration: {}".format(time_val, e.message)))
+            raise BackupException("Cannot parse value '{}' into duration: {}".format(time_val, e.message))

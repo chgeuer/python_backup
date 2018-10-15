@@ -4,7 +4,7 @@ import time
 import datetime
 import logging
 
-class Timing:
+class Timing(object):
     time_format = "%Y%m%d_%H%M%S"
 
     @staticmethod

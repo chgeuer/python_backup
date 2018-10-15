@@ -15,7 +15,9 @@ def lazy_property(fn):
         return getattr(self, attr_name)
     return _lazy_property
 
-class AzureVMInstanceMetadata:
+class AzureVMInstanceMetadata(object):
+    """Read Azure VM instance metadata."""
+
     @staticmethod
     def request_metadata(api_version="2017-12-01"):
         url = "http://169.254.169.254/metadata/instance?api-version={v}".format(v=api_version)
@@ -25,9 +27,9 @@ class AzureVMInstanceMetadata:
                     urllib2.Request(
                         url, None, {'metadata': 'true'})).read())
         except Exception as exception:
-            raise(BackupException(
+            raise BackupException(
                 "Failed to connect to Azure instance metadata endpoint {}:\n{}".format(
-                    url, exception.message)))
+                    url, exception.message))
 
     @staticmethod
     def create_instance():

@@ -19,10 +19,8 @@ from .databaseconnector import DatabaseConnector
 from .backupexception import BackupException
 from .streamingthread import StreamingThread
 
-class BackupAgent:
-    """
-        The backup business logic implementation.
-    """
+class BackupAgent(object):
+    """The backup business logic implementation."""
     def __init__(self, backup_configuration):
         self.backup_configuration = backup_configuration
         self.database_connector = DatabaseConnector(self.backup_configuration)
@@ -33,10 +31,10 @@ class BackupAgent:
         while True:
             results = self.backup_configuration.storage_client.list_blobs(
                 container_name=self.backup_configuration.azure_storage_container_name,
-                prefix=Naming.construct_blobname_prefix(dbname=dbname, is_full=is_full), 
+                prefix=Naming.construct_blobname_prefix(dbname=dbname, is_full=is_full),
                 marker=marker)
             for blob in results:
-                blob_name=blob.name
+                blob_name = blob.name
                 parts = Naming.parse_blobname(blob_name)
                 if parts is None:
                     continue
@@ -61,7 +59,7 @@ class BackupAgent:
                 marker=marker)
 
             for blob in results:
-                blob_name=blob.name
+                blob_name = blob.name
                 parts = Naming.parse_blobname(blob_name)
                 if parts is None:
                     continue
@@ -156,20 +154,20 @@ class BackupAgent:
         age_of_latest_backup_in_storage = Timing.time_diff(latest_tran_backup_timestamp, now_time)
         min_interval_allows_backup = age_of_latest_backup_in_storage > log_backup_interval_min
         perform_tran_backup = min_interval_allows_backup
-        return perform_tran_backup 
+        return perform_tran_backup
 
     def should_run_backup(self, dbname, is_full, force, start_timestamp):
         if is_full:
             result = BackupAgent.should_run_full_backup(
-                now_time=start_timestamp, 
-                force=force, 
+                now_time=start_timestamp,
+                force=force,
                 latest_full_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
                 business_hours=self.backup_configuration.get_db_business_hours(),
                 db_backup_interval_min=self.backup_configuration.get_db_backup_interval_min(),
                 db_backup_interval_max=self.backup_configuration.get_db_backup_interval_max())
         else:
             result = BackupAgent.should_run_tran_backup(
-                now_time=start_timestamp, 
+                now_time=start_timestamp,
                 force=force,
                 latest_tran_backup_timestamp=self.latest_backup_timestamp(dbname=dbname, is_full=is_full),
                 log_backup_interval_min=self.backup_configuration.get_log_backup_interval_min())
@@ -190,11 +188,11 @@ class BackupAgent:
     def start_streaming_threads(self, dbname, is_full, start_timestamp, stripe_count, output_dir, container_name):
         threads = []
         for stripe_index in range(1, stripe_count + 1):
-            pipe_path = Naming.pipe_name(output_dir=output_dir, 
-                dbname=dbname, is_full=is_full, stripe_index=stripe_index, 
+            pipe_path = Naming.pipe_name(output_dir=output_dir,
+                dbname=dbname, is_full=is_full, stripe_index=stripe_index,
                 stripe_count=stripe_count)
-            blob_name = Naming.construct_filename(dbname=dbname, 
-                is_full=is_full, start_timestamp=start_timestamp, 
+            blob_name = Naming.construct_filename(dbname=dbname,
+                is_full=is_full, start_timestamp=start_timestamp,
                 stripe_index=stripe_index, stripe_count=stripe_count)
 
             if os.path.exists(pipe_path):
@@ -204,7 +202,6 @@ class BackupAgent:
             logging.debug("Create named pipe {}".format(pipe_path))
             os.mkfifo(pipe_path)
 
-            logging.debug("Create thread object #{} to upload {} to {}/{} ".format(stripe_index, pipe_path, container_name, blob_name))
             t = StreamingThread(
                 storage_client=self.backup_configuration.storage_client,
                 container_name=container_name, blob_name=blob_name, pipe_path=pipe_path)
@@ -227,7 +224,7 @@ class BackupAgent:
         # We have to "rename" the blobs with the end-times for restore logic to work.
         # Rename is non-existent in blob storage, so copy & delete
         #
-        temp_container_name = self.backup_configuration.azure_storage_container_name_temp 
+        temp_container_name = self.backup_configuration.azure_storage_container_name_temp
         dest_container_name = self.backup_configuration.azure_storage_container_name
 
         threads = self.start_streaming_threads(
@@ -236,7 +233,7 @@ class BackupAgent:
         logging.debug("Start streaming backup SQL call")
         try:
             stdout, stderr, returncode = self.database_connector.create_backup_streaming(
-                dbname=dbname, is_full=is_full, stripe_count=stripe_count, 
+                dbname=dbname, is_full=is_full, stripe_count=stripe_count,
                 output_dir=output_dir)
         except BackupException:
             storage_client.delete_container(container_name=temp_container_name)
@@ -272,7 +269,7 @@ class BackupAgent:
         # Delete sources
         #
         [storage_client.delete_blob(temp_container_name, b) for b in source_blobs]
- 
+
         return (stdout, stderr, returncode, end_timestamp)
 
     def file_backup_single_db(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
@@ -291,10 +288,10 @@ class BackupAgent:
 
         stripe_count = self.database_connector.determine_database_backup_stripe_count(dbname=dbname, is_full=is_full)
 
-        backup_exception=None
-        stdout=None
-        stderr=None
-        end_timestamp=None
+        backup_exception = None
+        stdout = None
+        stderr = None
+        end_timestamp = None
         try:
             if not use_streaming:
                 out("Starting file-based backup")
@@ -341,7 +338,7 @@ class BackupAgent:
             raise BackupException(message)
 
         ddl_content = self.database_connector.create_ddlgen(dbname=dbname)
-        ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
+        ddlgen_file_name = Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
         if not skip_upload:
             self.backup_configuration.storage_client.create_blob_from_text(
                 container_name=self.backup_configuration.azure_storage_container_name,
@@ -355,9 +352,9 @@ class BackupAgent:
 
         if not skip_upload and not use_streaming:
             #
-            # After isql run, rename all generated dump files to the blob naming scheme (including end-time). 
+            # After isql run, rename all generated dump files to the blob naming scheme (including end-time).
             #
-            # If the machine reboots during an isql run, then that rename doesn't happen, and we do 
+            # If the machine reboots during an isql run, then that rename doesn't happen, and we do
             # not upload these potentially corrupt dump files
             #
             for stripe_index in range(1, stripe_count + 1):
@@ -369,7 +366,9 @@ class BackupAgent:
                 out("Rename {} to {}".format(file_path, blob_path))
                 os.rename(file_path, blob_path)
                 out("Upload {} to Azure Storage".format(blob_path))
-                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
+                self.backup_configuration.storage_client.create_blob_from_path(
+                    container_name=self.backup_configuration.azure_storage_container_name, 
+                    file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
                 out("Delete {}".format(blob_path))
                 os.remove(blob_path)
 
@@ -410,36 +409,34 @@ class BackupAgent:
             # http://mark-dot-net.blogspot.com/2014/03/python-equivalents-of-linq-methods.html
             stripes = baks_dict[end_timestamp]
             stripes = map(lambda blobname: {
-                    "blobname":blobname,
-                    "filename": Naming.blobname_to_filename(blobname),
-                    "parts": Naming.parse_blobname(blobname)
-                }, stripes)
+                "blobname":blobname,
+                "filename": Naming.blobname_to_filename(blobname),
+                "parts": Naming.parse_blobname(blobname)
+            }, stripes)
             stripes = map(lambda x: {
-                    "blobname": x["blobname"],
-                    "filename": x["filename"],
-                    "parts": x["parts"],
-                    "dbname": x["parts"][0],
-                    "is_full": x["parts"][1],
-                    "begin": x["parts"][2],
-                    "end": x["parts"][3],
-                    "stripe_index": x["parts"][4],
-                }, stripes)
+                "blobname": x["blobname"],
+                "filename": x["filename"],
+                "parts": x["parts"],
+                "dbname": x["parts"][0],
+                "is_full": x["parts"][1],
+                "begin": x["parts"][2],
+                "end": x["parts"][3],
+                "stripe_index": x["parts"][4],
+            }, stripes)
 
             group_by_key=lambda x: "db {dbname: <30} start {begin} end {end} ({type})".format(
                 dbname=x["dbname"], end=x["end"], begin=x["begin"], type=Naming.backup_type_str(x["is_full"]))
 
             for group, values in groupby(stripes, key=group_by_key): 
-                files = list(map(lambda s: s["stripe_index"], values))
-                print("{backup} {files}".format(backup=group, files=files))
+                files = [s["stripe_index"] for s in values]
+                print "{backup} {files}".format(backup=group, files=files)
 
     def prune_old_backups(self, older_than, databases):
-        """
-            Delete (prune) old backups from Azure storage. 
-        """
+        """Delete (prune) old backups from Azure storage."""
         minimum_deletable_age = datetime.timedelta(7, 0)
         logging.warn("Deleting files older than {}".format(older_than))
-        if (older_than < minimum_deletable_age):
-            msg="This script does not delete files younger than {}, ignoring this order".format(minimum_deletable_age)
+        if older_than < minimum_deletable_age:
+            msg = "This script does not delete files younger than {}, ignoring this order".format(minimum_deletable_age)
             logging.warn(msg)
             return
 
@@ -450,11 +447,11 @@ class BackupAgent:
                 marker=marker)
             for blob in results:
                 parts = Naming.parse_blobname(blob.name)
-                if (parts is None):
+                if parts is None:
                     continue
 
                 (dbname, _is_full, _start_timestamp, end_timestamp, _stripe_index, _stripe_count) = parts
-                if (databases != None) and not (dbname in databases):
+                if (databases != None) and not dbname in databases:
                     continue
 
                 diff = Timing.time_diff(end_timestamp, Timing.now_localtime())
@@ -474,7 +471,7 @@ class BackupAgent:
                 break
 
     def restore(self, restore_point, output_dir, databases):
-        print("Retriving point-in-time restore {} for databases {}".format(restore_point, str(databases)))
+        print "Retriving point-in-time restore {} for databases {}".format(restore_point, str(databases))
         databases = self.database_connector.determine_databases(user_selected_databases=databases, is_full=True)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
         databases = filter(lambda db: not (db in skip_dbs), databases)
@@ -484,7 +481,7 @@ class BackupAgent:
     def restore_single_db(self, dbname, restore_point, output_dir):
         blobs = self.list_restore_blobs(dbname=dbname)
         times = map(Naming.parse_blobname, blobs)
-        restore_files = Timing.files_needed_for_recovery(times, restore_point, 
+        restore_files = Timing.files_needed_for_recovery(times, restore_point,
             select_end_date=lambda x: x[3], select_is_full=lambda x: x[1])
 
         storage_client = self.backup_configuration.storage_client
@@ -500,11 +497,11 @@ class BackupAgent:
                     out("Downloaded ddlgen description {}".format(ddlgen_file_path))
 
             blob_name = "{dbname}_{type}_{start}--{end}_S{idx:03d}-{cnt:03d}.cdmp".format(
-                dbname=dbname, type=Naming.backup_type_str(is_full), 
+                dbname=dbname, type=Naming.backup_type_str(is_full),
                 start=start_timestamp, end=end_timestamp,
                 idx=stripe_index, cnt=stripe_count)
             file_name = "{dbname}_{type}_{start}_S{idx:03d}-{cnt:03d}.cdmp".format(
-                dbname=dbname, type=Naming.backup_type_str(is_full), 
+                dbname=dbname, type=Naming.backup_type_str(is_full),
                 start=start_timestamp, idx=stripe_index, cnt=stripe_count)
 
             file_path = os.path.join(output_dir, file_name)
@@ -520,7 +517,7 @@ class BackupAgent:
         while True:
             results = self.backup_configuration.storage_client.list_blobs(
                 container_name=self.backup_configuration.azure_storage_container_name,
-                prefix="{dbname}_".format(dbname=dbname), 
+                prefix="{dbname}_".format(dbname=dbname),
                 marker=marker)
             for blob in results:
                 existing_blobs.append(blob.name)

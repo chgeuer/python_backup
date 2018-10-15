@@ -18,7 +18,7 @@ from .timing import Timing
 from .backupexception import BackupException
 from .__init__ import version
 
-class Runner:
+class Runner(object):
     @staticmethod
     def configure_logging():
         logging.basicConfig(
@@ -160,13 +160,15 @@ class Runner:
             try:
                 #is_full, databases, output_dir, force, skip_upload, use_streaming
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
-                    backup_agent.backup(is_full=True, databases=databases, output_dir=output_dir, force=force, skip_upload=skip_upload, use_streaming=use_streaming)
+                    backup_agent.backup(is_full=True, databases=databases, output_dir=output_dir, 
+                        force=force, skip_upload=skip_upload, use_streaming=use_streaming)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
         elif args.transaction_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
-                    backup_agent.backup(is_full=False, databases=databases, output_dir=output_dir, force=force, skip_upload=skip_upload, use_streaming=use_streaming)
+                    backup_agent.backup(is_full=False, databases=databases, output_dir=output_dir, 
+                        force=force, skip_upload=skip_upload, use_streaming=use_streaming)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip transaction log backup, already running")
         elif args.restore:

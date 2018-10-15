@@ -3,10 +3,7 @@
 import os
 import re
 
-from .timing import Timing
-from .backupexception import BackupException
-
-class Naming:
+class Naming(object):
     @staticmethod
     def backup_type_str(is_full):
         """
@@ -55,9 +52,9 @@ class Naming:
     @staticmethod
     def pipe_names(dbname, is_full, stripe_count, output_dir):
         return map(lambda stripe_index: Naming.pipe_name(
-                output_dir=output_dir, dbname=dbname, is_full=is_full,
-                stripe_index=stripe_index, stripe_count=stripe_count),
-            range(1, stripe_count + 1))
+            output_dir=output_dir, dbname=dbname, is_full=is_full,
+            stripe_index=stripe_index, stripe_count=stripe_count),
+                   range(1, stripe_count + 1))
 
     @staticmethod
     def construct_blobname_prefix(dbname, is_full):

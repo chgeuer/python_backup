@@ -5,10 +5,10 @@ import os
 import logging
 
 from .naming import Naming
-from .funcmodule import printe, out, log_stdout_stderr
 from .backupexception import BackupException
 
-class DatabaseConnector:
+class DatabaseConnector(object):
+    """The ASE DB logic."""
     def __init__(self, backup_configuration):
         self.backup_configuration = backup_configuration
 
@@ -17,11 +17,11 @@ class DatabaseConnector:
 
     def get_database_password(self):
         try:
-            gen=self.backup_configuration.get_database_password_generator()
-            password=subprocess.check_output(gen, shell=True)
+            gen = self.backup_configuration.get_database_password_generator()
+            password = subprocess.check_output(gen, shell=True)
             return str(password).strip()
         except Exception as e:
-            raise(BackupException("Failed to retrieve the database password\n{}".format(e.message)))
+            raise BackupException("Failed to retrieve the database password\n{}".format(e.message))
 
     def isql(self):
         ase_version = self.backup_configuration.get_ase_version()
@@ -29,9 +29,9 @@ class DatabaseConnector:
             self.get_ase_base_directory(), 
             "OCS-{}/bin/isql".format(ase_version))
 
-        server_name=self.backup_configuration.get_db_server_name()
-        username="sapsa"
-        password=self.get_database_password()
+        server_name = self.backup_configuration.get_db_server_name()
+        username = "sapsa"
+        password = self.get_database_password()
 
         supress_header = "-b"
         return [
@@ -261,12 +261,11 @@ class DatabaseConnector:
             ]
             +
             [
-                # load full AZ2 from full-1.cdmp stripe on full-2.cdmp stripe on tran-1.cdmp stripe on tran-2.cdmp wi 
                 "dump {type} {dbname} to {file_names}".format(
                     type={True:"database", False:"transaction"}[is_full],
                     dbname=dbname,
                     file_names="\n    stripe on ".join(
-                        map(lambda fn: "'{fn}'".format(fn=fn), files)
+                        ["'{fn}'".format(fn=fn) for fn in files]
                     )
                 ),
                 "with compression = '101'",

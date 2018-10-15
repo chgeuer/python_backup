@@ -7,10 +7,11 @@ from msrestazure.azure_active_directory import MSIAuthentication
 from .azurevminstancemetadata import AzureVMInstanceMetadata
 from .backupconfigurationfile import BackupConfigurationFile
 from .businesshours import BusinessHours
-from .scheduleparser import ScheduleParser
 from .backupexception import BackupException
 
-class BackupConfiguration:
+class BackupConfiguration(object):
+    """Access to the backup configuration."""
+
     def __init__(self, config_filename, machine_config_filename="/usr/sap/backup/backup.conf"):
         """
             >>> cfg = BackupConfiguration(config_filename="config.txt")

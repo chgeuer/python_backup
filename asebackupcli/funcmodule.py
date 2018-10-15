@@ -5,9 +5,11 @@ import sys
 import logging
 
 def printe(*args, **kwargs):
+    """Print to STDERR."""
     print(*args, file=sys.stderr, **kwargs)
 
 def out(message):
+    """Print to STDOUT."""
     logging.info(message)
     print(message)
 
@@ -18,4 +20,3 @@ def log_stdout_stderr(stdout, stderr):
     if stderr:
         for line in stderr.split("\n"):
             logging.warning(line)
-

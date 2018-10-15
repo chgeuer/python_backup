@@ -6,7 +6,7 @@ from .timing import Timing
 from .scheduleparser import ScheduleParser
 from .backupexception import BackupException
 
-class BusinessHours:
+class BusinessHours(object):
     """
     Process business hour statements, such as determine wheter a certain
     point in time is within or outside business hours.
@@ -65,11 +65,13 @@ class BusinessHours:
 
         # Also retrieve min/max retention values from tag
         if not self.tags.has_key('min'):
-            raise BackupException("Missing value for min in schedule {schedule}".format(schedule=schedule))
+            raise BackupException("Missing value for min in schedule {schedule}".format(
+                schedule=schedule))
         self.min = ScheduleParser.parse_timedelta(self.tags['min'])
 
         if not self.tags.has_key('max') and schedule != "bkp_log_schedule":
-            raise BackupException("Missing value for max in schedule {schedule}".format(schedule=schedule))
+            raise BackupException("Missing value for max in schedule {schedule}".format(
+                schedule=schedule))
         self.max = ScheduleParser.parse_timedelta(self.tags['max'])
 
     @staticmethod
@@ -79,10 +81,11 @@ class BusinessHours:
         '111111111000000000011111'
         """
         try:
-            tags = dict(kvp.split(":", 1) for kvp in (tags_value.split(";")))
+            tags = dict(kvp.split(":", 1) for kvp in tags_value.split(";"))
             return BusinessHours(tags=tags, schedule=schedule)
-        except Exception as e:
-            raise(BackupException("Error parsing business hours '{}': {}".format(tags_value, e.message)))
+        except Exception as ex:
+            raise BackupException("Error parsing business hours '{}': {}".format(
+                tags_value, ex.message))
 
     @staticmethod
     def parse_day(day_values):
@@ -92,10 +95,10 @@ class BusinessHours:
         """
         try:
             hour_strs = re.findall(r"([01])", day_values)
-            durations = map(lambda x: {"1":True, "0":False}[x], hour_strs)
-            return durations
+            return [{"1":True, "0":False}[x] for x in hour_strs]
         except Exception as e:
-            raise(BackupException("Error parsing business hours '{}': {}".format(day_values, e.message)))
+            raise BackupException("Error parsing business hours '{}': {}".format(
+                day_values, e.message))
 
     def is_backup_allowed_dh(self, day, hour):
         """
