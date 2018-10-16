@@ -64,9 +64,7 @@ class DatabaseConnector(object):
         ] + args
 
     def create_ddlgen(self, dbname):
-        """
-            Create a SQL sidecar file with the database schema.
-        """
+        """Create a SQL sidecar file with the database schema."""
         stdout1, _stderr1, _returncode1 = self.call_process(
             command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
         stdout2, _stderr2, _returncode2 = self.call_process(

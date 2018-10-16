@@ -1,5 +1,5 @@
 # coding=utf-8
-# pylint: disable=no-member
+"""Backup agent module"""
 
 import logging
 import os
@@ -84,55 +84,7 @@ class BackupAgent(object):
 
     @staticmethod
     def should_run_full_backup(now_time, force, latest_full_backup_timestamp, business_hours, db_backup_interval_min, db_backup_interval_max):
-        """
-            Determine whether a backup should be executed. 
-
-            >>> business_hours=BusinessHours.parse_tag_str(BusinessHours._BusinessHours__sample_data())
-            >>> db_backup_interval_min=ScheduleParser.parse_timedelta("24h")
-            >>> db_backup_interval_max=ScheduleParser.parse_timedelta("3d")
-            >>> five_day_backup =        "20180601_010000"
-            >>> two_day_backup =         "20180604_010000"
-            >>> same_day_backup =        "20180606_010000"
-            >>> during_business_hours  = "20180606_150000"
-            >>> outside_business_hours = "20180606_220000"
-            >>>
-            >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=same_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            True
-            >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=two_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            True
-            >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=True, latest_full_backup_timestamp=five_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            True
-            >>> # respecting business hours, and not needed anyway
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=same_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            False
-            >>> # respecting business hours
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=two_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            False
-            >>> # a really old backup, so we ignore business hours
-            >>> BackupAgent.should_run_full_backup(now_time=during_business_hours, force=False, latest_full_backup_timestamp=five_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            True
-            >>> # outside_business_hours, but same_day_backup, so no backup
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=same_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            False
-            >>> # outside_business_hours and need to backup
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=two_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            True
-            >>> # a really old backup
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=False, latest_full_backup_timestamp=five_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            True
-            >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=same_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            True
-            >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=two_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            True
-            >>> # Forced
-            >>> BackupAgent.should_run_full_backup(now_time=outside_business_hours, force=True, latest_full_backup_timestamp=five_day_backup, business_hours=business_hours, db_backup_interval_min=db_backup_interval_min, db_backup_interval_max=db_backup_interval_max)
-            True
-        """
+        """Determine whether a backup should be executed."""
         allowed_by_business = business_hours.is_backup_allowed_time(now_time)
         age_of_latest_backup_in_storage = Timing.time_diff(latest_full_backup_timestamp, now_time)
         min_interval_allows_backup = age_of_latest_backup_in_storage > db_backup_interval_min
@@ -189,18 +141,25 @@ class BackupAgent(object):
         threads = []
         for stripe_index in range(1, stripe_count + 1):
             pipe_path = Naming.pipe_name(output_dir=output_dir,
-                dbname=dbname, is_full=is_full, stripe_index=stripe_index,
-                stripe_count=stripe_count)
+                                         dbname=dbname,
+                                         is_full=is_full,
+                                         stripe_index=stripe_index,
+                                         stripe_count=stripe_count)
             blob_name = Naming.construct_filename(dbname=dbname,
-                is_full=is_full, start_timestamp=start_timestamp,
-                stripe_index=stripe_index, stripe_count=stripe_count)
+                                                  is_full=is_full,
+                                                  start_timestamp=start_timestamp,
+                                                  stripe_index=stripe_index,
+                                                  stripe_count=stripe_count)
 
             if os.path.exists(pipe_path):
                 logging.warning("Remove old pipe file {}".format(pipe_path))
                 os.remove(pipe_path)
 
             logging.debug("Create named pipe {}".format(pipe_path))
+
+            # pylint: disable=no-member
             os.mkfifo(pipe_path)
+            # pylint: enable=no-member
 
             t = StreamingThread(
                 storage_client=self.backup_configuration.storage_client,

@@ -1,4 +1,5 @@
 # coding=utf-8
+"""Backup configuration module"""
 
 import os
 import logging
@@ -99,24 +100,35 @@ class BackupConfiguration(object):
         """Get minimum transaction log backup interval."""
         return self.get_log_business_hours().min
 
-    def get_customer_id(self): return self.machine_config_file_value("DEFAULT.CID").strip('"')
+    def get_customer_id(self):
+        """Get the customer ID (CID)"""
+        return self.machine_config_file_value("DEFAULT.CID").strip('"')
 
-    def get_system_id(self): return self.machine_config_file_value("DEFAULT.SID").strip('"')
+    def get_system_id(self):
+        """Get the system ID (SID)"""
+        return self.machine_config_file_value("DEFAULT.SID").strip('"')
 
     def get_db_server_name(self):
+        """Get the database server name"""
         if self.db_config_file.key_exists("server_name"):
             return self.db_config_file_value("server_name").strip('"')
         return self.get_system_id()
 
-    def get_ase_version(self): return self.db_config_file_value("sap.ase.version")
+    def get_ase_version(self):
+        """Get the database ASE version"""
+        return self.db_config_file_value("sap.ase.version")
 
-    def get_standard_local_directory(self): return self.db_config_file_value("local_temp_directory")
+    def get_standard_local_directory(self):
+        return self.db_config_file_value("local_temp_directory")
 
-    def get_database_password_generator(self): return self.db_config_file_value("database_password_generator")
+    def get_database_password_generator(self):
+        return self.db_config_file_value("database_password_generator")
 
-    def get_notification_command(self): return self.db_config_file_value("notification_command")
+    def get_notification_command(self):
+        return self.db_config_file_value("notification_command")
 
-    def get_databases_to_skip(self): return [ "dbccdb" ]
+    def get_databases_to_skip(self):
+        return [ "dbccdb" ]
 
     def get_azure_storage_account_name(self):
         """
@@ -154,14 +166,15 @@ class BackupConfiguration(object):
     @property
     def storage_client(self):
         if not self._block_blob_service:
-            account_name=self.get_azure_storage_account_name()
+            account_name = self.get_azure_storage_account_name()
             #
             # Use the Azure Managed Service Identity ('MSI') to fetch an Azure AD token to talk to Azure Storage (PREVIEW!!!)
             #
             cloud_environment_storage_suffix = 'core.windows.net'
             token_credential = MSIAuthentication(
                 resource='https://{account_name}.blob.{cloud_environment_storage_suffix}'.format(
-                    account_name=account_name, cloud_environment_storage_suffix=cloud_environment_storage_suffix))
+                    account_name=account_name,
+                    cloud_environment_storage_suffix=cloud_environment_storage_suffix))
             # pylint: disable=unexpected-keyword-arg
             self._block_blob_service = BlockBlobService(
                 account_name=account_name, token_credential=token_credential)
