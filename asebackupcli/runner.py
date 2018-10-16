@@ -35,20 +35,29 @@ class Runner(object):
         required_named.add_argument("-c", "--config", help="the path to the config file")
 
         commands = parser.add_argument_group("commands")
-        commands.add_argument("-f", "--full-backup", help="Perform full backup", action="store_true")
-        commands.add_argument("-t", "--transaction-backup", help="Perform transactions backup", action="store_true")
+        commands.add_argument("-f", "--full-backup", help="Perform full backup",
+                              action="store_true")
+        commands.add_argument("-t", "--transaction-backup", help="Perform transactions backup",
+                              action="store_true")
         commands.add_argument("-r", "--restore", help="Perform restore for date")
-        commands.add_argument("-l", "--list-backups", help="Lists all backups in Azure storage", action="store_true")
+        commands.add_argument("-l", "--list-backups", help="Lists all backups in Azure storage",
+                              action="store_true")
         commands.add_argument("-p", "--prune-old-backups", help="Removes old backups from Azure storage ('--prune-old-backups 30d' removes files older 30 days)")
-        commands.add_argument("-x", "--show-configuration", help="Shows the VM's configuration values", action="store_true")
+        commands.add_argument("-x", "--show-configuration",
+                              help="Shows the VM's configuration values",
+                              action="store_true")
         commands.add_argument("-u", "--unit-tests", help="Run unit tests", action="store_true")
 
         options = parser.add_argument_group("options")
 
         options.add_argument("-o", "--output-dir", help="Specify target folder for backup files")
-        options.add_argument("-S", "--stream-upload", help="Streaming backup data via named pipe (no local files)", action="store_true")
-        options.add_argument("-y", "--force", help="Perform forceful backup (ignores age of last backup or business hours)", action="store_true")
-        options.add_argument("-s", "--skip-upload", help="Skip uploads of backup files", action="store_true")
+        options.add_argument("-S", "--stream-upload",
+                             help="Streaming backup data via named pipe (no local files)",
+                             action="store_true")
+        options.add_argument("-y", "--force", help="Perform forceful backup (ignores age of last backup or business hours)",
+                             action="store_true")
+        options.add_argument("-s", "--skip-upload", help="Skip uploads of backup files",
+                             action="store_true")
         options.add_argument("-db", "--databases", help="Select databases to backup or restore ('--databases A,B,C')")
         return parser
 

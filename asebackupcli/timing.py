@@ -1,3 +1,4 @@
+""" Timing module."""
 # coding=utf-8
 
 import time
@@ -5,26 +6,33 @@ import datetime
 import logging
 
 class Timing(object):
+    """Timing class."""
     time_format = "%Y%m%d_%H%M%S"
 
     @staticmethod
     def now_localtime():
+        """Return formatted localtime."""
         return time.strftime(Timing.time_format, time.localtime())
 
     @staticmethod
     def parse(time_str):
+        """Parse time string."""
         return time.strptime(time_str, Timing.time_format)
 
     @staticmethod
     def time_diff(str1, str2):
+        """Calculate time difference."""
         t1 = Timing.parse(str1)
-        dt1 = datetime.datetime(year=t1.tm_year, month=t1.tm_mon, day=t1.tm_mday, hour=t1.tm_hour, minute=t1.tm_min, second=t1.tm_sec)
+        dt1 = datetime.datetime(year=t1.tm_year, month=t1.tm_mon, day=t1.tm_mday,
+                                hour=t1.tm_hour, minute=t1.tm_min, second=t1.tm_sec)
         t2 = Timing.parse(str2)
-        dt2 = datetime.datetime(year=t2.tm_year, month=t2.tm_mon, day=t2.tm_mday, hour=t2.tm_hour, minute=t2.tm_min, second=t2.tm_sec)
+        dt2 = datetime.datetime(year=t2.tm_year, month=t2.tm_mon, day=t2.tm_mday,
+                                hour=t2.tm_hour, minute=t2.tm_min, second=t2.tm_sec)
         return dt2 - dt1
 
     @staticmethod
     def sort(times, selector=lambda x: x):
+        """Sort by time."""
         return sorted(times, cmp=lambda a, b: Timing.time_diff_in_seconds(selector(b), selector(a)))
 
     @staticmethod
@@ -49,10 +57,10 @@ class Timing(object):
                 break
 
         files_to_download = []
-        for x in Timing.sort(times, select_end_date):
-            if create_tuple(x) in index_of_files_to_download:
-                files_to_download.append(x)
+        for t in Timing.sort(times, select_end_date):
+            if create_tuple(t) in index_of_files_to_download:
+                files_to_download.append(t)
 
         result = Timing.sort(files_to_download, select_end_date)
-        logging.debug("Files which must be fetched for {}: {}".format(restore_point, str(result)))
+        logging.debug("Files which must be fetched for %s: %s", restore_point, str(result))
         return result
