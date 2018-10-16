@@ -99,14 +99,14 @@ class BackupConfiguration(object):
         """Get minimum transaction log backup interval."""
         return self.get_log_business_hours().min
 
-    def get_CID(self): return self.machine_config_file_value("DEFAULT.CID").strip('"')
+    def get_customer_id(self): return self.machine_config_file_value("DEFAULT.CID").strip('"')
 
-    def get_SID(self): return self.machine_config_file_value("DEFAULT.SID").strip('"')
+    def get_system_id(self): return self.machine_config_file_value("DEFAULT.SID").strip('"')
 
     def get_db_server_name(self):
         if self.db_config_file.key_exists("server_name"):
             return self.db_config_file_value("server_name").strip('"')
-        return self.get_SID()
+        return self.get_system_id()
 
     def get_ase_version(self): return self.db_config_file_value("sap.ase.version")
 
@@ -128,7 +128,7 @@ class BackupConfiguration(object):
             account = self.instance_metadata.get_tags()['bkp_storage_account']
             logging.debug("Using storage account name from instance metadata: %s", account)
         except Exception:
-            cid = self.get_CID().lower()
+            cid = self.get_customer_id().lower()
             name = self.get_vm_name()[0:5]
             account = "sa{}{}backup0001".format(name, cid)
             logging.debug("No storage account in instance metadata, using generated: %s", account)

@@ -13,7 +13,7 @@ class DatabaseConnector(object):
         self.backup_configuration = backup_configuration
 
     def get_ase_base_directory(self):
-        return "/sybase/{}".format(self.backup_configuration.get_SID())
+        return "/sybase/{}".format(self.backup_configuration.get_system_id())
 
     def get_database_password(self):
         try:
@@ -48,11 +48,11 @@ class DatabaseConnector(object):
         # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%)"           >> 20180678.sql
 
         ddlgen_path = os.path.join(
-            self.get_ase_base_directory(), 
+            self.get_ase_base_directory(),
             "ASE-{}/bin/ddlgen".format(self.backup_configuration.get_ase_version()))
 
         username = "sapsa"
-        sid = self.backup_configuration.get_SID()
+        sid = self.backup_configuration.get_system_id()
         password = self.get_database_password()
 
         return [
