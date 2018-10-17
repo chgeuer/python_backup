@@ -3,6 +3,7 @@
 """Unit tests for BusinessHours."""
 import unittest
 from asebackupcli.businesshours import BusinessHours
+from .test_azurevminstancemetadata import TestAzureVMInstanceMetadata
 
 class TestBusinessHours(unittest.TestCase):
     """Unit tests for class BusinessHours."""
@@ -10,18 +11,7 @@ class TestBusinessHours(unittest.TestCase):
     @staticmethod
     def sample_data():
         """Sample data"""
-        return (
-            "bkp_db_schedule:"
-            "mo:111111111000000000011111, "
-            "tu:111111111000000000011111, "
-            "we:111111111000000000011111, "
-            "th:111111111000000000011111, "
-            "fr:111111111000000000011111, "
-            "sa:111111111111111111111111, "
-            "su:111111111111111111111111, "
-            "min:1d, "
-            "max:3d"
-        )
+        return TestAzureVMInstanceMetadata.demo_tag()
 
     def test___init__(self):
         """Test BusinessHours.__init__"""
@@ -42,6 +32,24 @@ class TestBusinessHours(unittest.TestCase):
         self.assertEqual(parsed.hours[5], weekday)
         self.assertEqual(parsed.hours[6], weekend)
         self.assertEqual(parsed.hours[7], weekend)
+
+
+    def test_fs_schedule(self):
+        """Read non-DB contents"""
+        sample_data = TestBusinessHours.sample_data()
+        parsed = BusinessHours.parse_tag_str(sample_data, schedule='bkp_fs_schedule')
+
+        no_restrictions = [True, True, True, True, True, True, True, True,
+                           True, True, True, True, True, True, True, True,
+                           True, True, True, True, True, True, True, True]
+
+        self.assertEqual(parsed.hours[1], no_restrictions)
+        self.assertEqual(parsed.hours[2], no_restrictions)
+        self.assertEqual(parsed.hours[3], no_restrictions)
+        self.assertEqual(parsed.hours[4], no_restrictions)
+        self.assertEqual(parsed.hours[5], no_restrictions)
+        self.assertEqual(parsed.hours[6], no_restrictions)
+        self.assertEqual(parsed.hours[7], no_restrictions)
 
     def test_parse_tag_str(self):
         """Test BusinessHours.parse_tag_str"""

@@ -1,7 +1,9 @@
 # coding=utf-8
 
-import subprocess
 import os
+from os.path import expanduser
+import glob
+import subprocess
 import logging
 
 from .naming import Naming
@@ -12,8 +14,11 @@ class DatabaseConnector(object):
     def __init__(self, backup_configuration):
         self.backup_configuration = backup_configuration
 
-    def get_ase_base_directory(self):
-        return "/sybase/{}".format(self.backup_configuration.get_system_id())
+    def get_executable_path(self, path):
+        glob.glob(os.path.join(expanduser("~"), path))[0]
+
+    def get_backup_user_name(self):
+        return "sapsa"
 
     def get_database_password(self):
         try:
@@ -24,47 +29,30 @@ class DatabaseConnector(object):
             raise BackupException("Failed to retrieve the database password\n{}".format(e.message))
 
     def isql(self):
-        ase_version = self.backup_configuration.get_ase_version()
-        isql_path = os.path.join(
-            self.get_ase_base_directory(), 
-            "OCS-{}/bin/isql".format(ase_version))
-
-        server_name = self.backup_configuration.get_db_server_name()
-        username = "sapsa"
-        password = self.get_database_password()
-
+        width = "999"
         supress_header = "-b"
         return [
-            isql_path,
-            "-S", server_name,
-            "-U", username,
-            "-P", password,
-            "-w", "999",
+            self.get_executable_path('OCS-*/bin/isql'),
+            "-S", self.backup_configuration.get_db_server_name(),
+            "-U", self.get_backup_user_name(),
+            "-P", self.get_database_password(),
+            "-w", width,
             supress_header
         ]
 
     def ddlgen(self, dbname, args=[]):
-        # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F% -TDBD -N%)" >  20180678.sql
-        # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%)"           >> 20180678.sql
-
-        ddlgen_path = os.path.join(
-            self.get_ase_base_directory(),
-            "ASE-{}/bin/ddlgen".format(self.backup_configuration.get_ase_version()))
-
-        username = "sapsa"
-        sid = self.backup_configuration.get_system_id()
-        password = self.get_database_password()
-
         return [
-            ddlgen_path,
-            "-S{}".format(sid),
+            self.get_executable_path('ASE-*/bin/ddlgen'),
+            "-S{}".format(self.backup_configuration.get_system_id()),
             "-D{}".format(dbname),
-            "-U{}".format(username),
-            "-P{}".format(password)
+            "-U{}".format(self.get_backup_user_name()),
+            "-P{}".format(self.get_database_password())
         ] + args
 
     def create_ddlgen(self, dbname):
         """Create a SQL sidecar file with the database schema."""
+        # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F% -TDBD -N%)" >  20180678.sql
+        # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%)"           >> 20180678.sql
         stdout1, _stderr1, _returncode1 = self.call_process(
             command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
         stdout2, _stderr2, _returncode2 = self.call_process(
@@ -184,79 +172,23 @@ class DatabaseConnector(object):
 
     @staticmethod
     def sql_statement_create_backup(dbname, is_full, start_timestamp, stripe_count, output_dir):
-        """
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=True, start_timestamp="20180629_124500", stripe_count=1))
-            use master
-            go
-            sp_dboption AZU, 'trunc log on chkpt', 'false'
-            go
-            dump database AZU to '/tmp/AZU_full_20180629_124500_S001-001.cdmp'
-            with compression = '101'
-            go
+        files = [Naming.local_filesystem_name(
+            directory=output_dir, dbname=dbname,
+            is_full=is_full, start_timestamp=start_timestamp,
+            stripe_index=stripe_index, stripe_count=stripe_count
+            ) for stripe_index in range(1, stripe_count + 1)]
 
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=True, start_timestamp="20180629_124500", stripe_count=4))
-            use master
-            go
-            sp_dboption AZU, 'trunc log on chkpt', 'false'
-            go
-            dump database AZU to '/tmp/AZU_full_20180629_124500_S001-004.cdmp'
-                stripe on '/tmp/AZU_full_20180629_124500_S002-004.cdmp'
-                stripe on '/tmp/AZU_full_20180629_124500_S003-004.cdmp'
-                stripe on '/tmp/AZU_full_20180629_124500_S004-004.cdmp'
-            with compression = '101'
-            go
-
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=False, start_timestamp="20180629_124500", stripe_count=1))
-            use master
-            go
-            dump transaction AZU to '/tmp/AZU_tran_20180629_124500_S001-001.cdmp'
-            with compression = '101'
-            go
-
-            >>> print(DatabaseConnector.sql_statement_create_backup(output_dir="/tmp", dbname="AZU", is_full=False, start_timestamp="20180629_124500", stripe_count=4))
-            use master
-            go
-            dump transaction AZU to '/tmp/AZU_tran_20180629_124500_S001-004.cdmp'
-                stripe on '/tmp/AZU_tran_20180629_124500_S002-004.cdmp'
-                stripe on '/tmp/AZU_tran_20180629_124500_S003-004.cdmp'
-                stripe on '/tmp/AZU_tran_20180629_124500_S004-004.cdmp'
-            with compression = '101'
-            go
-        """
-
-        files = map(lambda stripe_index: 
-            Naming.local_filesystem_name(
-                directory=output_dir, 
-                dbname=dbname, 
-                is_full=is_full, 
-                start_timestamp=start_timestamp, 
-                stripe_index=stripe_index, 
-                stripe_count=stripe_count), 
-            range(1, stripe_count + 1))
-        
         return DatabaseConnector.sql_statement_create_backup_for_filenames(
-            dbname=dbname, 
-            is_full=is_full, 
-            files=files)
+            dbname=dbname, is_full=is_full, files=files)
 
     @staticmethod
     def sql_statement_create_backup_for_filenames(dbname, is_full, files):
-        """
-            >>> print(DatabaseConnector.sql_statement_create_backup_for_filenames(dbname="AZU", is_full=True, files=[ "/tmp/pipe0", "/tmp/pipe1" ]))
-            use master
-            go
-            sp_dboption AZU, 'trunc log on chkpt', 'false'
-            go
-            dump database AZU to '/tmp/pipe0'
-                stripe on 'tmp/pipe1'
-            with compression = '101'
-            go
-        """
         return "\n".join(
             [
                 "use master",
                 "go"
             ]
+            # sp_dboption AZU, 'trunc log on chkpt', 'false'\ngo\n
             +
             [
                 "dump {type} {dbname} to {file_names}".format(
@@ -299,24 +231,24 @@ class DatabaseConnector(object):
             stdin=DatabaseConnector.sql_statement_list_databases(is_full=is_full))
 
         return filter(
-            lambda e: e != "", 
+            lambda e: e != "",
             map(lambda s: s.strip(), stdout.split("\n")))
 
     def create_backup(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
         return self.call_isql(
             stdin=DatabaseConnector.sql_statement_create_backup(
-                dbname=dbname, is_full=is_full, 
-                start_timestamp=start_timestamp, 
+                dbname=dbname, is_full=is_full,
+                start_timestamp=start_timestamp,
                 stripe_count=stripe_count,
                 output_dir=output_dir))
 
     def create_backup_streaming(self, dbname, is_full, stripe_count, output_dir):
         return self.call_isql(
             stdin=DatabaseConnector.sql_statement_create_backup_for_filenames(
-                dbname=dbname, is_full=is_full, 
+                dbname=dbname, is_full=is_full,
                 files=Naming.pipe_names(
-                    dbname=dbname, is_full=is_full, 
-                    stripe_count=stripe_count, 
+                    dbname=dbname, is_full=is_full,
+                    stripe_count=stripe_count,
                     output_dir=output_dir)))
 
     ERR_DATABASE_SERVICE_NOT_AVAILABLE = "Database service not reachable"
@@ -370,6 +302,6 @@ class DatabaseConnector(object):
                     "SAP_JRE7", "SAP_JRE7_64", "SYBASE_JRE_RTDS", "SAP_JRE8", "SAP_JRE8_64",
                     "SYBASE", "SYBROOT", "SYBASE_OCS", "SYBASE_ASE", "SYBASE_WS"]:
             if ase_env.has_key(key):
-                logging.debug("Environment {}={}".format(key, ase_env[key]))
+                logging.debug("Environment %s=%s", key, ase_env[key])
             else:
-                logging.debug("Environment {}=".format(key))
+                logging.debug("Environment %s=", key)

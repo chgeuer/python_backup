@@ -114,10 +114,6 @@ class BackupConfiguration(object):
             return self.db_config_file_value("server_name").strip('"')
         return self.get_system_id()
 
-    def get_ase_version(self):
-        """Get the database ASE version"""
-        return self.db_config_file_value("sap.ase.version")
-
     def get_standard_local_directory(self):
         return self.db_config_file_value("local_temp_directory")
 
@@ -128,7 +124,7 @@ class BackupConfiguration(object):
         return self.db_config_file_value("notification_command")
 
     def get_databases_to_skip(self):
-        return [ "dbccdb" ]
+        return ["dbccdb"]
 
     def get_azure_storage_account_name(self):
         """

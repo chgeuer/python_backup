@@ -21,19 +21,13 @@ pip install git+https://github.com/chgeuer/python_backup.git#egg=asebackupcli
 
 ln -s ~/${envname}/bin/asebackupcli ~/bin
 
-
 cat > $HOME/aseconfig.txt <<- EOF
-	# Customer ID
-	sap.CID:                       AZU
-	# System ID
-	sap.SID:                       JLD
+	# Some comment
 	local_temp_directory:          /sybase/JLD/saparch_1
 	# local_temp_directory:        /mnt/resource
-	
-	sap.ase.version:               16_0
-	
-	azure.storage.account_name:    backupstorage123
-	azure.storage.container_name:  backup
+	database_password_generator:   ~/dba/bin/dbsp `cat ~/.dbpassword`
+	# server_name:                 somehost:4901
+	notification_command:          /usr/sbin/ticmcmc --stdin
 EOF
 
 "$(which asebackupcli)" -c ~/aseconfig.txt -x

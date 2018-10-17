@@ -11,10 +11,22 @@ class TestAzureVMInstanceMetadata(unittest.TestCase):
     """Unit tests for class AzureVMInstanceMetadata."""
 
     @staticmethod
+    def instance_metadata_filename():
+        return "tests/instancemetadata.json"
+
+    @staticmethod
+    def demo_tag():
+        """Demo data"""
+        with open(TestAzureVMInstanceMetadata.instance_metadata_filename(),
+                  mode='rt') as config_file:
+            json_meta = config_file.read()
+            return str(json.JSONDecoder().decode(json_meta)['compute']['tags'])
+
+    @staticmethod
     def demo_instance_metadata():
         """Demo data"""
-        filename = "tests/instancemetadata.json"
-        with open(filename, mode='rt') as config_file:
+        with open(TestAzureVMInstanceMetadata.instance_metadata_filename(),
+                  mode='rt') as config_file:
             json_meta = config_file.read()
             return AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(json_meta))
 
