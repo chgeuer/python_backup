@@ -12,6 +12,7 @@ import urllib2
 import uuid
 import time
 
+from .__init__ import version
 from .funcmodule import printe, out, log_stdout_stderr
 from .naming import Naming
 from .timing import Timing
@@ -507,7 +508,6 @@ class BackupAgent(object):
             "sap.SID:                            {}".format(self.backup_configuration.get_system_id()),
             "sap.CID:                            {}".format(self.backup_configuration.get_customer_id()),
             "DB Server Name:                     {}".format(self.backup_configuration.get_db_server_name()),
-            "ASE dir:                            {}".format(DatabaseConnector(self.backup_configuration).get_ase_base_directory()),
             "Output dir:                         {}".format(output_dir),
             "",
             "skipped databases:                  {}".format(self.backup_configuration.get_databases_to_skip()),
@@ -519,13 +519,14 @@ class BackupAgent(object):
             "azure_storage_account_name:         {}".format(self.backup_configuration.get_azure_storage_account_name()),
             "azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name),
             "azure_storage_container_name_temp:  {}".format(self.backup_configuration.azure_storage_container_name_temp),
-            "notification_command:               {}".format(self.backup_configuration.get_notification_command())
+            "notification_command:               {}".format(self.backup_configuration.get_notification_command()),
+            "script version:                     {}".format(version())
             ]
 
     def send_notification(self, url, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
         data = {
             "SourceSystem" :"Azure",
-            "BackupManagementType_s": "AzureWorkload", 
+            "BackupManagementType_s": "AzureWorkload",
             "BackupItemType_s": "SAPASEDatabase",
             "TenantId" :"unknown",
             "SubscriptionId": self.backup_configuration.get_subscription_id(),

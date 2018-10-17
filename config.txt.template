@@ -4,3 +4,11 @@ local_temp_directory:          /tmp
 database_password_generator:   ~/dba/bin/dbsp `cat ~/.dbpassword`
 # server_name:                 somehost:4901
 notification_command:          /usr/sbin/ticmcmc --stdin
+
+
+
+#
+# azure.storage.container_name is optional. If not specified, using the VM name as container name
+#
+#azure.storage.container_name:  foo
+
