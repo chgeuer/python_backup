@@ -34,9 +34,22 @@ class TestAzureVMInstanceMetadata(unittest.TestCase):
         """Parsing VM instance metadata"""
         meta = TestAzureVMInstanceMetadata.demo_instance_metadata()
 
-        self.assertEqual(meta.vm_name, "somevm")
         self.assertEqual(meta.subscription_id, "724467b5-bee4-484b-bf13-d6a5505d2b51")
+        self.assertEqual(meta.resource_group_name, "backuptest")
+        self.assertEqual(meta.vm_name, "somevm")
 
-        business_hours = BusinessHours(tags=meta.get_tags(), schedule="bkp_fs_schedule")
-        self.assertEqual(business_hours.min, datetime.timedelta(7))
-        self.assertEqual(business_hours.max, datetime.timedelta(8))
+        db_business_hours = BusinessHours(tags=meta.get_tags())
+        self.assertEqual(db_business_hours.min, datetime.timedelta(1))
+        self.assertEqual(db_business_hours.max, datetime.timedelta(3))
+
+        db_business_hours = BusinessHours(tags=meta.get_tags(), schedule="bkp_db_schedule")
+        self.assertEqual(db_business_hours.min, datetime.timedelta(1))
+        self.assertEqual(db_business_hours.max, datetime.timedelta(3))
+
+        log_business_hours = BusinessHours(tags=meta.get_tags(), schedule="bkp_log_schedule")
+        self.assertEqual(log_business_hours.min, datetime.timedelta(0, 600))
+        self.assertEqual(log_business_hours.max, datetime.timedelta(0, 1800))
+
+        fs_business_hours = BusinessHours(tags=meta.get_tags(), schedule="bkp_fs_schedule")
+        self.assertEqual(fs_business_hours.min, datetime.timedelta(7))
+        self.assertEqual(fs_business_hours.max, datetime.timedelta(8))

@@ -1,6 +1,8 @@
 # coding=utf-8
 # pylint: disable=no-member
 
+"""Runner module"""
+
 import logging
 import argparse
 import sys
@@ -19,6 +21,7 @@ from .backupexception import BackupException
 from .__init__ import version
 
 class Runner(object):
+    """Runner class"""
     @staticmethod
     def configure_logging():
         logging.basicConfig(
@@ -46,7 +49,6 @@ class Runner(object):
         commands.add_argument("-x", "--show-configuration",
                               help="Shows the VM's configuration values",
                               action="store_true")
-        commands.add_argument("-u", "--unit-tests", help="Run unit tests", action="store_true")
 
         options = parser.add_argument_group("options")
 
@@ -54,11 +56,13 @@ class Runner(object):
         options.add_argument("-S", "--stream-upload",
                              help="Streaming backup data via named pipe (no local files)",
                              action="store_true")
-        options.add_argument("-y", "--force", help="Perform forceful backup (ignores age of last backup or business hours)",
+        options.add_argument("-y", "--force",
+                             help="Perform forceful backup (ignores age of last backup or business hours)",
                              action="store_true")
         options.add_argument("-s", "--skip-upload", help="Skip uploads of backup files",
                              action="store_true")
-        options.add_argument("-db", "--databases", help="Select databases to backup or restore ('--databases A,B,C')")
+        options.add_argument("-db", "--databases",
+                             help="Select databases to backup or restore ('--databases A,B,C')")
         return parser
 
     @staticmethod
@@ -89,7 +93,6 @@ class Runner(object):
 
     @staticmethod
     def get_output_dir(args):
-
         if args.output_dir:
             output_dir = os.path.abspath(args.output_dir)
             specified_via = "dir was user-supplied via command line"
@@ -100,7 +103,7 @@ class Runner(object):
             output_dir = os.path.abspath("/tmp")
             specified_via = "fallback dir"
 
-        logging.debug("Output dir ({}): {}".format(specified_via, output_dir))
+        logging.debug("Output dir (%s): %s", specified_via, output_dir)
 
         if not os.path.exists(output_dir):
             raise BackupException("Directory {} does not exist".format(output_dir))
@@ -120,35 +123,18 @@ class Runner(object):
     def get_databases(args):
         if args.databases:
             databases = args.databases.split(",")
-            logging.debug("User manually selected databases: {}".format(str(databases)))
+            logging.debug("User manually selected databases: %s", str(databases))
             return databases
 
         logging.debug("User did not select databases, trying to backup all databases")
         return []
 
     @staticmethod
-    def run_unit_tests():
-        import doctest
-        # import unittest
-        # suite = unittest.TestSuite()
-        # result = unittest.TestResult()
-        # finder = doctest.DocTestFinder(exclude_empty=False)
-        # suite.addTest(doctest.DocTestSuite('backupagent', test_finder=finder))
-        # suite.run(result)
-        doctest.testmod() # doctest.testmod(verbose=True)
-
-    @staticmethod
     def main():
         Runner.configure_logging()
         logging.info("#######################################################################################################")
-        logging.info("#                                                                                                     #")
-        logging.info("#######################################################################################################")
         parser = Runner.arg_parser()
         args = parser.parse_args()
-
-        if args.unit_tests:
-            Runner.run_unit_tests()
-            return
 
         logging.debug(Runner.log_script_invocation())
 
@@ -169,15 +155,15 @@ class Runner(object):
             try:
                 #is_full, databases, output_dir, force, skip_upload, use_streaming
                 with pid.PidFile(pidname='backup-ase-full', piddir=".") as _p:
-                    backup_agent.backup(is_full=True, databases=databases, output_dir=output_dir, 
-                        force=force, skip_upload=skip_upload, use_streaming=use_streaming)
+                    backup_agent.backup(is_full=True, databases=databases, output_dir=output_dir,
+                                        force=force, skip_upload=skip_upload, use_streaming=use_streaming)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip full backup, already running")
         elif args.transaction_backup:
             try:
                 with pid.PidFile(pidname='backup-ase-tran', piddir=".") as _p:
-                    backup_agent.backup(is_full=False, databases=databases, output_dir=output_dir, 
-                        force=force, skip_upload=skip_upload, use_streaming=use_streaming)
+                    backup_agent.backup(is_full=False, databases=databases, output_dir=output_dir,
+                                        force=force, skip_upload=skip_upload, use_streaming=use_streaming)
             except pid.PidFileAlreadyLockedError:
                 logging.warn("Skip transaction log backup, already running")
         elif args.restore:
@@ -192,15 +178,7 @@ class Runner(object):
         elif args.prune_old_backups:
             age = ScheduleParser.parse_timedelta(args.prune_old_backups)
             backup_agent.prune_old_backups(older_than=age, databases=databases)
-        elif args.unit_tests:
-            Runner.run_unit_tests()
         elif args.show_configuration:
-            # print(backup_agent.send_notification(
-            #     url='https://postman-echo.com/post',
-            #     aseservername="az2-server", db_name="AZ2", is_full=True,
-            #     start_timestamp="20180106_120000", end_timestamp="20180106_120501",
-            #     success=True, data_in_MB=782.1, error_msg="All went well"
-            # ))
             print backup_agent.show_configuration(output_dir=output_dir)
         else:
             parser.print_help()
