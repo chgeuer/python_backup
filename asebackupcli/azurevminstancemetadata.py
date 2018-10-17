@@ -7,7 +7,6 @@ from .backupexception import BackupException
 def lazy_property(fn):
     """Decorator that makes a property lazy-evaluated."""
     attr_name = '_lazy_' + fn.__name__
-
     @property
     def _lazy_property(self):
         if not hasattr(self, attr_name):
@@ -33,29 +32,19 @@ class AzureVMInstanceMetadata(object):
 
     @staticmethod
     def create_instance():
-        """
-            >>> json_meta = '{ "compute": { "subscriptionId": "724467b5-bee4-484b-bf13-d6a5505d2b51",
-            >>>     "resourceGroupName": "backuptest", "name": "somevm",
-            >>>     "tags":"db_backup_interval_min:24h;db_backup_interval_max:3d;log_backup_interval_min:600s;log_backup_interval_max:30m;db_backup_window_1:111111 111000 000000 011111;db_backup_window_2:111111 111000 000000 011111;db_backup_window_3:111111 111000 000000 011111;db_backup_window_4:111111 111000 000000 011111;db_backup_window_5:111111 111000 000000 011111;db_backup_window_6:111111 111111 111111 111111;db_backup_window_7:111111 111111 111111 111111" } }'
-            >>> meta = AzureVMInstanceMetadata(lambda: (json.JSONDecoder()).decode(json_meta))
-            >>> meta.vm_name
-            'somevm'
-        """
-        # return AzureVMInstanceMetadata(
-        # lambda: (json.JSONDecoder()).decode('{ "compute": {
-        # "subscriptionId": "724467b5-bee4-484b-bf13-d6a5505d2b51", "resourceGroupName": "backuptest", "name": "somevm", "tags":"db_backup_interval_min:24h;db_backup_interval_max:3d;log_backup_interval_min:600s;log_backup_interval_max:30m;db_backup_window_1:111111 111000 000000 011111;db_backup_window_2:111111 111000 000000 011111;db_backup_window_3:111111 111000 000000 011111;db_backup_window_4:111111 111000 000000 011111;db_backup_window_5:111111 111000 000000 011111;db_backup_window_6:111111 111111 111111 111111;db_backup_window_7:111111 111111 111111 111111" } }'))
-        return AzureVMInstanceMetadata(lambda: AzureVMInstanceMetadata.request_metadata())
+        real_request = lambda : AzureVMInstanceMetadata.request_metadata()
+        return AzureVMInstanceMetadata(real_request)
 
     def __init__(self, req):
         self.req = req
 
     @lazy_property
-    def json(self):
+    def json_data(self):
         return self.req()
 
     def get_tags(self):
         try:
-            tags_value = str(self.json['compute']['tags'])
+            tags_value = str(self.json_data['compute']['tags'])
             if tags_value is None:
                 return dict()
             return dict(kvp.split(":", 1) for kvp in tags_value.split(";"))
@@ -66,8 +55,9 @@ class AzureVMInstanceMetadata(object):
 
     @property
     def subscription_id(self):
+        """The subscription ID"""
         try:
-            return str(self.json["compute"]["subscriptionId"])
+            return str(self.json_data["compute"]["subscriptionId"])
         except Exception:
             raise BackupException(
                 "Cannot read subscriptionId from instance metadata endpoint")
@@ -75,7 +65,7 @@ class AzureVMInstanceMetadata(object):
     @property
     def resource_group_name(self):
         try:
-            return str(self.json["compute"]["resourceGroupName"])
+            return str(self.json_data["compute"]["resourceGroupName"])
         except Exception:
             raise BackupException(
                 "Cannot read resourceGroupName from instance metadata endpoint")
@@ -83,7 +73,7 @@ class AzureVMInstanceMetadata(object):
     @property
     def location(self):
         try:
-            return str(self.json["compute"]["location"])
+            return str(self.json_data["compute"]["location"])
         except Exception:
             raise BackupException(
                 "Cannot read location from instance metadata endpoint")
@@ -92,7 +82,7 @@ class AzureVMInstanceMetadata(object):
     def vm_name(self):
         """Return the virtual machine's name."""
         try:
-            return str(self.json["compute"]["name"])
-        except Exception:
+            return str(self.json_data["compute"]["name"])
+        except Exception as e:
             raise BackupException(
-                "Cannot read VM name from instance metadata endpoint")
+                "Cannot read VM name from instance metadata endpoint: {}".format(e.message))
