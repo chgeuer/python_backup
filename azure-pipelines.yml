@@ -18,8 +18,20 @@ steps:
   - script: mkdir -p /tmp
     displayName: 'Create temp directory'
 
-  - script: make test
-    displayName: 'Run tests'
+#  - script: |
+#      python -m unittest discover -v
+#    displayName: 'Run tests'
+
+  - script: |
+    pip install pytest
+    pip install pytest-cov
+    pytest tests --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+  displayName: 'Test with pytest'
+
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFiles: '**/test-*.xml'
+      testRunTitle: 'Publish test results for Python $(python.version)'
 
   - script: 'python setup.py sdist'
     displayName: 'Build sdist'

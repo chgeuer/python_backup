@@ -6,10 +6,12 @@
 /build
 /backup.log
 /config.txt
-/asebackupcli/*.pyc
+/**/*.pyc
 /tests/*.pyc
 /*.log
 /*.cdmp
 /*.tgz
 /.azurestorageaccountkey
 /.azurestorageaccountname
+/junit
+/.coverage
