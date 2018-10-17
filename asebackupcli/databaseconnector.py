@@ -1,7 +1,9 @@
 # coding=utf-8
 
-import subprocess
 import os
+from os.path import expanduser
+import glob
+import subprocess
 import logging
 
 from .naming import Naming
@@ -13,7 +15,7 @@ class DatabaseConnector(object):
         self.backup_configuration = backup_configuration
 
     def get_ase_base_directory(self):
-        return "/sybase/{}".format(self.backup_configuration.get_system_id())
+        return expanduser("~")
 
     def get_database_password(self):
         try:
@@ -24,10 +26,9 @@ class DatabaseConnector(object):
             raise BackupException("Failed to retrieve the database password\n{}".format(e.message))
 
     def isql(self):
-        ase_version = self.backup_configuration.get_ase_version()
         isql_path = os.path.join(
-            self.get_ase_base_directory(), 
-            "OCS-{}/bin/isql".format(ase_version))
+            self.get_ase_base_directory(),
+            glob.glob('OCS-*/bin/isql')[0])
 
         server_name = self.backup_configuration.get_db_server_name()
         username = "sapsa"
@@ -49,7 +50,7 @@ class DatabaseConnector(object):
 
         ddlgen_path = os.path.join(
             self.get_ase_base_directory(),
-            "ASE-{}/bin/ddlgen".format(self.backup_configuration.get_ase_version()))
+            glob.glob('ASE-*/bin/ddlgen')[0])
 
         username = "sapsa"
         sid = self.backup_configuration.get_system_id()
