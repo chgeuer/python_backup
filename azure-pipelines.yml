@@ -18,8 +18,8 @@ steps:
   - script: mkdir -p /tmp
     displayName: 'Create temp directory'
 
-#  - script: python setup.py test
-#    displayName: 'Run tests'
+  - script: make test
+    displayName: 'Run tests'
 
   - script: 'python setup.py sdist'
     displayName: 'Build sdist'
