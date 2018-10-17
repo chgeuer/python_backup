@@ -1,7 +1,4 @@
 # Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
 
 pool:
   vmImage: 'Ubuntu 16.04'
@@ -12,40 +9,38 @@ steps:
       versionSpec: '2.7'
       architecture: 'x64'
 
-  - displayName: 'Install requirements'
-    script: pip install -e .
+  - script: pip install -e .
+    displayName: 'Install requirements'
 
-  - displayName: 'Create temp directory'
-    script: mkdir -p /tmp
+  - script: mkdir -p /tmp
+    displayName: 'Create temp directory'
 
-#  - displayName: 'Run tests'
-#    script: |
+#  - script: |
 #      python -m unittest discover -v
+#    displayName: 'Run tests'
 
-  - displayName: 'Test with pytest'
-    script: |
+  - script: |
       pip install pytest
       pip install pytest-cov
       pytest tests --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+    displayName: 'Test with pytest'
 
-  - displayName: 'Publish test results'
-    task: PublishTestResults@2
+  - task: PublishTestResults@2
     inputs:
       testResultsFiles: '**/test-*.xml'
       testRunTitle: 'Publish test results for Python $(python.version)'
 
-  - displayName: 'Publish code coverage results'
-    task: PublishCodeCoverageResults@1
+  - task: PublishCodeCoverageResults@1
     inputs:
       codeCoverageTool: Cobertura
       summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
       reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
 
-  - displayName: 'Build sdist'
-    script: 'python setup.py sdist'
+  - script: 'python setup.py sdist'
+    displayName: 'Build sdist'
 
-  - displayName: 'Publish artifact: dist'
-    task: PublishBuildArtifacts@1
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish artifact: dist'
     inputs:
       pathtoPublish: 'dist'
       artifactName: 'dist'
