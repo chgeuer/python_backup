@@ -12,38 +12,40 @@ steps:
       versionSpec: '2.7'
       architecture: 'x64'
 
-  - script: pip install -e .
-    displayName: 'Install requirements'
+  - displayName: 'Install requirements'
+    script: pip install -e .
 
-  - script: mkdir -p /tmp
-    displayName: 'Create temp directory'
+  - displayName: 'Create temp directory'
+    script: mkdir -p /tmp
 
-#  - script: |
+#  - displayName: 'Run tests'
+#    script: |
 #      python -m unittest discover -v
-#    displayName: 'Run tests'
 
-  - script: |
+  - displayName: 'Test with pytest'
+    script: |
       pip install pytest
       pip install pytest-cov
       pytest tests --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
-    displayName: 'Test with pytest'
 
-  - task: PublishTestResults@2
+  - displayName: 'Publish test results'
+    task: PublishTestResults@2
     inputs:
       testResultsFiles: '**/test-*.xml'
       testRunTitle: 'Publish test results for Python $(python.version)'
 
-  - task: PublishCodeCoverageResults@1
+  - displayName: 'Publish code coverage results'
+    task: PublishCodeCoverageResults@1
     inputs:
       codeCoverageTool: Cobertura
       summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
       reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
 
-  - script: 'python setup.py sdist'
-    displayName: 'Build sdist'
+  - displayName: 'Build sdist'
+    script: 'python setup.py sdist'
 
-  - task: PublishBuildArtifacts@1
-    displayName: 'Publish artifact: dist'
+  - displayName: 'Publish artifact: dist'
+    task: PublishBuildArtifacts@1
     inputs:
       pathtoPublish: 'dist'
       artifactName: 'dist'
