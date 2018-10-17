@@ -1,5 +1,7 @@
 # coding=utf-8
 
+"""ScheduleParser module"""
+
 import datetime
 import re
 from .backupexception import BackupException
