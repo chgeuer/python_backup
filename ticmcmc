@@ -1,0 +1,15 @@
+#!/bin/bash
+
+content=`cat`
+export queuename="foo"
+
+# az storage queue create \
+#     --account-name "${SAMPLE_STORAGE_ACCOUNT_NAME}" \
+#     --account-key "${SAMPLE_STORAGE_ACCOUNT_KEY}" \
+#     --name "${queuename}"
+
+az storage message put \
+    --account-name "${SAMPLE_STORAGE_ACCOUNT_NAME}" \
+    --account-key "${SAMPLE_STORAGE_ACCOUNT_KEY}" \
+    --queue-name "${queuename}" \
+    --content "$content"

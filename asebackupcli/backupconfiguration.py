@@ -3,6 +3,7 @@
 
 import os
 import logging
+from pkgutil import get_data
 from azure.storage.blob import BlockBlobService
 from msrestazure.azure_active_directory import MSIAuthentication
 from .azurevminstancemetadata import AzureVMInstanceMetadata
@@ -122,6 +123,14 @@ class BackupConfiguration(object):
 
     def get_notification_command(self):
         return self.db_config_file_value("notification_command")
+
+    def get_notification_template(self):
+        """Path and filename of the template for backup notifications."""
+        if self.db_config_file.key_exists("notification_template_file"):
+            filename = self.db_config_file_value("notification_template_file").strip('"')
+            return open(filename, 'rt').read()
+
+        return get_data("asebackupcli", "notification.json")
 
     def get_databases_to_skip(self):
         return ["dbccdb"]

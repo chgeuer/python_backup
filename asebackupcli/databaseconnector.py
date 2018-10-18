@@ -53,9 +53,9 @@ class DatabaseConnector(object):
         """Create a SQL sidecar file with the database schema."""
         # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F% -TDBD -N%)" >  20180678.sql
         # echo "$(ddlgen -Usapsa -S${SID} -D${DB} -P${SAPSA_PWD} -F%)"           >> 20180678.sql
-        stdout1, _stderr1, _returncode1 = self.call_process(
+        stdout1, _stderr1, _returncode1 = DatabaseConnector.call_process(
             command_line=self.ddlgen(dbname=dbname, args=["-F%", "-TDBD", "-N%"]))
-        stdout2, _stderr2, _returncode2 = self.call_process(
+        stdout2, _stderr2, _returncode2 = DatabaseConnector.call_process(
             command_line=self.ddlgen(dbname=dbname, args=["-F%"]))
 
         return "\n".join([str(stdout1), "", str(stdout2)])
@@ -258,7 +258,8 @@ class DatabaseConnector(object):
     ERR_FILESYSTEM_FULL = "Filesystem full"
 
     def call_isql(self, stdin):
-        stdout, stderr, returncode = self.call_process(command_line=self.isql(), stdin=stdin)
+        """Call `isql` and send `stdin`"""
+        stdout, stderr, returncode = DatabaseConnector.call_process(command_line=self.isql(), stdin=stdin)
 
         if returncode == 255 and "ct_connect(): network packet layer:" in stdout:
             raise BackupException(DatabaseConnector.ERR_DATABASE_SERVICE_NOT_AVAILABLE)
@@ -268,7 +269,10 @@ class DatabaseConnector(object):
             # no entry found under that name. Make sure that name is entered properly."
             raise BackupException(DatabaseConnector.ERR_UNKNOWN_DATABASE)
 
-        if ("Can't open a connection to site 'SYB_BACKUP'. See the error log file in the ASE boot directory." in stdout) or ("Could not establish communication with Backup Server" in stdout) or ("Please make sure that there is an entry in Sysservers for this server, and that the correct server is running." in stdout):
+        bs1_err = "Can't open a connection to site 'SYB_BACKUP'. " in stdout
+        bs2_err = "Could not establish communication with Backup Server" in stdout
+        bs3_err = "Please make sure that there is an entry in Sysservers for this server, and that the correct server is running." in stdout
+        if bs1_err or bs2_err or bs3_err:
             raise BackupException(DatabaseConnector.ERR_BACKUP_SERVICE_NOT_AVAILABLE)
 
         if "error number 28 (No space left on device)" in stdout:
@@ -279,7 +283,9 @@ class DatabaseConnector(object):
 
         return (stdout, stderr, returncode)
 
-    def call_process(self, command_line, stdin=None):
+    @staticmethod
+    def call_process(command_line, stdin=None):
+        """Execute a shell command"""
         logging.debug("Executing %s", command_line[0])
 
         p = subprocess.Popen(
@@ -297,6 +303,7 @@ class DatabaseConnector(object):
         return (stdout, stderr, returncode)
 
     def log_env(self):
+        """Log environment information"""
         ase_env = os.environ
         for key in ["INCLUDE", "LIB", "LD_LIBRARY_PATH", "PATH", "LANG", "COCKPIT_JAVA_HOME",
                     "SAP_JRE7", "SAP_JRE7_64", "SYBASE_JRE_RTDS", "SAP_JRE8", "SAP_JRE8_64",

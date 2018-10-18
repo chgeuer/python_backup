@@ -11,6 +11,7 @@ import json
 import urllib2
 import uuid
 import time
+import subprocess
 
 from .__init__ import version
 from .funcmodule import printe, out, log_stdout_stderr
@@ -523,53 +524,42 @@ class BackupAgent(object):
             "script version:                     {}".format(version())
             ]
 
-    def send_notification(self, url, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
-        data = {
-            #
-            # Azure Backup Format
-            #
-            "SourceSystem" :"Azure",
-            "BackupManagementType_s": "AzureWorkload",
-            "BackupItemType_s": "SAPASEDatabase",
-            "TenantId" :"unknown",
-            "SubscriptionId": self.backup_configuration.get_subscription_id(),
-            "Resource": self.backup_configuration.get_vm_name(),
-            "BackupItemFriendlyName_s": db_name,
-            "BackupItemUniqueId_s": "{location};{storageaccountid};{resourcetype};{resourcegroupname};{resourcename};{aseservername};{db_name}".format(
-                location=self.backup_configuration.get_location(),
-                storageaccountid=self.backup_configuration.get_azure_storage_account_name(),
-                resourcetype="compute",
-                resourcegroupname=self.backup_configuration.get_resource_group_name(),
-                resourcename=self.backup_configuration.get_vm_name(),
-                aseservername=aseservername,
-                db_name=db_name),
-            "JobUniqueId_g": str(uuid.uuid4()),
-            "JobStatus_s": {True:"Completed", False:"Failed"}[success],
-            # "Success OperationCancelledBecauseConflictingOperationRunningUserError",
-            "JobFailureCode_s": {None:"Success", error_msg:error_msg}[error_msg],
-            "JobOperationSubType_s": {True:"Full", False:"Log"}[is_full],
-            "TimeGenerated": time.strftime("%Y-%m-%dT%H:%M:%SZ",
-                Timing.parse(end_timestamp)), #"2018-07-12T14:46:09.726Z",
-            "JobStartDateTime_s": time.strftime("%Y-%m-%d %H:%M:%SZ",
-                Timing.parse(start_timestamp)), # "2018-07-13 04:33:00Z",
-            "JobDurationInSecs_s": "{}".format(int(Timing.time_diff_in_seconds(
-                    start_timestamp, end_timestamp))),
-            "DataTransferredInMB_s": "{}".format(int(data_in_MB)),
-            #
-            # SAP Format
-            #
-        }
+    def send_notification(self, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
+        """Send notification"""
+        template = self.backup_configuration.get_notification_template()
 
-        # req = urllib2.Request(url)
-        # req.add_header('Content-Type', 'application/json')
-        # response = urllib2.urlopen(req, json.dumps(data))
-        # return response.read()
+        env = os.environ
+        env["azure_subscription_id"] = "7239479"
+        env["location"] = "westeurope"
+        env["storageaccountid"] = "hecstorage123"
+        env["db_name"] = db_name
+        env["resourcetype"] = "compute"
+        env["resourcename"] = "ase"
+        env["aseservername"] = aseservername
+        env["vmname"] = "ase"
+        env["resourcegroupname"] = "hec42"
+        env["job_status"] = {True:"Completed", False:"Failed"}[success]
+        if error_msg is None:
+            env["job_failure_code"] = "Success"
+        else:
+            env["job_failure_code"] = "{msg}".format(msg=str(error_msg))
+        env["job_operation_subtype"] = {True:"Full", False:"Log"}[is_full]
+        env["job_guid"] = str(uuid.uuid4())
+        env["time_generated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
+        env["job_start_time"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
+        env["job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp,
+                                                                          end_timestamp)))
+        env["transferred_MB"] = "{size}".format(size=data_in_MB)
 
-        stdin = json.dumps(data)
+        notify_process = subprocess.Popen(
+            "/usr/bin/envsubst | {notify_cmd}".format(
+                notify_cmd=self.backup_configuration.get_notification_command()),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,
+            env=env)
 
-        stdout, stderr, returncode = DatabaseConnector.call_process(
-            command_line=self.backup_configuration.get_notification_command().split(" "),
-            stdin=stdin)
-
-        print stdout
-        printe(stderr)
+        stdout, stderr = notify_process.communicate(template)
+        returncode = notify_process.returncode
+        return (stdout, stderr, returncode)
