@@ -1,0 +1,8 @@
+{
+    "SourceSystem" :"Azure",
+    "BackupManagementType_s": "AzureWorkload",
+    "BackupItemType_s": "SAPASEDatabase",
+    "DataTransferredInMB_s": ${transferred_MB},
+
+    "subscr": "${azure_subscription_id}"
+}

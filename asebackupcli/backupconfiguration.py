@@ -122,7 +122,9 @@ class BackupConfiguration(object):
         return self.db_config_file_value("database_password_generator")
 
     def get_notification_command(self):
-        return self.db_config_file_value("notification_command")
+        if self.db_config_file.key_exists("notification_command"):
+            return self.db_config_file_value("notification_command")
+        return None
 
     def get_notification_template(self):
         """Path and filename of the template for backup notifications."""

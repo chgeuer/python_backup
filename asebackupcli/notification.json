@@ -10,11 +10,32 @@
     "JobUniqueId_g": "${job_guid}",
     "JobStatus_s": "${job_status}",
     "JobFailureCode_s": "${job_failure_code}",
-    "JobOperationSubType_s": "${job_operation_subtype}",
+    "JobOperationSubType_s": "${microsoft_job_operation_subtype}",
     "TimeGenerated": "${time_generated}",
     "JobStartDateTime_s": "${job_start_time}",
     "JobDurationInSecs_s": "${job_duration_in_secs}",
     "DataTransferredInMB_s": ${transferred_MB},
 
-    "subscr": "${azure_subscription_id}"
+
+
+    "cloud":"azure",
+    "hostname": "${vmname}",
+    "state": "${sap_state}",
+    "type": "${sap_type}",
+    "method": "",
+    "level": "",
+    "account-id": "",
+    "customer-id": "${CID}",
+    "system-id": "${SID}",
+    "database-name": "${db_name}",
+    "database-id": "",
+    "s3-path": "",
+    "timestamp-send": "",
+    "timestamp-last-successful": "",
+    "timestamp-bkp-begin": "${job_start_time}",
+    "timestamp-bkp-end": "",
+    "backup-size": "",
+    "dbtype": "${resourcename}",
+    "error-message": "${job_failure_code}",
+    "script-version": ""
 }

@@ -1,13 +1,30 @@
-# Some comment
-
+#
+# MANDATORY 'local_temp_directory' configures the working directory for dump files
+#
 local_temp_directory:          /tmp
-database_password_generator:   ~/dba/bin/dbsp `cat ~/.dbpassword`
-# server_name:                 somehost:4901
-notification_command:          /usr/sbin/ticmcmc --stdin
-#notification_template_file:    ~/notify_template.json
 
 #
-# azure.storage.container_name is optional. If not specified, using the VM name as container name
+# MANDATORY 'database_password_generator' configures the command which is executed to retrieve the database password. 
+#
+database_password_generator:   ~/dba/bin/dbsp `cat ~/.dbpassword`
+
+
+#
+# OPTIONAL 'server_name' can be used to connect to a specific IP:PORT (instead of the local server name)
+#
+# server_name:                 somehost:4901
+
+#
+# OPTIONAL 'notification_command' to specify a command to be executed for notifications
+#
+notification_command:          /usr/sbin/ticmcmc --stdin
+
+#
+# OPTIONAL 'notification_template_file': template file for notifications. 
+#
+#notification_template_file:    ./notify_template.json
+
+#
+# OPTIONAL 'azure.storage.container_name'. If not specified, using the VM name as container name.
 #
 #azure.storage.container_name:  foo
-

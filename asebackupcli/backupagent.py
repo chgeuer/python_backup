@@ -526,6 +526,12 @@ class BackupAgent(object):
 
     def send_notification(self, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
         """Send notification"""
+
+        notify_cmd = self.backup_configuration.get_notification_command()
+        if notify_cmd is None:
+            logging.error("Cannot send notification, 'notification_command' is not configured. ")
+            return
+
         template = self.backup_configuration.get_notification_template()
 
         env = os.environ
@@ -543,22 +549,23 @@ class BackupAgent(object):
             env["job_failure_code"] = "Success"
         else:
             env["job_failure_code"] = "{msg}".format(msg=str(error_msg))
-        env["job_operation_subtype"] = {True:"Full", False:"Log"}[is_full]
+
+        env["microsoft_job_operation_subtype"] = {True:"Full", False:"Log"}[is_full]
+        env["sap_state"] = {True:"success", False:"fail"}[success]
+
         env["job_guid"] = str(uuid.uuid4())
         env["time_generated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
         env["job_start_time"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
         env["job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp,
                                                                           end_timestamp)))
         env["transferred_MB"] = "{size}".format(size=data_in_MB)
+        env["CID"] = self.backup_configuration.get_customer_id()
+        env["SID"] = self.backup_configuration.get_system_id()
 
         notify_process = subprocess.Popen(
-            "/usr/bin/envsubst | {notify_cmd}".format(
-                notify_cmd=self.backup_configuration.get_notification_command()),
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=True,
-            env=env)
+            "/usr/bin/envsubst | {notify_cmd}".format(notify_cmd=notify_cmd),
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            shell=True, env=env)
 
         stdout, stderr = notify_process.communicate(template)
         returncode = notify_process.returncode
