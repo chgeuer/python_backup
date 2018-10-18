@@ -525,6 +525,9 @@ class BackupAgent(object):
 
     def send_notification(self, url, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
         data = {
+            #
+            # Azure Backup Format
+            #
             "SourceSystem" :"Azure",
             "BackupManagementType_s": "AzureWorkload",
             "BackupItemType_s": "SAPASEDatabase",
@@ -542,14 +545,31 @@ class BackupAgent(object):
                 db_name=db_name),
             "JobUniqueId_g": str(uuid.uuid4()),
             "JobStatus_s": {True:"Completed", False:"Failed"}[success],
-            "JobFailureCode_s": {None:"Success", error_msg:error_msg}[error_msg], # "Success OperationCancelledBecauseConflictingOperationRunningUserError",
+            # "Success OperationCancelledBecauseConflictingOperationRunningUserError",
+            "JobFailureCode_s": {None:"Success", error_msg:error_msg}[error_msg],
             "JobOperationSubType_s": {True:"Full", False:"Log"}[is_full],
-            "TimeGenerated": time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(end_timestamp)), #"2018-07-12T14:46:09.726Z",
-            "JobStartDateTime_s": time.strftime("%Y-%m-%d %H:%M:%SZ", Timing.parse(start_timestamp)), # "2018-07-13 04:33:00Z",
-            "JobDurationInSecs_s": "{}".format(int(Timing.time_diff_in_seconds(start_timestamp, end_timestamp))),
-            "DataTransferredInMB_s": "{}".format(int(data_in_MB))
+            "TimeGenerated": time.strftime("%Y-%m-%dT%H:%M:%SZ",
+                Timing.parse(end_timestamp)), #"2018-07-12T14:46:09.726Z",
+            "JobStartDateTime_s": time.strftime("%Y-%m-%d %H:%M:%SZ",
+                Timing.parse(start_timestamp)), # "2018-07-13 04:33:00Z",
+            "JobDurationInSecs_s": "{}".format(int(Timing.time_diff_in_seconds(
+                    start_timestamp, end_timestamp))),
+            "DataTransferredInMB_s": "{}".format(int(data_in_MB)),
+            #
+            # SAP Format
+            #
         }
-        req = urllib2.Request(url)
-        req.add_header('Content-Type', 'application/json')
-        response = urllib2.urlopen(req, json.dumps(data))
-        return response.read()
+
+        # req = urllib2.Request(url)
+        # req.add_header('Content-Type', 'application/json')
+        # response = urllib2.urlopen(req, json.dumps(data))
+        # return response.read()
+
+        stdin = json.dumps(data)
+
+        stdout, stderr, returncode = DatabaseConnector.call_process(
+            command_line=self.backup_configuration.get_notification_command().split(" "),
+            stdin=stdin)
+
+        print stdout
+        printe(stderr)
