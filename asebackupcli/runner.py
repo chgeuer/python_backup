@@ -26,7 +26,8 @@ class Runner(object):
     @staticmethod
     def configure_logging():
         logging.basicConfig(
-            filename="asebackupcli.log",
+            filename=os.path.join(expanduser("~"),
+                                  "asebackupcli-{d}.log".format(d=Timing.now_localtime())),
             level=logging.DEBUG,
             format="%(asctime)-15s pid-%(process)d line-%(lineno)d %(levelname)s: \"%(message)s\""
             )
