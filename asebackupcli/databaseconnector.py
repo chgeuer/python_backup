@@ -15,7 +15,7 @@ class DatabaseConnector(object):
         self.backup_configuration = backup_configuration
 
     def get_executable_path(self, path):
-        glob.glob(os.path.join(expanduser("~"), path))[0]
+        return glob.glob(os.path.join(expanduser("~"), path))[0]
 
     def get_backup_user_name(self):
         return "sapsa"
