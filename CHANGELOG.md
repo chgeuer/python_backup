@@ -1,6 +1,11 @@
 
 # CHANGELOG
 
+## 0.3.6
+
+- piddir in default location
+- logging support with templates
+
 ## v0.3.5
 
 - pylint

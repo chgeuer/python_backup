@@ -166,7 +166,7 @@ class Runner(object):
         if args.full_backup:
             try:
                 #is_full, databases, output_dir, force, skip_upload, use_streaming
-                with pid.PidFile(pidname='backup-ase-full', piddir=expanduser("~")) as _p:
+                with pid.PidFile(pidname='backup-ase-full') as _p:
                     backup_agent.backup(is_full=True, databases=databases, output_dir=output_dir,
                                         force=force, skip_upload=skip_upload,
                                         use_streaming=use_streaming)
@@ -174,7 +174,7 @@ class Runner(object):
                 logging.warn("Skip full backup, already running")
         elif args.transaction_backup:
             try:
-                with pid.PidFile(pidname='backup-ase-tran', piddir=expanduser("~")) as _p:
+                with pid.PidFile(pidname='backup-ase-tran') as _p:
                     backup_agent.backup(is_full=False, databases=databases, output_dir=output_dir,
                                         force=force, skip_upload=skip_upload, use_streaming=use_streaming)
             except pid.PidFileAlreadyLockedError:
