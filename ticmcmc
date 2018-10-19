@@ -1,15 +1,21 @@
 #!/bin/bash
 
 content=`cat`
-export queuename="foo"
+export queuename="ticmcmc"
+
+# account="foo"
+# key=`cat ~/christian/.foo.key`
+
+account="${SAMPLE_STORAGE_ACCOUNT_NAME}"
+key="${SAMPLE_STORAGE_ACCOUNT_KEY}"
 
 # az storage queue create \
-#     --account-name "${SAMPLE_STORAGE_ACCOUNT_NAME}" \
-#     --account-key "${SAMPLE_STORAGE_ACCOUNT_KEY}" \
+#     --account-name "${account}" \
+#     --account-key "${key}" \
 #     --name "${queuename}"
 
 az storage message put \
-    --account-name "${SAMPLE_STORAGE_ACCOUNT_NAME}" \
-    --account-key "${SAMPLE_STORAGE_ACCOUNT_KEY}" \
+    --account-name "${account}" \
+    --account-key "${key}" \
     --queue-name "${queuename}" \
     --content "$content"

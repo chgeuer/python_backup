@@ -333,6 +333,13 @@ class BackupAgent(object):
                 out("Delete {}".format(blob_path))
                 os.remove(blob_path)
 
+        self.send_notification(
+            dbname=dbname, is_full=is_full,
+            start_timestamp=start_timestamp,
+            end_timestamp=end_timestamp,
+            success=success,
+            data_in_MB=0)
+
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
         for file in os.listdir(output_dir):
             
@@ -524,49 +531,54 @@ class BackupAgent(object):
             "script version:                     {}".format(version())
             ]
 
-    def send_notification(self, aseservername, db_name, is_full, start_timestamp, end_timestamp, success, data_in_MB, error_msg=None):
+    def send_notification(self, dbname, is_full, start_timestamp, end_timestamp,
+                          success, data_in_MB, blob_urls=[], error_msg=None):
         """Send notification"""
+        try:
+            notify_cmd = self.backup_configuration.get_notification_command()
+            if notify_cmd is None:
+                logging.error("Cannot send notification, 'notification_command' is not configured. ")
+                return
 
-        notify_cmd = self.backup_configuration.get_notification_command()
-        if notify_cmd is None:
-            logging.error("Cannot send notification, 'notification_command' is not configured. ")
-            return
+            template = self.backup_configuration.get_notification_template()
 
-        template = self.backup_configuration.get_notification_template()
+            env = os.environ
+            env["azure_subscription_id"] = self.backup_configuration.get_subscription_id()
+            env["location"] = self.backup_configuration.get_location()
+            env["storageaccountid"] = self.backup_configuration.get_azure_storage_account_name()
+            env["dbname"] = dbname
+            env["resourcetype"] = "compute"
+            env["resourcename"] = "ase"
+            env["aseservername"] = self.backup_configuration.get_vm_name()
+            env["vmname"] = self.backup_configuration.get_vm_name()
+            env["resourcegroupname"] = self.backup_configuration.get_resource_group_name()
+            env["job_status"] = {True:"Completed", False:"Failed"}[success]
+            if error_msg is None:
+                env["job_failure_code"] = "Success"
+            else:
+                env["job_failure_code"] = "{msg}".format(msg=str(error_msg))
 
-        env = os.environ
-        env["azure_subscription_id"] = "7239479"
-        env["location"] = "westeurope"
-        env["storageaccountid"] = "hecstorage123"
-        env["db_name"] = db_name
-        env["resourcetype"] = "compute"
-        env["resourcename"] = "ase"
-        env["aseservername"] = aseservername
-        env["vmname"] = "ase"
-        env["resourcegroupname"] = "hec42"
-        env["job_status"] = {True:"Completed", False:"Failed"}[success]
-        if error_msg is None:
-            env["job_failure_code"] = "Success"
-        else:
-            env["job_failure_code"] = "{msg}".format(msg=str(error_msg))
+            env["microsoft_job_operation_subtype"] = {True:"Full", False:"Log"}[is_full]
+            env["sap_state"] = {True:"success", False:"fail"}[success]
 
-        env["microsoft_job_operation_subtype"] = {True:"Full", False:"Log"}[is_full]
-        env["sap_state"] = {True:"success", False:"fail"}[success]
+            env["job_guid"] = str(uuid.uuid4())
+            env["time_generated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
+            env["job_start_time"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
+            env["job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp,
+                                                                            end_timestamp)))
+            env["transferred_MB"] = "{size}".format(size=data_in_MB)
+            env["CID"] = self.backup_configuration.get_customer_id()
+            env["SID"] = self.backup_configuration.get_system_id()
+            env["sap_blob_urls"] = ", ".join(blob_urls)
 
-        env["job_guid"] = str(uuid.uuid4())
-        env["time_generated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
-        env["job_start_time"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
-        env["job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp,
-                                                                          end_timestamp)))
-        env["transferred_MB"] = "{size}".format(size=data_in_MB)
-        env["CID"] = self.backup_configuration.get_customer_id()
-        env["SID"] = self.backup_configuration.get_system_id()
+            notify_process = subprocess.Popen(
+                "/usr/bin/envsubst | {notify_cmd}".format(notify_cmd=notify_cmd),
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                shell=True, env=env)
 
-        notify_process = subprocess.Popen(
-            "/usr/bin/envsubst | {notify_cmd}".format(notify_cmd=notify_cmd),
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            shell=True, env=env)
-
-        stdout, stderr = notify_process.communicate(template)
-        returncode = notify_process.returncode
-        return (stdout, stderr, returncode)
+            stdout, stderr = notify_process.communicate(template)
+            returncode = notify_process.returncode
+            return (stdout, stderr, returncode)
+        except Exception as ex:
+            raise BackupException(
+                "Could not send notification: {}".format(ex.message))

@@ -151,7 +151,7 @@ class Runner(object):
         force = args.force
 
         # (stdout, stderr, returncode) = backup_agent.send_notification(
-        #     aseservername="jkl", db_name="AZ3", is_full=True,
+        #     aseservername="jkl", dbname="AZ3", is_full=True,
         #     start_timestamp=Timing.now_localtime(),
         #     end_timestamp=Timing.now_localtime(),
         #     success=True, data_in_MB=78, error_msg=None)
@@ -166,7 +166,7 @@ class Runner(object):
         if args.full_backup:
             try:
                 #is_full, databases, output_dir, force, skip_upload, use_streaming
-                with pid.PidFile(pidname='backup-ase-full') as _p:
+                with pid.PidFile(pidname='asebackupcli-full', piddir=expanduser("~")) as _p:
                     backup_agent.backup(is_full=True, databases=databases, output_dir=output_dir,
                                         force=force, skip_upload=skip_upload,
                                         use_streaming=use_streaming)
@@ -174,7 +174,7 @@ class Runner(object):
                 logging.warn("Skip full backup, already running")
         elif args.transaction_backup:
             try:
-                with pid.PidFile(pidname='backup-ase-tran') as _p:
+                with pid.PidFile(pidname='asebackupcli-tran', piddir=expanduser("~")) as _p:
                     backup_agent.backup(is_full=False, databases=databases, output_dir=output_dir,
                                         force=force, skip_upload=skip_upload, use_streaming=use_streaming)
             except pid.PidFileAlreadyLockedError:
