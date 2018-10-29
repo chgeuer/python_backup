@@ -273,10 +273,10 @@ class BackupAgent(object):
 
         if success and backup_exception is None:
             out("Backup of {} ({}) ran from {} to {} with status {}".format(
-                dbname, {True:"full DB",False:"transactions"}[is_full], 
-                start_timestamp, end_timestamp, 
-                {True:"success",False:"failure"}[success]))
-        else: 
+                dbname, {True:"full DB", False:"transactions"}[is_full],
+                start_timestamp, end_timestamp,
+                {True:"success", False:"failure"}[success]))
+        else:
             #
             # Clean up resources
             #
@@ -288,11 +288,13 @@ class BackupAgent(object):
 
                 blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
                 if self.backup_configuration.storage_client.exists(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob_name):
-                    self.backup_configuration.storage_client.delete_blob(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob_name)
+                    self.backup_configuration.storage_client.delete_blob(
+                        container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob_name)
 
             message = None
             if not success:
-                message = "SQL statement did not successfully end"
+                message = "SQL statement did not successfully end: {stdout}\n{stderr}".format(
+                    stdout=stdout, stderr=stderr)
             if backup_exception != None:
                 message = backup_exception.message
             logging.fatal(message)
