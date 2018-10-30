@@ -1,4 +1,6 @@
 # coding=utf-8
+# pylint: disable=c0301
+
 """Backup agent module"""
 
 import logging
@@ -154,10 +156,10 @@ class BackupAgent(object):
                                                   stripe_count=stripe_count)
 
             if os.path.exists(pipe_path):
-                logging.warning("Remove old pipe file {}".format(pipe_path))
+                logging.warning("Remove old pipe file %s", pipe_path)
                 os.remove(pipe_path)
 
-            logging.debug("Create named pipe {}".format(pipe_path))
+            logging.debug("Create named pipe %s", pipe_path)
 
             # pylint: disable=no-member
             os.mkfifo(pipe_path)
@@ -169,14 +171,14 @@ class BackupAgent(object):
             threads.append(t)
 
         try:
-            [t.start() for t in threads]
+            _ = [t.start() for t in threads]
             logging.debug("Started {} threads for upload".format(len(threads)))
             return threads
         except Exception as e:
             printe(e.message)
 
     def finalize_streaming_threads(self, threads):
-        [t.join() for t in threads]
+        _ = [t.join() for t in threads]
 
     def streaming_backup_single_db(self, dbname, is_full, start_timestamp, stripe_count, output_dir):
         storage_client = self.backup_configuration.storage_client
@@ -244,10 +246,11 @@ class BackupAgent(object):
     def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir, use_streaming):
         start_timestamp = Timing.now_localtime()
         if not self.should_run_backup(dbname=dbname, is_full=is_full, force=force, start_timestamp=start_timestamp):
-            out("Skipping backup of database {}".format(dbname))
+            out("Skip backup of database {}".format(dbname))
             return
 
-        stripe_count = self.database_connector.determine_database_backup_stripe_count(dbname=dbname, is_full=is_full)
+        stripe_count = self.database_connector.determine_database_backup_stripe_count(
+            dbname=dbname, is_full=is_full)
 
         backup_exception = None
         stdout = None
@@ -255,13 +258,13 @@ class BackupAgent(object):
         end_timestamp = None
         try:
             if not use_streaming:
-                out("Starting file-based backup")
+                out("Start file-based backup for database {dbname}".format(dbname=dbname))
                 stdout, stderr, _returncode, end_timestamp = self.file_backup_single_db(
                     dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                     stripe_count=stripe_count, output_dir=output_dir)
                 log_stdout_stderr(stdout, stderr)
             else:
-                out("Start streaming-based backup")
+                out("Start streaming-based backup for database {dbname}".format(dbname=dbname))
                 stdout, stderr, _returncode, end_timestamp = self.streaming_backup_single_db(
                     dbname=dbname, is_full=is_full, start_timestamp=start_timestamp,
                     stripe_count=stripe_count, output_dir=output_dir)
@@ -272,10 +275,10 @@ class BackupAgent(object):
         success = stdout != None and DatabaseConnector.MAGIC_SUCCESS_STRING in stdout
 
         if success and backup_exception is None:
-            out("Backup of {} ({}) ran from {} to {} with status {}".format(
-                dbname, {True:"full DB", False:"transactions"}[is_full],
-                start_timestamp, end_timestamp,
-                {True:"success", False:"failure"}[success]))
+            out("Backup of {dbname} ({is_full}) ran from {start_timestamp} to {end_timestamp} with status {success}".format(
+                dbname=dbname, is_full={True:"full DB", False:"transactions"}[is_full],
+                start_timestamp=start_timestamp, end_timestamp=end_timestamp,
+                success={True:"success", False:"failure"}[success]))
         else:
             #
             # Clean up resources
@@ -288,13 +291,11 @@ class BackupAgent(object):
 
                 blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
                 if self.backup_configuration.storage_client.exists(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob_name):
-                    self.backup_configuration.storage_client.delete_blob(
-                        container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob_name)
+                    self.backup_configuration.storage_client.delete_blob(container_name=self.backup_configuration.azure_storage_container_name, blob_name=blob_name)
 
             message = None
             if not success:
-                message = "SQL statement did not successfully end: {stdout}\n{stderr}".format(
-                    stdout=stdout, stderr=stderr)
+                message = "SQL statement did not successfully end: \nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}".format(stdout=stdout, stderr=stderr)
             if backup_exception != None:
                 message = backup_exception.message
             logging.fatal(message)
@@ -305,11 +306,11 @@ class BackupAgent(object):
         if not skip_upload:
             self.backup_configuration.storage_client.create_blob_from_text(
                 container_name=self.backup_configuration.azure_storage_container_name,
-                blob_name=ddlgen_file_name, 
+                blob_name=ddlgen_file_name,
                 text=ddl_content)
         else:
             local_ddlgen_file = os.path.join(output_dir, ddlgen_file_name)
-            with open(local_ddlgen_file,'wt') as ddlgen_file:
+            with open(local_ddlgen_file, 'wt') as ddlgen_file:
                 ddlgen_file.write(ddl_content)
                 out("Wrote database structure to {}".format(local_ddlgen_file))
 
@@ -326,13 +327,11 @@ class BackupAgent(object):
                 file_path = os.path.join(output_dir, file_name)
                 blob_path = os.path.join(output_dir, blob_name)
 
-                out("Rename {} to {}".format(file_path, blob_path))
                 os.rename(file_path, blob_path)
-                out("Upload {} to Azure Storage".format(blob_path))
+                out("Move {} to Azure Storage".format(blob_path))
                 self.backup_configuration.storage_client.create_blob_from_path(
-                    container_name=self.backup_configuration.azure_storage_container_name, 
+                    container_name=self.backup_configuration.azure_storage_container_name,
                     file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
-                out("Delete {}".format(blob_path))
                 os.remove(blob_path)
 
         self.send_notification(
@@ -343,34 +342,31 @@ class BackupAgent(object):
             data_in_MB=0)
 
     def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
-        for file in os.listdir(output_dir):
-            
-            # check for remaining ddlgen.sql files
-            m = re.search(r'(?P<dbname>\S+?)_ddlgen_(?P<start>\d{8}_\d{6})\.sql', file)
-            if (m is not None):
-                blob_name = file
-                blob_path = os.path.join(output_dir, blob_name)
-                out("Upload leftover {} to Azure Storage".format(blob_path))
-                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
-                out("Delete leftover {}".format(blob_path))
-                os.remove(blob_path)
-                continue
+        for existing_file in os.listdir(output_dir):
+            # # check for remaining ddlgen.sql files
+            # m = re.search(r'(?P<dbname>\S+?)_ddlgen_(?P<start>\d{8}_\d{6})\.sql', existing_file)
+            # if m is not None:
+            #     blob_name = existing_file
+            #     blob_path = os.path.join(output_dir, blob_name)
+            #     out("Upload leftover {} to Azure Storage".format(blob_path))
+            #     self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
+            #     out("Delete leftover {}".format(blob_path))
+            #     os.remove(blob_path)
+            #     continue
 
             # check for old cdmp files
-            parts = Naming.parse_blobname(file)
+            parts = Naming.parse_blobname(existing_file)
             if parts is not None:
                 (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
-                if (is_full != is_full_file):
-                    out("Skipping leftover {} (not right type of backup file)".format(file))
+                if is_full != is_full_file:
+                    out("Skipping leftover {} (not right type of backup file)".format(existing_file))
                     continue
 
-                blob_name = file
-                blob_path = os.path.join(output_dir, blob_name)
+                file_path = os.path.join(output_dir, existing_file)
 
-                out("Upload leftover {} to Azure Storage".format(blob_path))
-                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
-                out("Delete leftover {}".format(blob_path))
-                os.remove(blob_path)
+                out("Move leftover {file_path} to Azure Storage".format(file_path=file_path))
+                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=file_path, blob_name=existing_file, validate_content=True, max_connections=4)
+                os.remove(file_path)
                 continue
 
     def list_backups(self, databases = []):
