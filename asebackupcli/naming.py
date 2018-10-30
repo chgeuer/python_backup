@@ -1,5 +1,6 @@
-"""Naming module"""
 # coding=utf-8
+# pylint: disable=c0301
+"""Naming module"""
 
 import os
 import re

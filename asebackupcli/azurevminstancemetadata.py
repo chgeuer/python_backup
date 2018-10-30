@@ -1,4 +1,5 @@
 # coding=utf-8
+# pylint: disable=c0301
 
 import urllib2
 import json

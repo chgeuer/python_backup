@@ -1,5 +1,6 @@
-""" Timing module."""
 # coding=utf-8
+# pylint: disable=c0301
+""" Timing module."""
 
 import time
 import datetime
