@@ -1,5 +1,8 @@
-
 # CHANGELOG
+
+## 0.3.7 
+
+- Skip local existing ddlgen for subsequent upload
 
 ## 0.3.6
 
