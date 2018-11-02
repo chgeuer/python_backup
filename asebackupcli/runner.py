@@ -1,6 +1,11 @@
 # coding=utf-8
 # pylint: disable=no-member
 
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+# --------------------------------------------------------------------------
+
 """Runner module"""
 
 import logging
