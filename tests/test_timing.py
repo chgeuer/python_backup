@@ -91,6 +91,40 @@ class TestTiming(unittest.TestCase):
             Timing.time_diff("20180106_110000", "20180106_120010"),
             datetime.timedelta(0, 3610))
 
+    def test_restore_files(self):
+        """Test restore computation"""
+        times = [
+            ('FULL', '20180110_110000'),
+            ('TRAN', '20180110_111500'),
+            ('TRAN', '20180110_113000'),
+            ('TRAN', '20180110_114500'),
+            ('FULL', '20180110_120000'),
+            ('TRAN', '20180110_121500'),
+            ('TRAN', '20180110_123000'),
+            ('TRAN', '20180110_124500')
+        ]
+
+        restore = lambda restore_point: Timing.files_needed_for_recovery(
+            times, restore_point,
+            select_end_date=lambda x: x[1],
+            select_is_full=lambda x: x[0] == 'FULL')
+
+        self.assertEqual(restore('20180110_110100'), [
+            ('FULL', '20180110_110000'),
+            ('TRAN', '20180110_111500')])
+        self.assertEqual(restore('20180110_120100'), [
+            ('FULL', '20180110_120000'),
+            ('TRAN', '20180110_121500')])
+        self.assertEqual(restore('20180110_121600'), [
+            ('FULL', '20180110_120000'),
+            ('TRAN', '20180110_121500'),
+            ('TRAN', '20180110_123000')])
+        self.assertEqual(restore('20180110_123200'), [
+            ('FULL', '20180110_120000'),
+            ('TRAN', '20180110_121500'),
+            ('TRAN', '20180110_123000'),
+            ('TRAN', '20180110_124500')])
+
     # def test_sort(self):
     #     """Test sort."""
     #     self.assertEqual(

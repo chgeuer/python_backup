@@ -57,9 +57,24 @@ class Timing(object):
             x_end_date = end_date_from_tuple(x)
             x_is_full = x[1]
             x_is_before = Timing.time_diff_in_seconds(restore_point, x_end_date) <= 0
+
+            #
+            # Iterate through time. Each time we encounter a full backup which could serve
+            # as start point for restore (because it is a full backup which finished before
+            # our restore point), empty the collection of items
+            #
             if x_is_full and x_is_before:
                 index_of_files_to_download = set()
+
+            #
+            # Add the current to the list of items needed for restore.
+            #
             index_of_files_to_download.add(x)
+
+            #
+            # In case we hit the last relevant TRAN backup item (x_is_before == true),
+            # it has been added to index_of_files_to_download, so we can exit our search loop.
+            #
             if not x_is_before:
                 break
 
