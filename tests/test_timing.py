@@ -12,68 +12,6 @@ from asebackupcli.timing import Timing
 class TestTiming(unittest.TestCase):
     """Unit tests for class Timing."""
 
-    @staticmethod
-    def __recovery_sample_data_sorted():
-        return [
-            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
-            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
-            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
-            {'end_date':'20180101_011000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_012000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_013000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
-            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
-            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
-            {'end_date':'20180101_015000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_020000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_021000', 'is_full':False, 'stripe_index':1, 'stripe_count':2},
-            {'end_date':'20180101_021000', 'is_full':False, 'stripe_index':2, 'stripe_count':2},
-            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
-            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
-            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
-            {'end_date':'20180101_023000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_024000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_025000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
-            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
-            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
-            {'end_date':'20180101_031000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_032000', 'is_full':False, 'stripe_index':1, 'stripe_count':2},
-            {'end_date':'20180101_032000', 'is_full':False, 'stripe_index':2, 'stripe_count':2},
-            {'end_date':'20180101_033000', 'is_full':False, 'stripe_index':1, 'stripe_count':1}
-        ]
-
-    @staticmethod
-    def __recovery_sample_data():
-        return [
-            {'end_date':'20180101_011000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
-            {'end_date':'20180101_012000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_015000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_023000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_024000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_025000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_031000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_032000', 'is_full':False, 'stripe_index':1, 'stripe_count':2},
-            {'end_date':'20180101_032000', 'is_full':False, 'stripe_index':2, 'stripe_count':2},
-            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
-            {'end_date':'20180101_020000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_021000', 'is_full':False, 'stripe_index':1, 'stripe_count':2},
-            {'end_date':'20180101_021000', 'is_full':False, 'stripe_index':2, 'stripe_count':2},
-            {'end_date':'20180101_013000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_033000', 'is_full':False, 'stripe_index':1, 'stripe_count':1},
-            {'end_date':'20180101_022000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
-            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
-            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
-            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
-            {'end_date':'20180101_010000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
-            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':1, 'stripe_count':3},
-            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
-            {'end_date':'20180101_014000', 'is_full':True,  'stripe_index':3, 'stripe_count':3},
-            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':2, 'stripe_count':3},
-            {'end_date':'20180101_030000', 'is_full':True,  'stripe_index':3, 'stripe_count':3}
-        ]
-
     def test_parse(self):
         """Test parse."""
         res = Timing.parse("20180605_215959")
@@ -93,96 +31,34 @@ class TestTiming(unittest.TestCase):
 
     def test_restore_files(self):
         """Test restore computation"""
-        times = [
-            ('FULL', '20180110_110000'),
-            ('TRAN', '20180110_111500'),
-            ('TRAN', '20180110_113000'),
-            ('TRAN', '20180110_114500'),
-            ('FULL', '20180110_120000'),
-            ('TRAN', '20180110_121500'),
-            ('TRAN', '20180110_123000'),
-            ('TRAN', '20180110_124500')
+        sample_times = [
+            ('FULL', '20180110_110000', '1/2'), ('FULL', '20180110_110000', '2/2'),
+            ('TRAN', '20180110_111500', '1/1'),
+            ('TRAN', '20180110_113000', '1/2'), ('TRAN', '20180110_113000', '2/2'),
+            ('TRAN', '20180110_114500', '1/1'),
+            ('FULL', '20180110_120000', '1/2'), ('FULL', '20180110_120000', '2/2'),
+            ('TRAN', '20180110_121500', '1/1'),
+            ('TRAN', '20180110_123000', '1/2'), ('TRAN', '20180110_123000', '2/2'),
+            ('TRAN', '20180110_124500', '1/1')
         ]
 
         restore = lambda restore_point: Timing.files_needed_for_recovery(
-            times, restore_point,
+            sample_times, restore_point,
             select_end_date=lambda x: x[1],
             select_is_full=lambda x: x[0] == 'FULL')
 
         self.assertEqual(restore('20180110_110100'), [
-            ('FULL', '20180110_110000'),
-            ('TRAN', '20180110_111500')])
+            ('FULL', '20180110_110000', '1/2'), ('FULL', '20180110_110000', '2/2'),
+            ('TRAN', '20180110_111500', '1/1')])
         self.assertEqual(restore('20180110_120100'), [
-            ('FULL', '20180110_120000'),
-            ('TRAN', '20180110_121500')])
+            ('FULL', '20180110_120000', '1/2'), ('FULL', '20180110_120000', '2/2'),
+            ('TRAN', '20180110_121500', '1/1')])
         self.assertEqual(restore('20180110_121600'), [
-            ('FULL', '20180110_120000'),
-            ('TRAN', '20180110_121500'),
-            ('TRAN', '20180110_123000')])
+            ('FULL', '20180110_120000', '1/2'), ('FULL', '20180110_120000', '2/2'),
+            ('TRAN', '20180110_121500', '1/1'),
+            ('TRAN', '20180110_123000', '1/2'), ('TRAN', '20180110_123000', '2/2')])
         self.assertEqual(restore('20180110_123200'), [
-            ('FULL', '20180110_120000'),
-            ('TRAN', '20180110_121500'),
-            ('TRAN', '20180110_123000'),
-            ('TRAN', '20180110_124500')])
-
-    # def test_sort(self):
-    #     """Test sort."""
-    #     self.assertEqual(
-    #         Timing.sort(['20180110_120000', '20180105_120000', '20180101_120000']),
-    #         ['20180101_120000', '20180105_120000', '20180110_120000'])
-    #     self.assertEqual(
-    #         Timing.sort(['20180105_120000', '20180110_120000', '20180105_120000', '20180101_120000']),
-    #         ['20180101_120000', '20180105_120000', '20180105_120000', '20180110_120000'])
-
-    #     pick_end_date = lambda x: x["end_date"]
-    #     self.assertEqual(
-    #         Timing.sort(
-    #             times=self.__recovery_sample_data(),
-    #             selector=pick_end_date),
-    #         [
-    #             {'is_full': True, 'stripe_index': 1, 'end_date': '20180101_010000', 'stripe_count': 3},
-    #             {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_010000', 'stripe_count': 3},
-    #             {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_010000', 'stripe_count': 3},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_011000', 'stripe_count': 1},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_012000', 'stripe_count': 1},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_013000', 'stripe_count': 1},
-    #             {'is_full': True, 'stripe_index': 1, 'end_date': '20180101_014000', 'stripe_count': 3},
-    #             {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_014000', 'stripe_count': 3},
-    #             {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_014000', 'stripe_count': 3},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_015000', 'stripe_count': 1},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_020000', 'stripe_count': 1},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_021000', 'stripe_count': 2},
-    #             {'is_full': False, 'stripe_index': 2, 'end_date': '20180101_021000', 'stripe_count': 2},
-    #             {'is_full': True, 'stripe_index': 1, 'end_date': '20180101_022000', 'stripe_count': 3},
-    #             {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_022000', 'stripe_count': 3},
-    #             {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_022000', 'stripe_count': 3},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_023000', 'stripe_count': 1},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_024000', 'stripe_count': 1},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_025000', 'stripe_count': 1},
-    #             {'is_full': True, 'stripe_index': 1, 'end_date': '20180101_030000', 'stripe_count': 3},
-    #             {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_030000', 'stripe_count': 3},
-    #             {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_030000', 'stripe_count': 3},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_031000', 'stripe_count': 1},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_032000', 'stripe_count': 2},
-    #             {'is_full': False, 'stripe_index': 2, 'end_date': '20180101_032000', 'stripe_count': 2},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_033000', 'stripe_count': 1}
-    #         ])
-    #     self.assertEquals(
-    #         map(pick_end_date, Timing.sort(times=self.__recovery_sample_data(), selector=pick_end_date)),
-    #         ['20180101_010000', '20180101_010000', '20180101_010000', '20180101_011000', '20180101_012000', '20180101_013000', '20180101_014000', '20180101_014000', '20180101_014000', '20180101_015000', '20180101_020000', '20180101_021000', '20180101_021000', '20180101_022000', '20180101_022000', '20180101_022000', '20180101_023000', '20180101_024000', '20180101_025000', '20180101_030000', '20180101_030000', '20180101_030000', '20180101_031000', '20180101_032000', '20180101_032000', '20180101_033000'])
-
-    # def test_files_needed_for_recovery(self):
-    #     """Test files_needed_for_recovery."""
-    #     times = self.__recovery_sample_data()
-    #     self.assertEqual(
-    #         Timing.files_needed_for_recovery(times=times, restore_point='20180101_023200'),
-    #         [
-    #             {'is_full': True, 'stripe_index': 1, 'end_date': '20180101_022000', 'stripe_count': 3},
-    #             {'is_full': True, 'stripe_index': 2, 'end_date': '20180101_022000', 'stripe_count': 3},
-    #             {'is_full': True, 'stripe_index': 3, 'end_date': '20180101_022000', 'stripe_count': 3},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_023000', 'stripe_count': 1},
-    #             {'is_full': False, 'stripe_index': 1, 'end_date': '20180101_024000', 'stripe_count': 1}
-    #         ])
-
-# if __name__ == '__main__':
-#     unittest.main()
+            ('FULL', '20180110_120000', '1/2'), ('FULL', '20180110_120000', '2/2'),
+            ('TRAN', '20180110_121500', '1/1'),
+            ('TRAN', '20180110_123000', '1/2'), ('TRAN', '20180110_123000', '2/2'),
+            ('TRAN', '20180110_124500', '1/1')])
