@@ -98,7 +98,7 @@ class TestBackupAgent(unittest.TestCase):
                 db_backup_interval_max=db_backup_interval_max),
             True
         )
-        
+
         # outside_business_hours, but same_day_backup, so no backup
         self.assertEqual(
             BackupAgent.should_run_full_backup(
@@ -110,7 +110,7 @@ class TestBackupAgent(unittest.TestCase):
                 db_backup_interval_max=db_backup_interval_max),
             False
         )
-        
+
         # outside_business_hours and need to backup
         self.assertEqual(
             BackupAgent.should_run_full_backup(
