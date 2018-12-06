@@ -54,11 +54,10 @@ class Timing(object):
         create_tuple = lambda a: (select_end_date(a), select_is_full(a))
         by_end_date = lambda (end_date, _is_full): end_date
 
-        unique_set = set(map(create_tuple, times))
-        sorted_set = Timing.sort(unique_set, by_end_date)
-
         index_of_files_to_download = set()
-        for (end_date, is_full) in sorted_set:
+        for (end_date, is_full) in Timing.sort(
+                                               set(map(create_tuple, times)),
+                                               by_end_date):
             is_before = Timing.time_diff_in_seconds(restore_point, end_date) <= 0
 
             #
