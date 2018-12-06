@@ -450,23 +450,33 @@ class BackupAgent(object):
         for dbname in databases:
             self.restore_single_db(dbname=dbname, output_dir=output_dir, restore_point=restore_point)
 
+    def download_ddlgen(self, dbname, start_timestamp, output_dir):
+        """Download a database layout"""
+        ddlgen_file_name = Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
+        ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
+
+        storage_client = self.backup_configuration.storage_client
+        container_name = self.backup_configuration.azure_storage_container_name
+        if storage_client.exists(container_name=container_name, blob_name=ddlgen_file_name):
+            storage_client.get_blob_to_path(container_name=container_name, blob_name=ddlgen_file_name, file_path=ddlgen_file_path)
+            out("Downloaded ddlgen description {}".format(ddlgen_file_path))
+
+
     def restore_single_db(self, dbname, restore_point, output_dir):
+        """Restore a single database"""
         blobs = self.list_restore_blobs(dbname=dbname)
         times = map(Naming.parse_blobname, blobs)
         restore_files = Timing.files_needed_for_recovery(
-            times, restore_point, select_end_date=lambda x: x[3], select_is_full=lambda x: x[1])
+            times, restore_point,
+            select_end_date=lambda x: x[3],
+            select_is_full=lambda x: x[1])
 
         storage_client = self.backup_configuration.storage_client
+        container_name = self.backup_configuration.azure_storage_container_name
         for (_dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) in restore_files:
+            # For full database files, download the ddlgen SQL description, but only along with the 1st stripe
             if is_full and stripe_index == 1:
-                # For full database files, download the SQL description, but only along with the 1st stripe
-                ddlgen_file_name = Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
-                ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
-                if storage_client.exists(container_name=self.backup_configuration.azure_storage_container_name, blob_name=ddlgen_file_name):
-                    storage_client.get_blob_to_path(
-                        container_name=self.backup_configuration.azure_storage_container_name,
-                        blob_name=ddlgen_file_name, file_path=ddlgen_file_path)
-                    out("Downloaded ddlgen description {}".format(ddlgen_file_path))
+                self.download_ddlgen(dbname=dbname, start_timestamp=start_timestamp, output_dir=output_dir)
 
             blob_name = "{dbname}_{type}_{start}--{end}_S{idx:03d}-{cnt:03d}.cdmp".format(
                 dbname=dbname, type=Naming.backup_type_str(is_full),
@@ -477,10 +487,7 @@ class BackupAgent(object):
                 start=start_timestamp, idx=stripe_index, cnt=stripe_count)
 
             file_path = os.path.join(output_dir, file_name)
-            storage_client.get_blob_to_path(
-                container_name=self.backup_configuration.azure_storage_container_name,
-                blob_name=blob_name,
-                file_path=file_path)
+            storage_client.get_blob_to_path(container_name=container_name, blob_name=blob_name, file_path=file_path)
             out("Downloaded dump {}".format(file_path))
 
     def list_restore_blobs(self, dbname):

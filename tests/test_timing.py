@@ -62,3 +62,20 @@ class TestTiming(unittest.TestCase):
             ('TRAN', '20180110_121500', '1/1'),
             ('TRAN', '20180110_123000', '1/2'), ('TRAN', '20180110_123000', '2/2'),
             ('TRAN', '20180110_124500', '1/1')])
+
+    def test_restore_files_only_full_backup(self):
+        """Test restore computation for only full backups"""
+        f1_s1 = ('FULL', '20181205_134002', '20181205_134113', '1/2')
+        f1_s2 = ('FULL', '20181205_134002', '20181205_134113', '2/2')
+        f2_s1 = ('FULL', '20181205_135001', '20181205_135044', '1/2')
+        f2_s2 = ('FULL', '20181205_135001', '20181205_135044', '2/2')
+        sample_times = [f1_s1, f1_s2, f2_s1, f2_s2]
+
+        restore = lambda restore_point: Timing.files_needed_for_recovery(
+            sample_times, restore_point,
+            select_end_date=lambda x: x[2],
+            select_is_full=lambda x: x[0] == 'FULL')
+
+        self.assertEqual(restore('20181205_134113'), [f1_s1, f1_s2], msg="exact end time")
+        self.assertEqual(restore('20181205_135130'), [f2_s1, f2_s2], msg="after F2")
+        self.assertEqual(restore('20181205_134530'), [f1_s1, f1_s2], msg="in between F1 and F2")

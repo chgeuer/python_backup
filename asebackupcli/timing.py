@@ -48,40 +48,49 @@ class Timing(object):
 
     @staticmethod
     def files_needed_for_recovery(times, restore_point,
-                                  select_end_date=lambda x: x["end_date"],
-                                  select_is_full=lambda x: x["is_full"]):
-        create_tuple = lambda x: (select_end_date(x), select_is_full(x))
-        end_date_from_tuple = lambda x: x[0]
+                                  select_end_date=lambda a: a["end_date"],
+                                  select_is_full=lambda f: f["is_full"]):
+        """Compute which files must be fetched for a restore"""
+        create_tuple = lambda a: (select_end_date(a), select_is_full(a))
+        by_end_date = lambda (end_date, _is_full): end_date
+
+        unique_set = set(map(create_tuple, times))
+        sorted_set = Timing.sort(unique_set, by_end_date)
+
         index_of_files_to_download = set()
-        for x in Timing.sort(list(set(map(create_tuple, times))), end_date_from_tuple):
-            x_end_date = end_date_from_tuple(x)
-            x_is_full = x[1]
-            x_is_before = Timing.time_diff_in_seconds(restore_point, x_end_date) <= 0
+        for (end_date, is_full) in sorted_set:
+            is_before = Timing.time_diff_in_seconds(restore_point, end_date) <= 0
 
             #
-            # Iterate through time. Each time we encounter a full backup which could serve
+            # Each time we encounter a full backup which could serve
             # as start point for restore (because it is a full backup which finished before
             # our restore point), empty the collection of items
             #
-            if x_is_full and x_is_before:
-                index_of_files_to_download = set()
-
-            #
-            # Add the current to the list of items needed for restore.
-            #
-            index_of_files_to_download.add(x)
-
-            #
-            # In case we hit the last relevant TRAN backup item (x_is_before == true),
+            # In case we hit the last relevant TRAN backup item (is_before == true),
             # it has been added to index_of_files_to_download, so we can exit our search loop.
             #
-            if not x_is_before:
+            if is_full and is_before:
+                index_of_files_to_download = set()
+
+            #if not is_full or is_before:
+
+
+                index_of_files_to_download.add((end_date, is_full))
+
+            elif is_full and not is_before:
+                break
+
+            elif not is_full and is_before:
+                index_of_files_to_download.add((end_date, is_full))
+
+            elif not is_full and not is_before:
+                index_of_files_to_download.add((end_date, is_full))
                 break
 
         files_to_download = []
-        for t in Timing.sort(times, select_end_date):
-            if create_tuple(t) in index_of_files_to_download:
-                files_to_download.append(t)
+        for stripe in Timing.sort(times, select_end_date):
+            if create_tuple(stripe) in index_of_files_to_download:
+                files_to_download.append(stripe)
 
         result = Timing.sort(files_to_download, select_end_date)
         logging.debug("Files which must be fetched for %s: %s", restore_point, str(result))
