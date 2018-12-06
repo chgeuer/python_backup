@@ -8,7 +8,7 @@
 
 """Version information."""
 
-__version__ = '0.3.7'
+__version__ = '0.3.8'
 
 def version():
     """The script's version"""
