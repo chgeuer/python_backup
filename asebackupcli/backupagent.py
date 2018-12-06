@@ -138,7 +138,8 @@ class BackupAgent(object):
     def backup(self, is_full, databases, output_dir, force, skip_upload, use_streaming):
         databases_to_backup = self.database_connector.determine_databases(user_selected_databases=databases, is_full=is_full)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
-        databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
+        # databases_to_backup = filter(lambda db: not (db in skip_dbs), databases_to_backup)
+        databases_to_backup = [db for db in databases_to_backup if not db in skip_dbs]
 
         for dbname in databases_to_backup:
             self.backup_single_db(dbname=dbname, is_full=is_full, force=force, skip_upload=skip_upload, output_dir=output_dir, use_streaming=use_streaming)
@@ -212,7 +213,7 @@ class BackupAgent(object):
         end_timestamp = Timing.now_localtime()
 
         #
-        # Rename 
+        # Rename
         # - copy from temp_container_name/old_blob_name to dest_container_name/new_blob_name)
         #
         source_blobs = []
@@ -452,15 +453,15 @@ class BackupAgent(object):
     def restore_single_db(self, dbname, restore_point, output_dir):
         blobs = self.list_restore_blobs(dbname=dbname)
         times = map(Naming.parse_blobname, blobs)
-        restore_files = Timing.files_needed_for_recovery(times, restore_point,
-            select_end_date=lambda x: x[3], select_is_full=lambda x: x[1])
+        restore_files = Timing.files_needed_for_recovery(
+            times, restore_point, select_end_date=lambda x: x[3], select_is_full=lambda x: x[1])
 
         storage_client = self.backup_configuration.storage_client
-        for (dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) in restore_files:
-            if is_full:
-                # For full database files, download the SQL description
-                ddlgen_file_name=Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
-                ddlgen_file_path=os.path.join(output_dir, ddlgen_file_name)
+        for (_dbname, is_full, start_timestamp, end_timestamp, stripe_index, stripe_count) in restore_files:
+            if is_full and stripe_index == 1:
+                # For full database files, download the SQL description, but only along with the 1st stripe
+                ddlgen_file_name = Naming.construct_ddlgen_name(dbname=dbname, start_timestamp=start_timestamp)
+                ddlgen_file_path = os.path.join(output_dir, ddlgen_file_name)
                 if storage_client.exists(container_name=self.backup_configuration.azure_storage_container_name, blob_name=ddlgen_file_name):
                     storage_client.get_blob_to_path(
                         container_name=self.backup_configuration.azure_storage_container_name,
