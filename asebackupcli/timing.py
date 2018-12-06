@@ -66,25 +66,17 @@ class Timing(object):
             # as start point for restore (because it is a full backup which finished before
             # our restore point), empty the collection of items
             #
-            # In case we hit the last relevant TRAN backup item (is_before == true),
-            # it has been added to index_of_files_to_download, so we can exit our search loop.
-            #
             if is_full and is_before:
                 index_of_files_to_download = set()
 
-            #if not is_full or is_before:
-
-
+            if not is_full or is_before:
                 index_of_files_to_download.add((end_date, is_full))
 
-            elif is_full and not is_before:
-                break
-
-            elif not is_full and is_before:
-                index_of_files_to_download.add((end_date, is_full))
-
-            elif not is_full and not is_before:
-                index_of_files_to_download.add((end_date, is_full))
+            #
+            # In case we hit the last relevant TRAN backup item (is_before == true),
+            # it has been added to index_of_files_to_download, so we can exit our search loop.
+            #
+            if not is_before:
                 break
 
         files_to_download = []
