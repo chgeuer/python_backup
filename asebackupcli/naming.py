@@ -97,6 +97,15 @@ class Naming(object):
         return (match.group('dbname'), Naming.type_str_is_full(match.group('type')), match.group('start'), match.group('end'), int(match.group('idx')), int(match.group('cnt')))
 
     @staticmethod
+    def parse_ase_generated_filename(filename):
+        """Returns the filename parts of ASE-generated TRAN dumps."""
+        # AZU_trans_20181205_091930_S01-11.cdmp
+        match = re.search(r'(?P<dbname>[^_]+?)_trans_(?P<start>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
+        if match is None:
+            return None
+        return (match.group('dbname'), match.group('start'), int(match.group('idx')), int(match.group('cnt')))
+
+    @staticmethod
     def blobname_to_filename(blobname):
         parts = Naming.parse_blobname(blobname)
         return Naming.construct_filename(

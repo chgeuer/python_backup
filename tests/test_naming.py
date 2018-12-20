@@ -59,6 +59,13 @@ class TestNaming(unittest.TestCase):
                 stripe_count=101),
             'test1db_full_20180601_112429--20180601_131234_S002-101.cdmp')
 
+    def test_parse_ase_generated_filename(self):
+        """Test Naming.parse_ase_generated_filename"""
+        self.assertEqual(
+            Naming.parse_ase_generated_filename('AZU_trans_20181205_091930_S01-11.cdmp'),
+            ('AZU', '20181205_091930', 1, 11)
+        )
+
     def test_parse_filename(self):
         """Test Naming.parse_filename"""
         self.assertEqual(
