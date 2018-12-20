@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='asebackupcli',
-    version='0.3.8',
+    version='0.3.9',
     packages=['asebackupcli'],
     description="A backup utility for Sybase ASE databases into Azure blob storage",
     author="Dr. Christian Geuer-Pollmann",

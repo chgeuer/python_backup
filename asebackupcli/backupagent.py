@@ -10,12 +10,9 @@
 
 import logging
 import os
-import re
+import os.path
 import datetime
-import threading
 from itertools import groupby
-import json
-import urllib2
 import uuid
 import time
 import subprocess
@@ -144,8 +141,8 @@ class BackupAgent(object):
         for dbname in databases_to_backup:
             self.backup_single_db(dbname=dbname, is_full=is_full, force=force, skip_upload=skip_upload, output_dir=output_dir, use_streaming=use_streaming)
 
-        if not skip_upload and not use_streaming:
-            self.upload_local_backup_files_from_previous_operations(is_full=is_full, output_dir=output_dir)
+        if not is_full and not skip_upload and not use_streaming:
+            self.upload_local_backup_files_from_previous_operations(output_dir=output_dir)
 
     def start_streaming_threads(self, dbname, is_full, start_timestamp, stripe_count, output_dir, container_name):
         threads = []
@@ -347,35 +344,39 @@ class BackupAgent(object):
             success=success,
             data_in_MB=0)
 
-    def upload_local_backup_files_from_previous_operations(self, is_full, output_dir):
+    def upload_local_backup_files_from_previous_operations(self, output_dir):
+        """Upload ASE-generated cdmp files"""
         for existing_file in os.listdir(output_dir):
-            # # check for remaining ddlgen.sql files
-            # m = re.search(r'(?P<dbname>\S+?)_ddlgen_(?P<start>\d{8}_\d{6})\.sql', existing_file)
-            # if m is not None:
-            #     blob_name = existing_file
-            #     blob_path = os.path.join(output_dir, blob_name)
-            #     out("Upload leftover {} to Azure Storage".format(blob_path))
-            #     self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
-            #     out("Delete leftover {}".format(blob_path))
-            #     os.remove(blob_path)
-            #     continue
-
-            # check for old cdmp files
-            parts = Naming.parse_blobname(existing_file)
-            if parts is not None:
-                (_dbname, is_full_file, _start_timestamp, _end_timestamp, _stripe_index, _stripe_count) = parts
-                if is_full != is_full_file:
-                    out("Skipping leftover {} (not right type of backup file)".format(existing_file))
-                    continue
-
-                file_path = os.path.join(output_dir, existing_file)
-
-                out("Move leftover {file_path} to Azure Storage".format(file_path=file_path))
-                self.backup_configuration.storage_client.create_blob_from_path(container_name=self.backup_configuration.azure_storage_container_name, file_path=file_path, blob_name=existing_file, validate_content=True, max_connections=4)
-                os.remove(file_path)
+            parts = Naming.parse_ase_generated_filename(existing_file)
+            file_path = os.path.join(output_dir, existing_file)
+            if parts is None:
+                #
+                # seems not to be an ASE-generated transaction dump
+                #
                 continue
 
-    def list_backups(self, databases = []):
+            (dbname, start_timestamp, stripe_index, stripe_count) = parts
+
+            #
+            # For ASE-generated dumps, we can get the start_timestamp from the filename.
+            # For end_timestamp, we rely on file 'modification' time, i.e. when the file was closed
+            #
+            # -rw-r-----  1 sybaz3 sapsys     49152 2018-11-30 14:15:33.067917234 +0000 AZ3_trans_20181130_141532_S01-01.cdmp
+            #
+            end_timestamp = Timing.epoch_to_string(os.path.getmtime(file_path))
+
+            blob_name = Naming.construct_blobname(dbname=dbname, is_full=False,
+                                                  start_timestamp=start_timestamp, end_timestamp=end_timestamp,
+                                                  stripe_index=stripe_index, stripe_count=stripe_count)
+
+            out("Move ASE-generated dump '{file_path}' to Azure Storage as '{blob_name}'".format(file_path=file_path, blob_name=blob_name))
+            self.backup_configuration.storage_client.create_blob_from_path(
+                container_name=self.backup_configuration.azure_storage_container_name, file_path=file_path,
+                blob_name=blob_name, validate_content=True, max_connections=4)
+            os.remove(file_path)
+
+    def list_backups(self, databases=[]):
+        """Lists backups in the given storage account."""
         baks_dict = self.existing_backups(databases=databases)
         for end_timestamp in baks_dict.keys():
             # http://mark-dot-net.blogspot.com/2014/03/python-equivalents-of-linq-methods.html
@@ -396,10 +397,10 @@ class BackupAgent(object):
                 "stripe_index": x["parts"][4],
             }, stripes)
 
-            group_by_key=lambda x: "db {dbname: <30} start {begin} end {end} ({type})".format(
+            group_by_key = lambda x: "db {dbname: <30} start {begin} end {end} ({type})".format(
                 dbname=x["dbname"], end=x["end"], begin=x["begin"], type=Naming.backup_type_str(x["is_full"]))
 
-            for group, values in groupby(stripes, key=group_by_key): 
+            for group, values in groupby(stripes, key=group_by_key):
                 files = [s["stripe_index"] for s in values]
                 print "{backup} {files}".format(backup=group, files=files)
 

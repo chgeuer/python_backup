@@ -38,6 +38,11 @@ class Timing(object):
         return dt2 - dt1
 
     @staticmethod
+    def epoch_to_string(epoch):
+        """Converts an epoch number to time string"""
+        return datetime.datetime.utcfromtimestamp(epoch).strftime(Timing.time_format)
+
+    @staticmethod
     def sort(times, selector=lambda x: x):
         """Sort by time."""
         return sorted(times, cmp=lambda a, b: Timing.time_diff_in_seconds(selector(b), selector(a)))
