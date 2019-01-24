@@ -1,10 +1,14 @@
 # CHANGELOG
 
-## 0.3.8 
+## 0.3.10
 
-- Bugfix related to fetching unnecessary files during restore. 
+- Print size information.
 
-## 0.3.7 
+## 0.3.8
+
+- Bugfix related to fetching unnecessary files during restore.
+
+## 0.3.7
 
 - Skip local existing ddlgen for subsequent upload
 
