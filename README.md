@@ -21,19 +21,29 @@ pip install git+https://github.com/chgeuer/python_backup.git#egg=asebackupcli
 
 ln -s ~/${envname}/bin/asebackupcli ~/bin
 
+export CID="AZ3"
+export SID="AZ3"
+
 cat > $HOME/aseconfig.txt <<- EOF
 	# Some comment
-	local_temp_directory:          /sybase/JLD/saparch_1
+	local_temp_directory:          /sybase/${SID}/saparch_1
 	# local_temp_directory:        /mnt/resource
 	database_password_generator:   ~/dba/bin/dbsp `cat ~/.dbpassword`
 	# server_name:                 somehost:4901
 	notification_command:          /usr/sbin/ticmcmc --stdin
 EOF
 
+mkdir --parents /usr/sap/backup
+
+cat > /usr/sap/backup/backup.conf <<-EOF
+	DEFAULT.CID: ${CID}
+	DEFAULT.SID: ${SID}
+EOF
+
 "$(which asebackupcli)" -c ~/aseconfig.txt -x
 ```
 
-## Install the mocks fora demo environment
+## Install the mocks for a demo environment
 
 ```
 ./install_developer_mocks.sh

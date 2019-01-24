@@ -48,7 +48,9 @@ class BackupAgent(object):
                 end_time_of_existing_blob = parts[3]
                 if not existing_blobs_dict.has_key(end_time_of_existing_blob):
                     existing_blobs_dict[end_time_of_existing_blob] = []
-                existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
+
+                val = {'blob_name': blob_name, 'content_length': blob.properties.content_length}
+                existing_blobs_dict[end_time_of_existing_blob].append(val)
 
             if results.next_marker:
                 marker = results.next_marker
@@ -74,7 +76,8 @@ class BackupAgent(object):
                 if len(databases) == 0 or dbname_of_existing_blob in databases:
                     if not existing_blobs_dict.has_key(end_time_of_existing_blob):
                         existing_blobs_dict[end_time_of_existing_blob] = []
-                    existing_blobs_dict[end_time_of_existing_blob].append(blob_name)
+                    val = {'blob_name': blob_name, 'content_length': blob.properties.content_length}
+                    existing_blobs_dict[end_time_of_existing_blob].append(val)
 
             if results.next_marker:
                 marker = results.next_marker
@@ -378,31 +381,33 @@ class BackupAgent(object):
     def list_backups(self, databases=[]):
         """Lists backups in the given storage account."""
         baks_dict = self.existing_backups(databases=databases)
-        for end_timestamp in baks_dict.keys():
+        for end_timestamp in baks_dict:
             # http://mark-dot-net.blogspot.com/2014/03/python-equivalents-of-linq-methods.html
             stripes = baks_dict[end_timestamp]
-            stripes = map(lambda blobname: {
-                "blobname":blobname,
-                "filename": Naming.blobname_to_filename(blobname),
-                "parts": Naming.parse_blobname(blobname)
-            }, stripes)
-            stripes = map(lambda x: {
-                "blobname": x["blobname"],
-                "filename": x["filename"],
-                "parts": x["parts"],
+
+            stripes = [{
+                "parts": Naming.parse_blobname(x["blob_name"]),
+                "content_length": x["content_length"]
+            } for x in stripes]
+
+            stripes = [{
                 "dbname": x["parts"][0],
                 "is_full": x["parts"][1],
                 "begin": x["parts"][2],
                 "end": x["parts"][3],
                 "stripe_index": x["parts"][4],
-            }, stripes)
+                "content_length": x["content_length"]
+            } for x in stripes]
 
             group_by_key = lambda x: "db {dbname: <30} start {begin} end {end} ({type})".format(
                 dbname=x["dbname"], end=x["end"], begin=x["begin"], type=Naming.backup_type_str(x["is_full"]))
 
             for group, values in groupby(stripes, key=group_by_key):
-                files = [s["stripe_index"] for s in values]
-                print "{backup} {files}".format(backup=group, files=files)
+                values = [x for x in values] # Expand interable
+                print "{backup} {size:>20,} bytes, stripes: {files} ".format(
+                    backup=group,
+                    files=[s["stripe_index"] for s in values],
+                    size=sum([s["content_length"] for s in values]))
 
     def prune_old_backups(self, older_than, databases):
         """Delete (prune) old backups from Azure storage."""
@@ -462,11 +467,10 @@ class BackupAgent(object):
             storage_client.get_blob_to_path(container_name=container_name, blob_name=ddlgen_file_name, file_path=ddlgen_file_path)
             out("Downloaded ddlgen description {}".format(ddlgen_file_path))
 
-
     def restore_single_db(self, dbname, restore_point, output_dir):
         """Restore a single database"""
         blobs = self.list_restore_blobs(dbname=dbname)
-        times = map(Naming.parse_blobname, blobs)
+        times = [Naming.parse_blobname(b) for b in blobs]
         restore_files = Timing.files_needed_for_recovery(
             times, restore_point,
             select_end_date=lambda x: x[3],
@@ -518,7 +522,7 @@ class BackupAgent(object):
         day_f = lambda d: [None, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][d]
         b2s_f = lambda x: {True:"1", False:"0"}[x]
         s_f = lambda day: "business_hours_{}:                 {}".format(day_f(day), "".join(map(b2s_f, business_hours.hours[day])))
-        hours = list(map(s_f, range(1, 8)))
+        hours = [s_f(day) for day in range(1, 8)]
 
         return [
             "azure.vm_name:                      {}".format(self.backup_configuration.get_vm_name()),
@@ -534,14 +538,14 @@ class BackupAgent(object):
             "db_backup_interval_min:             {}".format(self.backup_configuration.get_db_backup_interval_min()),
             "db_backup_interval_max:             {}".format(self.backup_configuration.get_db_backup_interval_max()),
             "log_backup_interval_min:            {}".format(self.backup_configuration.get_log_backup_interval_min())
-            ] + hours + [
+        ] + hours + [
             "",
             "azure_storage_account_name:         {}".format(self.backup_configuration.get_azure_storage_account_name()),
             "azure_storage_container_name:       {}".format(self.backup_configuration.azure_storage_container_name),
             "azure_storage_container_name_temp:  {}".format(self.backup_configuration.azure_storage_container_name_temp),
             "notification_command:               {}".format(self.backup_configuration.get_notification_command()),
             "script version:                     {}".format(version())
-            ]
+        ]
 
     def send_notification(self, dbname, is_full, start_timestamp, end_timestamp,
                           success, data_in_MB, blob_urls=[], error_msg=None):
