@@ -559,38 +559,56 @@ class BackupAgent(object):
                 return
 
             template = self.backup_configuration.get_notification_template()
-
             env = os.environ
+
+
             env["azure_subscription_id"] = self.backup_configuration.get_subscription_id()
-            env["location"] = self.backup_configuration.get_location()
-            env["storageaccountid"] = self.backup_configuration.get_azure_storage_account_name()
-            env["dbname"] = dbname
-            env["resourcetype"] = "compute"
-            env["resourcename"] = "ase"
-            env["aseservername"] = self.backup_configuration.get_vm_name()
-            env["vmname"] = self.backup_configuration.get_vm_name()
-            env["vm_id"] = self.backup_configuration.get_vm_id()
-            env["resourcegroupname"] = self.backup_configuration.get_resource_group_name()
-            env["job_status"] = {True:"Completed", False:"Failed"}[success]
-            if error_msg is None:
-                env["job_failure_code"] = "Success"
-            else:
-                env["job_failure_code"] = "{msg}".format(msg=str(error_msg))
+            env["azure_location"] = self.backup_configuration.get_location()
+            env["azure_storageaccountid"] = self.backup_configuration.get_azure_storage_account_name()
+            env["azure_resourcegroupname"] = self.backup_configuration.get_resource_group_name()
 
-            env["microsoft_job_operation_subtype"] = {True:"Full", False:"Log"}[is_full]
+            env["azure_microsoft_job_operation_subtype"] = {True:"Full", False:"Log"}[is_full]
+            env["azure_job_guid"] = str(uuid.uuid4())
+
+            env["azure_start_timestamp"] = start_timestamp
+            env["azure_job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp, end_timestamp)))
+            env["transferred_MB"] = str(data_in_MB)
+
+
+            env["sap_cloud"] = "azure"
+            env["sap_hostname"] = self.backup_configuration.get_vm_name()
+            env["sap_instance_id"] = self.backup_configuration.get_vm_id()
             env["sap_state"] = {True:"success", False:"fail"}[success]
+            env["sap_type"] = {True:"db", False:"log"}[is_full]
+            env["sap_method"] = "file, snapshot, backint"
+            env["sap_level"] = {True:"full", False:"incr"}[is_full] # full, incr, diff
+            env["sap_account_id"] = ""
+            env["sap_customer_id"] = self.backup_configuration.get_customer_id()
+            env["sap_system_id"] = self.backup_configuration.get_system_id()
+            env["sap_database_name"] = dbname
+            env["sap_database_id"] = ""
+            env["sap_s3_path"] = ", ".join(blob_urls)
+            env["sap_timestamp_send"] = str(Timing.local_string_to_utc_epoch(Timing.now_localtime()))
+            env["sap_timestamp_last_successful"] = "-1"
+            env["sap_timestamp_bkp_begin"] = str(Timing.local_string_to_utc_epoch(start_timestamp))
+            env["sap_timestamp_bkp_end"] = str(Timing.local_string_to_utc_epoch(end_timestamp))
+            env["sap_backup_size"] = str(data_in_MB)
+            env["sap_dbtype"] = "ase"
+            if error_msg is None:
+                env["sap_error_message"] = "Success"
+            else:
+                env["sap_error_message"] = "{msg}".format(msg=str(error_msg))
+            env["sap_script_version"] = version()
 
-            env["job_guid"] = str(uuid.uuid4())
+
+
+
 
             env["start_timestamp"] = start_timestamp
             env["end_timestamp"] = end_timestamp
-            env["time_generated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
-            env["job_start_time"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
-            env["job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp, end_timestamp)))
-            env["transferred_MB"] = "{size}".format(size=data_in_MB)
-            env["CID"] = self.backup_configuration.get_customer_id()
-            env["SID"] = self.backup_configuration.get_system_id()
-            env["sap_blob_urls"] = ", ".join(blob_urls)
+            env["dbname"] = dbname
+
+            print("Running notification '{notify_cmd}'".format(notify_cmd=notify_cmd))
 
             notify_process = subprocess.Popen(
                 "/usr/bin/envsubst | {notify_cmd}".format(notify_cmd=notify_cmd),
@@ -601,5 +619,6 @@ class BackupAgent(object):
             returncode = notify_process.returncode
             return (stdout, stderr, returncode)
         except Exception as ex:
-            raise BackupException(
-                "Could not send notification: {}".format(ex.message))
+            msg = "Could not send notification: {}".format(ex.message)
+            printe(msg)
+            raise BackupException(msg)

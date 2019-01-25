@@ -43,6 +43,16 @@ class Timing(object):
         return datetime.datetime.utcfromtimestamp(epoch).strftime(Timing.time_format)
 
     @staticmethod
+    def local_string_to_utc_epoch(time_str):
+        """Converts a local time string to UTC epoch"""
+        print "Convert {}".format(time_str)
+        t = Timing.parse(time_str)
+        dt = datetime.datetime(year=t.tm_year, month=t.tm_mon, day=t.tm_mday,
+                               hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
+        return int((dt - datetime.datetime(1970, 1, 1)).total_seconds())
+
+
+    @staticmethod
     def sort(times, selector=lambda x: x):
         """Sort by time."""
         return sorted(times, cmp=lambda a, b: Timing.time_diff_in_seconds(selector(b), selector(a)))
