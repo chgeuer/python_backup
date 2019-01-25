@@ -452,6 +452,7 @@ class BackupAgent(object):
         print "Retriving point-in-time restore {} for databases {}".format(restore_point, str(databases))
         databases = self.database_connector.determine_databases(user_selected_databases=databases, is_full=True)
         skip_dbs = self.backup_configuration.get_databases_to_skip()
+        # databases = [db for db in databases if not db in skip_dbs]
         databases = filter(lambda db: not (db in skip_dbs), databases)
         for dbname in databases:
             self.restore_single_db(dbname=dbname, output_dir=output_dir, restore_point=restore_point)
@@ -512,7 +513,7 @@ class BackupAgent(object):
         #
         # restrict to dump files
         #
-        return filter(lambda x: x.endswith(".cdmp"), existing_blobs)
+        return [x for x in existing_blobs if x.endswith(".cdmp")]
 
     def show_configuration(self, output_dir):
         return "\n".join(self.get_configuration_printable(output_dir=output_dir))
@@ -526,6 +527,7 @@ class BackupAgent(object):
 
         return [
             "azure.vm_name:                      {}".format(self.backup_configuration.get_vm_name()),
+            "azure.vm_id:                        {}".format(self.backup_configuration.get_vm_id()),
             "azure.resource_group_name:          {}".format(self.backup_configuration.get_resource_group_name()),
             "azure.subscription_id:              {}".format(self.backup_configuration.get_subscription_id()),
             "",
@@ -567,6 +569,7 @@ class BackupAgent(object):
             env["resourcename"] = "ase"
             env["aseservername"] = self.backup_configuration.get_vm_name()
             env["vmname"] = self.backup_configuration.get_vm_name()
+            env["vm_id"] = self.backup_configuration.get_vm_id()
             env["resourcegroupname"] = self.backup_configuration.get_resource_group_name()
             env["job_status"] = {True:"Completed", False:"Failed"}[success]
             if error_msg is None:
@@ -580,8 +583,7 @@ class BackupAgent(object):
             env["job_guid"] = str(uuid.uuid4())
             env["time_generated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
             env["job_start_time"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
-            env["job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp,
-                                                                            end_timestamp)))
+            env["job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp, end_timestamp)))
             env["transferred_MB"] = "{size}".format(size=data_in_MB)
             env["CID"] = self.backup_configuration.get_customer_id()
             env["SID"] = self.backup_configuration.get_system_id()

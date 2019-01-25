@@ -20,10 +20,11 @@
 
     "cloud":"azure",
     "hostname": "${vmname}",
-    "state": "${sap_state}",
-    "type": "${sap_type}",
-    "method": "",
-    "level": "",
+    "instance-id": "${vm_id}",
+    "state": "fail, success",
+    "type": "db, log",
+    "method": "file, snapshot, backint",
+    "level": "full, incr, diff",
     "account-id": "",
     "customer-id": "${CID}",
     "system-id": "${SID}",
@@ -34,8 +35,8 @@
     "timestamp-last-successful": "",
     "timestamp-bkp-begin": "${job_start_time}",
     "timestamp-bkp-end": "",
-    "backup-size": "",
-    "dbtype": "${resourcename}",
+    "backup-size": -1,
+    "dbtype": "ase",
     "error-message": "${job_failure_code}",
     "script-version": ""
 }

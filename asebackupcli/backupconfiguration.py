@@ -72,6 +72,10 @@ class BackupConfiguration(object):
         """Get VM name."""
         return self.instance_metadata.vm_name
 
+    def get_vm_id(self):
+        """Get unique VM ID."""
+        return self.instance_metadata.vm_id
+
     def get_subscription_id(self):
         """Get Azure Subscription ID"""
         return self.instance_metadata.subscription_id

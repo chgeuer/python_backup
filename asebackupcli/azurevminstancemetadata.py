@@ -89,6 +89,17 @@ class AzureVMInstanceMetadata(object):
         """Return the virtual machine's name."""
         try:
             return str(self.json_data["compute"]["name"])
-        except Exception as e:
+        except Exception as exception:
             raise BackupException(
-                "Cannot read VM name from instance metadata endpoint: {}".format(e.message))
+                "Cannot read VM name from instance metadata endpoint: {}".format(exception.message))
+
+    @property
+    def vm_id(self):
+        """Return the virtual machine's unique ID."""
+        # https://github.com/MicrosoftDocs/azure-docs/blob/2dc1e3beced45a75d6410a3edff33449fff1ebb3/articles/virtual-machines/virtual-machines-linux-unique-vm-id.md
+        # Similar to `sudo dmidecode | grep UUID`, with Big Endian bit ordering corrected
+        try:
+            return str(self.json_data["compute"]["vmId"])
+        except Exception as exception:
+            raise BackupException(
+                "Cannot read VM ID from instance metadata endpoint: {}".format(exception.message))
