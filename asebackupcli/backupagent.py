@@ -581,6 +581,9 @@ class BackupAgent(object):
             env["sap_state"] = {True:"success", False:"fail"}[success]
 
             env["job_guid"] = str(uuid.uuid4())
+
+            env["start_timestamp"] = start_timestamp
+            env["end_timestamp"] = end_timestamp
             env["time_generated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
             env["job_start_time"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", Timing.parse(start_timestamp))
             env["job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp, end_timestamp)))

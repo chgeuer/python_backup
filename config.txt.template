@@ -17,7 +17,8 @@ database_password_generator:   ~/dba/bin/dbsp `cat ~/.dbpassword`
 #
 # OPTIONAL 'notification_command' to specify a command to be executed for notifications
 #
-notification_command:          /usr/sbin/ticmcmc --stdin
+# notification_command:          /usr/sbin/ticmcmc --stdin
+notification_command:          /usr/bin/cat > ~/log-${dbname}-${start_timestamp}-${end_timestamp}.txt
 
 #
 # OPTIONAL 'notification_template_file': template file for notifications. 
