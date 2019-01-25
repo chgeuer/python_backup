@@ -580,14 +580,16 @@ class BackupAgent(object):
             env["sap_instance_id"] = self.backup_configuration.get_vm_id()
             env["sap_state"] = {True:"success", False:"fail"}[success]
             env["sap_type"] = {True:"db", False:"log"}[is_full]
-            env["sap_method"] = "file, snapshot, backint"
+            env["sap_method"] = "file" # "file, snapshot, backint"
             env["sap_level"] = {True:"full", False:"incr"}[is_full] # full, incr, diff
             env["sap_account_id"] = ""
             env["sap_customer_id"] = self.backup_configuration.get_customer_id()
             env["sap_system_id"] = self.backup_configuration.get_system_id()
             env["sap_database_name"] = dbname
             env["sap_database_id"] = ""
-            env["sap_s3_path"] = ", ".join(blob_urls)
+            env["sap_s3_path"] = "https://{accountname}.blob.core.windows.net/{container}/".format(
+                accountname=self.backup_configuration.get_azure_storage_account_name(), 
+                container=self.backup_configuration.azure_storage_container_name)
             env["sap_timestamp_send"] = str(Timing.local_string_to_utc_epoch(Timing.now_localtime()))
             env["sap_timestamp_last_successful"] = "-1"
             env["sap_timestamp_bkp_begin"] = str(Timing.local_string_to_utc_epoch(start_timestamp))
@@ -599,10 +601,6 @@ class BackupAgent(object):
             else:
                 env["sap_error_message"] = "{msg}".format(msg=str(error_msg))
             env["sap_script_version"] = version()
-
-
-
-
 
             env["start_timestamp"] = start_timestamp
             env["end_timestamp"] = end_timestamp
