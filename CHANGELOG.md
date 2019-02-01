@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.3.12
+
+- remove Azure debug info from notification
+
 ## 0.3.11
 
 - Add date of last backup to notification
