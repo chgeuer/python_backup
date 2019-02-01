@@ -250,6 +250,8 @@ class BackupAgent(object):
         return (stdout, stderr, returncode, end_timestamp)
 
     def backup_single_db(self, dbname, is_full, force, skip_upload, output_dir, use_streaming):
+        previous_backup_timestamp = self.latest_backup_timestamp(dbname, is_full)
+
         start_timestamp = Timing.now_localtime()
         if not self.should_run_backup(dbname=dbname, is_full=is_full, force=force, start_timestamp=start_timestamp):
             out("Skip backup of database {}".format(dbname))
@@ -340,12 +342,24 @@ class BackupAgent(object):
                     file_path=blob_path, blob_name=blob_name, validate_content=True, max_connections=4)
                 os.remove(blob_path)
 
+        backup_size_in_bytes = 0
+        if not skip_upload:
+            for stripe_index in range(1, stripe_count + 1):
+                blob_name = Naming.construct_blobname(dbname=dbname, is_full=is_full, start_timestamp=start_timestamp, end_timestamp=end_timestamp, stripe_index=stripe_index, stripe_count=stripe_count)
+                blob_props = self.backup_configuration.storage_client.get_blob_properties(
+                    container_name=self.backup_configuration.azure_storage_container_name,
+                    blob_name=blob_name)
+                backup_size_in_bytes += blob_props.properties.content_length
+                print "Blob {n} has size {l}".format(n=blob_name, l=blob_props.properties.content_length)
+
         self.send_notification(
             dbname=dbname, is_full=is_full,
+            previous_backup_timestamp=previous_backup_timestamp,
             start_timestamp=start_timestamp,
             end_timestamp=end_timestamp,
             success=success,
-            data_in_MB=0)
+            overall_size_in_bytes=backup_size_in_bytes,
+            use_streaming=use_streaming)
 
     def upload_local_backup_files_from_previous_operations(self, output_dir):
         """Upload ASE-generated cdmp files"""
@@ -549,8 +563,8 @@ class BackupAgent(object):
             "script version:                     {}".format(version())
         ]
 
-    def send_notification(self, dbname, is_full, start_timestamp, end_timestamp,
-                          success, data_in_MB, blob_urls=[], error_msg=None):
+    def send_notification(self, dbname, is_full, previous_backup_timestamp, start_timestamp, end_timestamp,
+                          success, overall_size_in_bytes, use_streaming, error_msg=None):
         """Send notification"""
         try:
             notify_cmd = self.backup_configuration.get_notification_command()
@@ -573,28 +587,30 @@ class BackupAgent(object):
             env["azure_start_timestamp"] = start_timestamp
             env["azure_job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp, end_timestamp)))
             env["transferred_MB"] = str(data_in_MB)
-
+            env["start_timestamp"] = start_timestamp
+            env["end_timestamp"] = end_timestamp
+            env["dbname"] = dbname
 
             env["sap_cloud"] = "azure"
             env["sap_hostname"] = self.backup_configuration.get_vm_name()
             env["sap_instance_id"] = self.backup_configuration.get_vm_id()
             env["sap_state"] = {True:"success", False:"fail"}[success]
             env["sap_type"] = {True:"db", False:"log"}[is_full]
-            env["sap_method"] = "file" # "file, snapshot, backint"
-            env["sap_level"] = {True:"full", False:"incr"}[is_full] # full, incr, diff
-            env["sap_account_id"] = ""
+            env["sap_method"] = {True:"backint", False:"file"}[use_streaming]
+            env["sap_level"] = {True:"full", False:""}[is_full] # full, incr, diff, ""
+            env["sap_account_id"] = self.backup_configuration.get_subscription_id()
             env["sap_customer_id"] = self.backup_configuration.get_customer_id()
             env["sap_system_id"] = self.backup_configuration.get_system_id()
             env["sap_database_name"] = dbname
-            env["sap_database_id"] = ""
+            env["sap_database_id"] = "" # Always empty
             env["sap_s3_path"] = "https://{accountname}.blob.core.windows.net/{container}/".format(
-                accountname=self.backup_configuration.get_azure_storage_account_name(), 
+                accountname=self.backup_configuration.get_azure_storage_account_name(),
                 container=self.backup_configuration.azure_storage_container_name)
-            env["sap_timestamp_send"] = str(Timing.local_string_to_utc_epoch(Timing.now_localtime()))
-            env["sap_timestamp_last_successful"] = "-1"
+            env["sap_timestamp_last_successful"] = str(Timing.local_string_to_utc_epoch(previous_backup_timestamp))
             env["sap_timestamp_bkp_begin"] = str(Timing.local_string_to_utc_epoch(start_timestamp))
             env["sap_timestamp_bkp_end"] = str(Timing.local_string_to_utc_epoch(end_timestamp))
-            env["sap_backup_size"] = str(data_in_MB)
+            env["sap_timestamp_send"] = str(Timing.local_string_to_utc_epoch(Timing.now_localtime()))
+            env["sap_backup_size"] = str(overall_size_in_bytes)
             env["sap_dbtype"] = "ase"
             if error_msg is None:
                 env["sap_error_message"] = "Success"
@@ -602,11 +618,7 @@ class BackupAgent(object):
                 env["sap_error_message"] = "{msg}".format(msg=str(error_msg))
             env["sap_script_version"] = version()
 
-            env["start_timestamp"] = start_timestamp
-            env["end_timestamp"] = end_timestamp
-            env["dbname"] = dbname
-
-            print("Running notification '{notify_cmd}'".format(notify_cmd=notify_cmd))
+            print "Sending notification via '{notify_cmd}'".format(notify_cmd=notify_cmd)
 
             notify_process = subprocess.Popen(
                 "/usr/bin/envsubst | {notify_cmd}".format(notify_cmd=notify_cmd),
