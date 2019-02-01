@@ -155,16 +155,6 @@ class Runner(object):
         skip_upload = args.skip_upload
         force = args.force
 
-        # (stdout, stderr, returncode) = backup_agent.send_notification(
-        #     aseservername="jkl", dbname="AZ3", is_full=True,
-        #     start_timestamp=Timing.now_localtime(),
-        #     end_timestamp=Timing.now_localtime(),
-        #     success=True, data_in_MB=78, error_msg=None)
-        # print "stdout: {}".format(stdout)
-        # print "stderr: {}".format(stderr)
-        # print returncode
-        # raise Exception("goodbye")
-
         for line in backup_agent.get_configuration_printable(output_dir=output_dir):
             logging.debug(line)
 
