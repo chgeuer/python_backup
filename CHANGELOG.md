@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.3.11
+
+- Add date of last backup to notification
+
 ## 0.3.10
 
 - Print size information.
