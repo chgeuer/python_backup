@@ -1,12 +1,13 @@
 {
-    "azure_backup": {
-        "SubscriptionId": "${azure_subscription_id}",
-        "StorageAccount": "${azure_storageaccountid}",
-        "ResourceGroup": "${azure_resourcegroupname}",
-        "Location": "${azure_location}",
-        "Duration": ${azure_job_duration_in_secs}
+    "azure": {
+        "subscriptionId": "${azure_subscription_id}",
+        "storageAccount": "${azure_storageaccountid}",
+        "resourceGroup": "${azure_resourcegroupname}",
+        "location": "${azure_location}",
+        "duration": ${azure_job_duration_in_secs},
+        "start_timestamp": "${start_timestamp}",
+        "end_timestamp": "${end_timestamp}"
     },
-
     "cloud":"${sap_cloud}",
     "hostname": "${sap_hostname}",
     "instance-id": "${sap_instance_id}",
