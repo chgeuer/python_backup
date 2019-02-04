@@ -575,22 +575,6 @@ class BackupAgent(object):
             template = self.backup_configuration.get_notification_template()
             env = os.environ
 
-
-            env["azure_subscription_id"] = self.backup_configuration.get_subscription_id()
-            env["azure_location"] = self.backup_configuration.get_location()
-            env["azure_storageaccountid"] = self.backup_configuration.get_azure_storage_account_name()
-            env["azure_resourcegroupname"] = self.backup_configuration.get_resource_group_name()
-
-            env["azure_microsoft_job_operation_subtype"] = {True:"Full", False:"Log"}[is_full]
-            env["azure_job_guid"] = str(uuid.uuid4())
-
-            env["azure_start_timestamp"] = start_timestamp
-            env["azure_job_duration_in_secs"] = str(int(Timing.time_diff_in_seconds(start_timestamp, end_timestamp)))
-            env["transferred_MB"] = str(data_in_MB)
-            env["start_timestamp"] = start_timestamp
-            env["end_timestamp"] = end_timestamp
-            env["dbname"] = dbname
-
             env["sap_cloud"] = "azure"
             env["sap_hostname"] = self.backup_configuration.get_vm_name()
             env["sap_instance_id"] = self.backup_configuration.get_vm_id()
@@ -615,7 +599,7 @@ class BackupAgent(object):
             if error_msg is None:
                 env["sap_error_message"] = "Success"
             else:
-                env["sap_error_message"] = "{msg}".format(msg=str(error_msg))
+                env["sap_error_message"] = str(error_msg)
             env["sap_script_version"] = version()
 
             print "Sending notification via '{notify_cmd}'".format(notify_cmd=notify_cmd)
