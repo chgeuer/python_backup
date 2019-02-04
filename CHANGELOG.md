@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.3.13
+
+- removed redundant debug info.
+- Fixed problem with `Could not send notification: global name 'data_in_MB' is not defined`
+
 ## 0.3.12
 
 - remove Azure debug info from notification
