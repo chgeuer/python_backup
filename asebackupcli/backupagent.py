@@ -575,6 +575,14 @@ class BackupAgent(object):
             template = self.backup_configuration.get_notification_template()
             env = os.environ
 
+            # Can use a `notification_command` like so:
+            #
+            # notification_command: /usr/bin/cat > ~/log-${dbname}-${start_timestamp}-${end_timestamp}.txt
+            #
+            env["start_timestamp"] = start_timestamp
+            env["end_timestamp"] = end_timestamp
+            env["dbname"] = dbname
+
             env["sap_cloud"] = "azure"
             env["sap_hostname"] = self.backup_configuration.get_vm_name()
             env["sap_instance_id"] = self.backup_configuration.get_vm_id()
