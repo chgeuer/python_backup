@@ -99,7 +99,7 @@ class Naming(object):
     @staticmethod
     def parse_ase_generated_filename(filename):
         """Returns the filename parts of ASE-generated TRAN dumps."""
-        match = re.search(r'(?P<dbname>.+?)_trans_(?P<start>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
+        match = re.search(r'(?P<dbname>\S+?)_trans_(?P<start>\d{8}_\d{6})_S(?P<idx>\d+)-(?P<cnt>\d+)\.cdmp', filename)
         if match is None:
             return None
         return (match.group('dbname'), match.group('start'), int(match.group('idx')), int(match.group('cnt')))
