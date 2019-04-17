@@ -235,7 +235,7 @@ class BackupAgent(object):
         #
         # Delete sources
         #
-        [storage_client.delete_blob(temp_container_name, b) for b in source_blobs]
+        _ = [storage_client.delete_blob(temp_container_name, b) for b in source_blobs]
 
         return (stdout, stderr, returncode, end_timestamp)
 
