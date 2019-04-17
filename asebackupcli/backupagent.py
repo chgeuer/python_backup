@@ -235,7 +235,7 @@ class BackupAgent(object):
         #
         # Delete sources
         #
-        _ = [storage_client.delete_blob(temp_container_name, b) for b in source_blobs]
+        _ =     [storage_client.delete_blob(temp_container_name, b) for b in source_blobs]
 
         return (stdout, stderr, returncode, end_timestamp)
 
@@ -372,6 +372,8 @@ class BackupAgent(object):
 
             (dbname, start_timestamp, stripe_index, stripe_count) = parts
 
+            previous_backup_timestamp = self.latest_backup_timestamp(dbname, False)
+
             #
             # For ASE-generated dumps, we can get the start_timestamp from the filename.
             # For end_timestamp, we rely on file 'modification' time, i.e. when the file was closed
@@ -385,10 +387,30 @@ class BackupAgent(object):
                                                   stripe_index=stripe_index, stripe_count=stripe_count)
 
             out("Move ASE-generated dump '{file_path}' to Azure Storage as '{blob_name}'".format(file_path=file_path, blob_name=blob_name))
-            self.backup_configuration.storage_client.create_blob_from_path(
-                container_name=self.backup_configuration.azure_storage_container_name, file_path=file_path,
-                blob_name=blob_name, validate_content=True, max_connections=4)
-            os.remove(file_path)
+            backup_size_in_bytes = os.stat(file_path).st_size
+            try:
+                self.backup_configuration.storage_client.create_blob_from_path(
+                    container_name=self.backup_configuration.azure_storage_container_name, file_path=file_path,
+                    blob_name=blob_name, validate_content=True, max_connections=4)
+                os.remove(file_path)
+                self.send_notification(
+                    dbname=dbname, is_full=False,
+                    previous_backup_timestamp=previous_backup_timestamp,
+                    start_timestamp=start_timestamp,
+                    end_timestamp=end_timestamp,
+                    success=True,
+                    overall_size_in_bytes=backup_size_in_bytes,
+                    use_streaming=False)
+            except Exception as exception:
+                self.send_notification(
+                    dbname=dbname, is_full=False,
+                    previous_backup_timestamp=previous_backup_timestamp,
+                    start_timestamp=start_timestamp,
+                    end_timestamp=end_timestamp,
+                    success=False,
+                    overall_size_in_bytes=backup_size_in_bytes,
+                    use_streaming=False,
+                    error_msg=exception.message)
 
     def list_backups(self, databases=[]):
         """Lists backups in the given storage account."""
