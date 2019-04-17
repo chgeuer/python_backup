@@ -13,8 +13,6 @@ import os
 import os.path
 import datetime
 from itertools import groupby
-import uuid
-import time
 import subprocess
 
 from .__init__ import version
