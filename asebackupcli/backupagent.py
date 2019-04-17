@@ -204,7 +204,7 @@ class BackupAgent(object):
                 output_dir=output_dir)
         except BackupException:
             storage_client.delete_container(container_name=temp_container_name)
-            [t.stop() for t in threads]
+            _ = [t.stop() for t in threads]
             raise
 
         self.finalize_streaming_threads(threads)
