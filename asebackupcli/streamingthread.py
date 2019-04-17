@@ -24,8 +24,8 @@ class StreamingThread(threading.Thread):
         return self.exception
 
     def run(self):
-        logging.debug("StreamingThread.run(): Start streaming upload for {pipe_path} to {container_name}/{blob_name}".format(
-            pipe_path=self.pipe_path, container_name=self.container_name, blob_name=self.blob_name))
+        logging.debug("StreamingThread.run(): Start streaming upload for %s to %s/%s",
+                      self.pipe_path, self.container_name, self.blob_name)
 
         try:
             with open(self.pipe_path, "rb", buffering=0) as stream:
@@ -38,20 +38,15 @@ class StreamingThread(threading.Thread):
                     container_name=self.container_name,
                     blob_name=self.blob_name, stream=stream,
                     use_byte_buffer=True, max_connections=1)
-                logging.debug("Finished streaming upload of {container_name}/{blob_name}".format(
-                    container_name=self.container_name, blob_name=self.blob_name))
                 os.remove(self.pipe_path)
 
-                logging.debug("Finished streaming upload of {container_name}/{blob_name}".format(
-                    container_name=self.container_name, blob_name=self.blob_name))
+                logging.debug("Finished streaming upload of %s/%s", self.container_name, self.blob_name)
         except Exception as exception:
-            logging.fatal("Exception during streaming upload: {message}".format(
-                message=exception.message))
+            logging.fatal("Exception during streaming upload: %s", exception.message)
             self.exception = exception
 
     def stop(self):
-        logging.debug("Requested cancellation of upload to {container_name}/{blob_name}".format(
-            container_name=self.container_name, blob_name=self.blob_name))
+        logging.debug("Requested cancellation of upload to %s/%s", self.container_name, self.blob_name)
         if os.path.exists(self.pipe_path):
             os.remove(self.pipe_path)
         # TODO Kill thread...
