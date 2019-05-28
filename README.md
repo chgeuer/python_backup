@@ -28,9 +28,9 @@ cat > $HOME/aseconfig.txt <<- EOF
 	# Some comment
 	local_temp_directory:          /sybase/${SID}/saparch_1
 	# local_temp_directory:        /mnt/resource
-	database_password_generator:   ~/dba/bin/dbsp `cat ~/.dbpassword`
+	database_password_generator:   `cat ~/.dbpassword`
 	# server_name:                 somehost:4901
-	notification_command:          /usr/sbin/ticmcmc --stdin
+	notification_command:          /usr/sbin/sendnotification --stdin
 EOF
 
 mkdir --parents /usr/sap/backup

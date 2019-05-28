@@ -6,8 +6,7 @@ local_temp_directory:          /tmp
 #
 # MANDATORY 'database_password_generator' configures the command which is executed to retrieve the database password. 
 #
-database_password_generator:   ~/dba/bin/dbsp `cat ~/.dbpassword`
-
+database_password_generator:   ~/password_provider.sh `echo secret`
 
 #
 # OPTIONAL 'server_name' can be used to connect to a specific IP:PORT (instead of the local server name)
@@ -17,7 +16,7 @@ database_password_generator:   ~/dba/bin/dbsp `cat ~/.dbpassword`
 #
 # OPTIONAL 'notification_command' to specify a command to be executed for notifications
 #
-# notification_command:          /usr/sbin/ticmcmc --stdin
+# notification_command:          /usr/sbin/sendnotification --stdin
 notification_command:          /usr/bin/cat > ~/log-${dbname}-${start_timestamp}-${end_timestamp}.txt
 
 #
