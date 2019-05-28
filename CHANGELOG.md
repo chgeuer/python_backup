@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.4.0
+
+- Fixed problem with missing notifications.
+- Ensure that database with '_' underscore symbols in the DB name are properly recorded.
+
 ## 0.3.13
 
 - removed redundant debug info.
