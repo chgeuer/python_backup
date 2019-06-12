@@ -20,11 +20,6 @@ class TestTiming(unittest.TestCase):
                 (2018, 6, 5, 21, 59, 59, 1, 156, -1)),
             res)
 
-    def test_epoch_to_string(self):
-        self.assertEqual(
-            Timing.epoch_to_string(1545310926.4980717),
-            '20181220_130206')
-
     def test_time_diff(self):
         """Test time_diff."""
         self.assertEqual(

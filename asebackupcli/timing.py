@@ -38,9 +38,9 @@ class Timing(object):
         return dt2 - dt1
 
     @staticmethod
-    def epoch_to_string(epoch):
-        """Converts an epoch number to time string"""
-        return datetime.datetime.utcfromtimestamp(epoch).strftime(Timing.time_format)
+    def epoch_to_localtime_string(epoch):
+        """Converts an epoch number to time string (in local time zone)"""
+        return datetime.datetime.fromtimestamp(epoch).strftime(Timing.time_format)
 
     @staticmethod
     def local_string_to_utc_epoch(time_str):
