@@ -380,8 +380,8 @@ class BackupAgent(object):
             #
             # -rw-r-----  1 sybaz3 sapsys     49152 2018-11-30 14:15:33.067917234 +0000 AZ3_trans_20181130_141532_S01-01.cdmp
             #
-            utc_epoch = os.path.getmtime(file_path)
-            end_timestamp = Timing.epoch_to_localtime_string(utc_epoch)
+            end_time_local_epoch = os.path.getmtime(file_path)
+            end_timestamp = Timing.epoch_to_time_string(end_time_local_epoch)
 
             blob_name = Naming.construct_blobname(dbname=dbname, is_full=False,
                                                   start_timestamp=start_timestamp, end_timestamp=end_timestamp,

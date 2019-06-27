@@ -11,6 +11,8 @@
 import time
 import datetime
 import logging
+import pytz
+import tzlocal
 
 class Timing(object):
     """Timing class."""
@@ -38,19 +40,22 @@ class Timing(object):
         return dt2 - dt1
 
     @staticmethod
-    def epoch_to_localtime_string(epoch):
-        """Converts an epoch number to time string (in local time zone)"""
+    def epoch_to_time_string(epoch):
+        """Converts an epoch number to time string"""
         return datetime.datetime.fromtimestamp(epoch).strftime(Timing.time_format)
 
     @staticmethod
     def local_string_to_utc_epoch(time_str):
         """Converts a local time string to UTC epoch"""
-        print "Convert {}".format(time_str)
         t = Timing.parse(time_str)
         dt = datetime.datetime(year=t.tm_year, month=t.tm_mon, day=t.tm_mday,
                                hour=t.tm_hour, minute=t.tm_min, second=t.tm_sec)
-        return int((dt - datetime.datetime(1970, 1, 1)).total_seconds())
 
+        timezone_loc = tzlocal.get_localzone()
+        timezone_utc = pytz.timezone("UTC")
+        dt_utc = timezone_loc.localize(dt).astimezone(timezone_utc)
+
+        return int((dt_utc - datetime.datetime(1970, 1, 1, tzinfo=timezone_utc)).total_seconds())
 
     @staticmethod
     def sort(times, selector=lambda x: x):

@@ -19,7 +19,9 @@ setup(
         'pid>=2.2.0',
         'azure-storage-common>=1.2.0rc0,<1.3.0',
         'azure-storage-blob>=1.1.0rc0,<1.3.0',
-        'msrestazure>=0.4.14'
+        'msrestazure>=0.4.14',
+        'pytz>=2019.1',
+        'tzlocal>=1.5.1'
     ],
     tests_require=[
         'mock'
