@@ -628,7 +628,7 @@ class BackupAgent(object):
             if error_msg is None:
                 env["sap_error_message"] = "Success"
             else:
-                env["sap_error_message"] = str(error_msg).replace('"', '\"').replace('\n', ' ')
+                env["sap_error_message"] = str(error_msg).replace('"', "\\\"").replace('\n', ' ')
             env["sap_script_version"] = version()
 
             print "Sending notification via '{notify_cmd}'".format(notify_cmd=notify_cmd)
