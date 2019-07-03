@@ -3,5 +3,12 @@
     "python.linting.enabled": true,
     "files.exclude": {
         "**/*.pyc": true
+    },
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#004d00",
+        "titleBar.activeBackground": "#004d00",
+        "titleBar.inactiveBackground": "#004d0099",
+        "statusBar.background": "#004d00",
+        "statusBarItem.hoverBackground": "#008000"
     }
 }
