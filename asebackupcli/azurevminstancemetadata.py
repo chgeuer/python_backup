@@ -8,6 +8,7 @@
 
 import urllib2
 import json
+import os
 from .backupexception import BackupException
 
 def lazy_property(fn):
@@ -24,7 +25,27 @@ class AzureVMInstanceMetadata(object):
     """Read Azure VM instance metadata."""
 
     @staticmethod
+    def set_no_proxy_for_instance_metadata_endpoint():
+        #
+        # The instance metadata endpoint must be contacted directly, even if an HTTP proxy is set.
+        #
+        IMDS_IP = '169.254.169.254'
+        vars_to_handle = []
+        for no_proxy_key in ['NO_PROXY', 'no_proxy']:
+            if os.environ.has_key(no_proxy_key):
+                vars_to_handle.append(no_proxy_key)
+        if vars_to_handle == []:
+            vars_to_handle.append('NO_PROXY')
+        for no_proxy_key in vars_to_handle:
+            if not os.environ.has_key(no_proxy_key):
+                os.environ[no_proxy_key] = IMDS_IP
+            elif not IMDS_IP in os.environ[no_proxy_key]:
+                os.environ[no_proxy_key] = os.environ[no_proxy_key] + ',' + IMDS_IP
+
+    @staticmethod
     def request_metadata(api_version="2017-12-01"):
+        AzureVMInstanceMetadata.set_no_proxy_for_instance_metadata_endpoint()
+
         url = "http://169.254.169.254/metadata/instance?api-version={v}".format(v=api_version)
         try:
             return json.loads(
