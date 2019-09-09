@@ -1,10 +1,8 @@
 #!/usr/bin/env python2.7
 # coding=utf-8
 
-# -------------------------------------------------------------------------
-# Copyright (c) Microsoft Corporation. All rights reserved.
+# Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
-# --------------------------------------------------------------------------
 
 from .funcmodule import printe
 from .runner import Runner
