@@ -49,7 +49,7 @@ steps:
   - task: GithubRelease@0 
     displayName: 'Create GitHub Release'
     inputs:
-      gitHubConnection: asebackupci
+      gitHubConnection: chgeuer
       repositoryName: chgeuer/python_backup
       tagSource: manual
       tag: $(backupScriptReleaseVersion)
