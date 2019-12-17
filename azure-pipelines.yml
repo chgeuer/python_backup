@@ -41,16 +41,17 @@ steps:
       script: |
         python setup.py sdist
         echo "##vso[task.setvariable variable=backupScriptReleaseVersion]$( python setup.py --version )"
-  - task: Bash@3
-    displayName: 'show vars'
-    inputs:
-      targetType: 'inline'
-      script: |
-        echo "x1 ${BACKUPSCRIPTRELEASEVERSION}"
-        echo "x2 $(backupScriptReleaseVersion)"
-        set
   - task: PublishBuildArtifacts@1
     displayName: 'Publish artifact: dist'
     inputs:
       pathtoPublish: 'dist'
       artifactName: 'dist'
+  - task: GithubRelease@0 
+    displayName: 'Create GitHub Release'
+    inputs:
+      gitHubConnection: asebackupci
+      repositoryName: chgeuer/python_backup
+      tagSource: manual
+      tag: $(backupScriptReleaseVersion)
+      assets: |
+          $(Build.ArtifactStagingDirectory)/dist/*
