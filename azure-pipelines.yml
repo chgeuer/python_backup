@@ -1,44 +1,40 @@
 # Starter pipeline
 
 pool:
-  vmImage: 'Ubuntu 16.04'
+  vmImage: 'Ubuntu 18.04'
 
 steps:
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '2.7'
       architecture: 'x64'
-
-  - script: pip install -e .
-    displayName: 'Install requirements'
-
-  - script: mkdir -p /tmp
-    displayName: 'Create temp directory'
-
-#  - script: |
-#      python -m unittest discover -v
-#    displayName: 'Run tests'
-
-  - script: |
-      pip install pytest
-      pip install pytest-cov
-      pytest tests --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
-    displayName: 'Test with pytest'
-
+  - task: Bash@3
+    displayName: 'Run bash'
+    inputs:
+      targetType: 'inline'
+      script: |
+        pip install -e .
+        
+        mkdir -p /tmp
+        
+        pip install pytest
+        pip install pytest-cov
+        pytest tests --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
   - task: PublishTestResults@2
     inputs:
       testResultsFiles: '**/test-*.xml'
       testRunTitle: 'Publish test results for Python $(python.version)'
-
   - task: PublishCodeCoverageResults@1
     inputs:
       codeCoverageTool: Cobertura
       summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
       reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
-
-  - script: 'python setup.py sdist'
+  - task: Bash@3
     displayName: 'Build sdist'
-
+    inputs:
+      targetType: 'inline'
+      script: |
+        python setup.py sdist
   - task: PublishBuildArtifacts@1
     displayName: 'Publish artifact: dist'
     inputs:
