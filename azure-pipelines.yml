@@ -1,5 +1,10 @@
 # Starter pipeline
 
+trigger:
+  branches:
+    include:
+    - master
+
 pool:
   vmImage: 'Ubuntu 18.04'
 
