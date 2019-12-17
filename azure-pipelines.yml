@@ -44,17 +44,13 @@ steps:
         echo "######################"
         ls -als ./dist
         echo "##vso[task.setvariable variable=backupScriptReleaseVersion]$( python setup.py --version )"
-  - task: PublishBuildArtifacts@1
-    displayName: 'Publish artifact: dist'
-    inputs:
-      pathtoPublish: 'dist'
-      artifactName: 'dist'
   - task: GithubRelease@0 
     displayName: 'Create GitHub Release'
     inputs:
       gitHubConnection: chgeuer
       repositoryName: chgeuer/python_backup
       tagSource: manual
+      isPreRelease: true
       tag: $(backupScriptReleaseVersion)
       assets: |
           dist/asebackupcli-$(backupScriptReleaseVersion).tar.gz
