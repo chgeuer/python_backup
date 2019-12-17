@@ -40,6 +40,9 @@ steps:
       targetType: 'inline'
       script: |
         python setup.py sdist
+        echo "Current dir: $( pwd )"
+        echo "######################"
+        ls -als ./dist
         echo "##vso[task.setvariable variable=backupScriptReleaseVersion]$( python setup.py --version )"
   - task: PublishBuildArtifacts@1
     displayName: 'Publish artifact: dist'
@@ -54,4 +57,4 @@ steps:
       tagSource: manual
       tag: $(backupScriptReleaseVersion)
       assets: |
-          $(Build.ArtifactStagingDirectory)/dist/*
+          dist/asebackupcli-$(backupScriptReleaseVersion).tar.gz
